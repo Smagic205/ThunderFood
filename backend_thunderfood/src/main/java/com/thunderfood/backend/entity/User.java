@@ -26,8 +26,15 @@ public class User {
     @Column(nullable = false, unique = true, length = 150)
     private String email;
 
-    @Column(name = "password_hash", nullable = false, length = 255)
+    @Column(name = "password_hash", length = 255)
     private String passwordHash;
+
+    @Builder.Default
+    @Column(name = "auth_provider", length = 20)
+    private String authProvider = "LOCAL"; // LOCAL, GOOGLE
+
+    @Column(name = "provider_id", length = 255, unique = true)
+    private String providerId;
 
     @Column(length = 20)
     private String phone;

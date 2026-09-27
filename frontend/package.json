@@ -10,5 +10,11 @@
     "dev": "npm run dev --workspaces",
     "build": "npm run build --workspaces",
     "lint": "npm run lint --workspaces"
+  },
+  "msw": {
+    "workerDirectory": [
+      "apps\\web\\public",
+      "apps\\admin\\public"
+    ]
   }
 }
