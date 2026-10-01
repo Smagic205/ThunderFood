@@ -1,0 +1,14 @@
+{
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Spring Boot-BackendThunderfoodApplication<backend_thunderfood>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "com.thunderfood.backend.BackendThunderfoodApplication",
+            "projectName": "backend_thunderfood",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        }
+    ]
+}

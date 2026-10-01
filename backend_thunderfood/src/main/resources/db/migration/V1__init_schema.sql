@@ -8,16 +8,18 @@
 -- 1. NGƯỜI DÙNG & PHÂN QUYỀN
 -- ---------------------------------------------------------------------
 
-CREATE TABLE roles (
+CREATE TABLE IF NOT EXISTS roles (
     id          INT AUTO_INCREMENT PRIMARY KEY,
     name        VARCHAR(50) NOT NULL UNIQUE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id              BIGINT AUTO_INCREMENT PRIMARY KEY,
     full_name       VARCHAR(150) NOT NULL,
     email           VARCHAR(150) NOT NULL UNIQUE,
-    password_hash   VARCHAR(255) NOT NULL,
+    password_hash   VARCHAR(255),
+    auth_provider   VARCHAR(20) NOT NULL DEFAULT 'LOCAL',
+    provider_id     VARCHAR(255) UNIQUE,
     phone           VARCHAR(20),
     avatar_url      VARCHAR(500),
     role_id         INT NOT NULL,
@@ -28,7 +30,7 @@ CREATE TABLE users (
     INDEX idx_users_email (email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE addresses (
+CREATE TABLE IF NOT EXISTS addresses (
     id              BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id         BIGINT NOT NULL,
     receiver_name   VARCHAR(150) NOT NULL,
@@ -43,7 +45,7 @@ CREATE TABLE addresses (
     INDEX idx_addresses_user (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE user_tokens (
+CREATE TABLE IF NOT EXISTS user_tokens (
     id              BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id         BIGINT NOT NULL,
     token           VARCHAR(500) NOT NULL,
@@ -58,7 +60,7 @@ CREATE TABLE user_tokens (
 -- 2. DANH MỤC & SẢN PHẨM
 -- ---------------------------------------------------------------------
 
-CREATE TABLE categories (
+CREATE TABLE IF NOT EXISTS categories (
     id              INT AUTO_INCREMENT PRIMARY KEY,
     name            VARCHAR(150) NOT NULL,
     slug            VARCHAR(150) NOT NULL UNIQUE,
@@ -66,17 +68,17 @@ CREATE TABLE categories (
     is_active       BOOLEAN NOT NULL DEFAULT TRUE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE products (
+CREATE TABLE IF NOT EXISTS products (
     id              BIGINT AUTO_INCREMENT PRIMARY KEY,
     category_id     INT NOT NULL,
     name            VARCHAR(200) NOT NULL,
     slug            VARCHAR(200) NOT NULL UNIQUE,
     description     TEXT,
-    price           DECIMAL(12,2) NOT NULL CHECK (price >= 0),
-    discount_price  DECIMAL(12,2) CHECK (discount_price >= 0),
+    price           DECIMAL(12,2) NOT NULL,
+    discount_price  DECIMAL(12,2),
     stock_quantity  INT NOT NULL DEFAULT 0,
     sold_count      INT NOT NULL DEFAULT 0,
-    avg_rating      DECIMAL(2,1) NOT NULL DEFAULT 0,
+    avg_rating      DECIMAL(2,1) NOT NULL DEFAULT 0.0,
     is_available    BOOLEAN NOT NULL DEFAULT TRUE,
     created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -86,7 +88,7 @@ CREATE TABLE products (
     INDEX idx_products_available (is_available)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE product_images (
+CREATE TABLE IF NOT EXISTS product_images (
     id              BIGINT AUTO_INCREMENT PRIMARY KEY,
     product_id      BIGINT NOT NULL,
     image_url       VARCHAR(500) NOT NULL,
@@ -100,18 +102,18 @@ CREATE TABLE product_images (
 -- 3. GIỎ HÀNG
 -- ---------------------------------------------------------------------
 
-CREATE TABLE carts (
+CREATE TABLE IF NOT EXISTS carts (
     id              BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id         BIGINT NOT NULL UNIQUE,
     updated_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_carts_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE cart_items (
+CREATE TABLE IF NOT EXISTS cart_items (
     id              BIGINT AUTO_INCREMENT PRIMARY KEY,
     cart_id         BIGINT NOT NULL,
     product_id      BIGINT NOT NULL,
-    quantity        INT NOT NULL CHECK (quantity > 0),
+    quantity        INT NOT NULL,
     created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_cart_items_cart FOREIGN KEY (cart_id) REFERENCES carts(id) ON DELETE CASCADE,
     CONSTRAINT fk_cart_items_product FOREIGN KEY (product_id) REFERENCES products(id),
@@ -123,7 +125,7 @@ CREATE TABLE cart_items (
 -- 4. KHUYẾN MÃI / VOUCHER
 -- ---------------------------------------------------------------------
 
-CREATE TABLE vouchers (
+CREATE TABLE IF NOT EXISTS vouchers (
     id                  BIGINT AUTO_INCREMENT PRIMARY KEY,
     code                VARCHAR(50) NOT NULL UNIQUE,
     description         VARCHAR(255),
@@ -143,7 +145,7 @@ CREATE TABLE vouchers (
 -- 5. ĐƠN HÀNG
 -- ---------------------------------------------------------------------
 
-CREATE TABLE orders (
+CREATE TABLE IF NOT EXISTS orders (
     id              BIGINT AUTO_INCREMENT PRIMARY KEY,
     order_code      VARCHAR(30) NOT NULL UNIQUE,
     user_id         BIGINT NOT NULL,
@@ -170,20 +172,20 @@ CREATE TABLE orders (
     INDEX idx_orders_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE order_items (
+CREATE TABLE IF NOT EXISTS order_items (
     id              BIGINT AUTO_INCREMENT PRIMARY KEY,
     order_id        BIGINT NOT NULL,
     product_id      BIGINT NOT NULL,
     product_name    VARCHAR(200) NOT NULL,
     product_price   DECIMAL(12,2) NOT NULL,
-    quantity        INT NOT NULL CHECK (quantity > 0),
+    quantity        INT NOT NULL,
     line_total      DECIMAL(12,2) NOT NULL,
     CONSTRAINT fk_order_items_order FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
     CONSTRAINT fk_order_items_product FOREIGN KEY (product_id) REFERENCES products(id),
     INDEX idx_order_items_order (order_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE order_status_history (
+CREATE TABLE IF NOT EXISTS order_status_history (
     id              BIGINT AUTO_INCREMENT PRIMARY KEY,
     order_id        BIGINT NOT NULL,
     status          VARCHAR(30) NOT NULL,
@@ -199,7 +201,7 @@ CREATE TABLE order_status_history (
 -- 6. THANH TOÁN
 -- ---------------------------------------------------------------------
 
-CREATE TABLE payments (
+CREATE TABLE IF NOT EXISTS payments (
     id                  BIGINT AUTO_INCREMENT PRIMARY KEY,
     order_id            BIGINT NOT NULL,
     provider            VARCHAR(30) NOT NULL,
@@ -218,12 +220,12 @@ CREATE TABLE payments (
 -- 7. ĐÁNH GIÁ & YÊU THÍCH
 -- ---------------------------------------------------------------------
 
-CREATE TABLE reviews (
+CREATE TABLE IF NOT EXISTS reviews (
     id              BIGINT AUTO_INCREMENT PRIMARY KEY,
     product_id      BIGINT NOT NULL,
     user_id         BIGINT NOT NULL,
     order_id        BIGINT,
-    rating          TINYINT NOT NULL CHECK (rating BETWEEN 1 AND 5),
+    rating          TINYINT NOT NULL,
     comment         TEXT,
     image_url       VARCHAR(500),
     is_hidden       BOOLEAN NOT NULL DEFAULT FALSE,
@@ -236,7 +238,7 @@ CREATE TABLE reviews (
     INDEX idx_reviews_user (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE wishlists (
+CREATE TABLE IF NOT EXISTS wishlists (
     id              BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id         BIGINT NOT NULL,
     product_id      BIGINT NOT NULL,
@@ -251,7 +253,7 @@ CREATE TABLE wishlists (
 -- 8. THÔNG BÁO
 -- ---------------------------------------------------------------------
 
-CREATE TABLE notifications (
+CREATE TABLE IF NOT EXISTS notifications (
     id              BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id         BIGINT NOT NULL,
     title           VARCHAR(255) NOT NULL,
@@ -267,7 +269,7 @@ CREATE TABLE notifications (
 -- 9. CẤU HÌNH HỆ THỐNG
 -- ---------------------------------------------------------------------
 
-CREATE TABLE banners (
+CREATE TABLE IF NOT EXISTS banners (
     id              BIGINT AUTO_INCREMENT PRIMARY KEY,
     image_url       VARCHAR(500) NOT NULL,
     link_url        VARCHAR(500),
@@ -275,7 +277,7 @@ CREATE TABLE banners (
     is_active       BOOLEAN NOT NULL DEFAULT TRUE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE system_settings (
+CREATE TABLE IF NOT EXISTS system_settings (
     id              INT AUTO_INCREMENT PRIMARY KEY,
     setting_key     VARCHAR(100) NOT NULL UNIQUE,
     setting_value   VARCHAR(500) NOT NULL
@@ -285,8 +287,8 @@ CREATE TABLE system_settings (
 -- DỮ LIỆU MẶC ĐỊNH
 -- ---------------------------------------------------------------------
 
-INSERT INTO roles (name) VALUES ('ADMIN'), ('STAFF'), ('CUSTOMER');
+INSERT IGNORE INTO roles (name) VALUES ('ADMIN'), ('STAFF'), ('CUSTOMER');
 
-INSERT INTO system_settings (setting_key, setting_value) VALUES
+INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES
     ('DEFAULT_SHIPPING_FEE', '15000'),
     ('FREE_SHIPPING_THRESHOLD', '200000');
