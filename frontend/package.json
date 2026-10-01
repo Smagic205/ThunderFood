@@ -16,5 +16,9 @@
       "apps\\web\\public",
       "apps\\admin\\public"
     ]
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
+    "@tailwindcss/vite": "^4.3.3"
   }
 }
