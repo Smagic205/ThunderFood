@@ -1,0 +1,8 @@
+# Môi trường
+.env
+.env.*
+!.env.example
+!.env.sample
+
+# Thư mục tham khảo nội bộ
+ThamKhao/
