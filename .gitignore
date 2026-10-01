@@ -6,3 +6,22 @@
 
 # Thư mục tham khảo nội bộ
 ThamKhao/
+
+# Node.js / Frontend
+node_modules/
+dist/
+dist-ssr/
+build/
+.turbo/
+coverage/
+
+# IDE & OS
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+*.log
