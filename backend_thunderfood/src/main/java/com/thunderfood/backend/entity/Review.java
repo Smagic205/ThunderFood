@@ -44,8 +44,24 @@ public class Review {
     @Column(name = "is_hidden", nullable = false)
     private Boolean isHidden = false;
 
-    @Column(name = "admin_reply", columnDefinition = "TEXT")
-    private String adminReply;
+    /**
+     * Nội dung phản hồi của nhân viên hoặc admin.
+     * (Đổi từ admin_reply → staff_reply vì cả ADMIN và STAFF đều có thể trả lời.)
+     */
+    @Column(name = "staff_reply", columnDefinition = "TEXT")
+    private String staffReply;
+
+    /**
+     * Nhân viên hoặc admin đã trả lời đánh giá này.
+     * NULL nếu chưa được trả lời.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "replied_by_staff_id")
+    private User repliedByStaff;
+
+    /** Thời điểm trả lời. NULL nếu chưa trả lời. */
+    @Column(name = "replied_at")
+    private LocalDateTime repliedAt;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

@@ -22,8 +22,24 @@ public class Voucher {
     @Column(nullable = false, unique = true, length = 50)
     private String code;
 
+    /**
+     * Tên voucher dễ nhớ cho nhân viên/admin quản lý
+     * (ví dụ: "Miễn phí ship tháng 10", "Giảm 50k đơn từ 300k").
+     */
+    @Column(nullable = false, length = 150)
+    private String name;
+
     @Column(length = 255)
     private String description;
+
+    /**
+     * Loại voucher — xác định áp dụng giảm gì:
+     *   PRODUCT  – giảm giá trị đơn hàng (subtotal)
+     *   SHIPPING – giảm phí giao hàng (shipping_fee)
+     */
+    @Builder.Default
+    @Column(name = "voucher_type", nullable = false, length = 30)
+    private String voucherType = "PRODUCT";
 
     @Column(name = "discount_type", nullable = false, length = 20)
     private String discountType; // PERCENT, FIXED_AMOUNT

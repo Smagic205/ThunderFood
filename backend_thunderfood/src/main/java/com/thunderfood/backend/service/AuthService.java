@@ -57,6 +57,7 @@ public class AuthService {
         return generateAuthResponse(user);
     }
 
+    @Transactional
     public AuthResponse login(LoginRequest request) {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
@@ -171,5 +172,49 @@ public class AuthService {
                 .refreshToken(refreshToken)
                 .user(userDto)
                 .build();
+    }
+
+    @Transactional
+    public AuthResponse registerStaff(RegisterRequest request) {
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new RuntimeException("Email đã được sử dụng");
+        }
+
+        Role userRole = roleRepository.findByName("STAFF")
+                .orElseThrow(() -> new RuntimeException("Role STAFF không tồn tại trong hệ thống"));
+
+        User user = User.builder()
+                .fullName(request.getFullName())
+                .email(request.getEmail())
+                .passwordHash(passwordEncoder.encode(request.getPassword()))
+                .phone(request.getPhone())
+                .role(userRole)
+                .authProvider("LOCAL")
+                .status("ACTIVE")
+                .build();
+
+        userRepository.save(user);
+
+        return generateAuthResponse(user);
+    }
+
+    @Transactional
+    public AuthResponse loginStaff(LoginRequest request) {
+        authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
+        );
+
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
+
+        if (!"STAFF".equals(user.getRole().getName())) {
+            throw new RuntimeException("Tài khoản này không có quyền truy cập của nhân viên");
+        }
+
+        if ("LOCKED".equals(user.getStatus())) {
+            throw new RuntimeException("Tài khoản đã bị khóa");
+        }
+
+        return generateAuthResponse(user);
     }
 }

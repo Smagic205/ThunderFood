@@ -56,4 +56,18 @@ public class AuthController {
         authService.resetPassword(request);
         return ResponseEntity.ok(ApiResponse.success("Đặt lại mật khẩu thành công. Vui lòng đăng nhập lại.", null));
     }
+
+    @PostMapping("/staff/register")
+    public ResponseEntity<ApiResponse<AuthResponse>> registerStaff(
+            @Valid @RequestBody RegisterRequest request
+    ) {
+        return ResponseEntity.ok(ApiResponse.success("Đăng ký tài khoản nhân viên thành công", authService.registerStaff(request)));
+    }
+
+    @PostMapping("/staff/login")
+    public ResponseEntity<ApiResponse<AuthResponse>> loginStaff(
+            @Valid @RequestBody LoginRequest request
+    ) {
+        return ResponseEntity.ok(ApiResponse.success("Đăng nhập nhân viên thành công", authService.loginStaff(request)));
+    }
 }
