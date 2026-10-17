@@ -1,9 +1,23 @@
 import { Heart, ShoppingBag, Star } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuthStore } from '@/app/store/authStore';
 
 import type { Product } from '@/shared/types';
 
 export function ProductCard({ product: p }: { product: Product }) {
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuthStore();
+
+  const handleAction = (e: React.MouseEvent, actionName: string) => {
+    e.preventDefault();
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+    // TODO: Implement actual action logic
+    console.log(`${actionName} clicked for ${p.id}`);
+  };
+
   return (
     <article className="group relative flex flex-col bg-[var(--surface)] border border-[var(--line)] rounded-[24px] overflow-hidden shadow-[var(--sh-1)] hover:shadow-[var(--sh-2)] hover:-translate-y-1 transition-all duration-250">
       
@@ -25,7 +39,10 @@ export function ProductCard({ product: p }: { product: Product }) {
       </Link>
 
       {/* Favorite Button */}
-      <button className="absolute right-3 top-3 w-[36px] h-[36px] rounded-full bg-white/80 backdrop-blur-md border border-[var(--line)] text-[var(--ink-2)] hover:text-[#e13636] hover:bg-white flex items-center justify-center shadow-sm transition-all z-10">
+      <button 
+        className="absolute right-3 top-3 w-[36px] h-[36px] rounded-full bg-white/80 backdrop-blur-md border border-[var(--line)] text-[var(--ink-2)] hover:text-[#e13636] hover:bg-white flex items-center justify-center shadow-sm transition-all z-10"
+        onClick={(e) => handleAction(e, 'favorite')}
+      >
         <Heart size={18} />
       </button>
 
@@ -33,7 +50,7 @@ export function ProductCard({ product: p }: { product: Product }) {
       <div className="flex flex-col flex-1 p-3 md:p-4 pt-5">
         <div className="flex items-center gap-1.5 text-xs text-[var(--ink-2)] font-semibold mb-2">
           <Star size={14} className="fill-[var(--volt)] text-[var(--volt)]" />
-          <span className="text-[var(--ink)]">{p.rating?.toFixed(1) || '0.0'}</span>
+          <span className="text-[var(--ink)]">{p.avgRating?.toFixed(1) || '0.0'}</span>
           {p.soldCount && (
             <>
               <span className="font-normal opacity-40 mx-1">•</span>
@@ -60,7 +77,11 @@ export function ProductCard({ product: p }: { product: Product }) {
             <b className="text-[1.2rem] md:text-[1.35rem] text-[var(--ink)] font-extrabold tracking-tight">{(p.discountPrice || p.price).toLocaleString('vi-VN')}đ</b>
           </div>
           {/* Add to cart button */}
-          <button className="w-[48px] h-[48px] rounded-full bg-[#2450D6] text-white flex items-center justify-center hover:bg-[#1C3FB3] hover:scale-105 transition-all shadow-md shrink-0" aria-label="Thêm vào giỏ">
+          <button 
+            className="w-[48px] h-[48px] rounded-full bg-[#2450D6] text-white flex items-center justify-center hover:bg-[#1C3FB3] hover:scale-105 transition-all shadow-md shrink-0" 
+            aria-label="Thêm vào giỏ"
+            onClick={(e) => handleAction(e, 'add-to-cart')}
+          >
             <ShoppingBag size={22} />
           </button>
         </div>

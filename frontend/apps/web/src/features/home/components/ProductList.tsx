@@ -16,11 +16,11 @@ export function ProductList({ title, subtitle, products, viewAllLink }: ProductL
     <div className="w-full">
       <div className="flex items-end justify-between gap-4 mb-6">
         <div>
-          <h2 className="text-[clamp(1.5rem,3vw,2.15rem)] font-bold text-[#12183A]">{title}</h2>
-          {subtitle && <p className="mt-1.5 text-[#565D82]">{subtitle}</p>}
+          <h2 className="text-[clamp(1.5rem,3vw,2.15rem)] font-bold text-[var(--ink)]">{title}</h2>
+          {subtitle && <p className="mt-1.5 text-[var(--ink-2)]">{subtitle}</p>}
         </div>
         {viewAllLink && (
-          <Link to={viewAllLink} className="hidden md:flex font-semibold text-[#12183A] items-center gap-1 border-b-[1.5px] border-[#FFB81C] pb-[1px] hover:border-[#12183A] transition-colors">
+          <Link to={viewAllLink} className="hidden md:flex font-semibold text-[var(--ink)] items-center gap-1 border-b-[1.5px] border-[var(--volt)] pb-[1px] hover:border-[var(--ink)] transition-colors">
             Xem tất cả
           </Link>
         )}

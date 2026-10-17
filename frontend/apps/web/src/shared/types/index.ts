@@ -41,7 +41,21 @@ export interface Product {
   avgRating?: number;
   soldCount?: number;
   imageUrl: string;
+  images?: string[];
   isBestSeller?: boolean;
   stockQuantity?: number;
   isAvailable?: boolean;
+  reviewCount?: number;
+}
+
+export interface Review {
+  id: number;
+  productId: number;
+  userId?: number;
+  userName: string;
+  rating: number;
+  comment: string;
+  imageUrl?: string;
+  createdAt: string;
+  adminReply?: string;
 }

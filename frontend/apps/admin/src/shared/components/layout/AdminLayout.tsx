@@ -1,10 +1,12 @@
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { AdminHeader } from './AdminHeader';
+import { ScrollToTop } from '../ScrollToTop';
 
 export const AdminLayout = () => {
   return (
     <>
+      <ScrollToTop />
       <a className="skip" href="#view">Bỏ qua tới nội dung</a>
       <div className="adm">
         <Sidebar />

@@ -4,10 +4,28 @@ import { VoucherList } from '@/features/home/components/VoucherList';
 import { HeroSection } from '@/features/home/components/HeroSection';
 import { ProductList } from '@/features/home/components/ProductList';
 import { ReviewSection } from '@/features/home/components/ReviewSection';
-import { mockBanners, mockCategories, mockVouchers, mockProducts } from '@/shared/api/mockData';
+import { mockBanners, mockVouchers, mockProducts } from '@/shared/api/mockData';
+import { categoryApi } from '@/shared/api/categoryApi';
+import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 
 export function HomePage() {
+  const {
+    data: categories = [],
+    isPending: isCategoriesPending,
+    isError: isCategoriesError,
+  } = useQuery({
+    queryKey: ['active-categories'],
+    queryFn: categoryApi.getActiveCategories,
+  });
+
+  const bestSellers = mockProducts
+    .filter((product) => product.isBestSeller)
+    .map((product) => ({
+      ...product,
+      categoryName: categories.find((category) => category.id === product.categoryId)?.name,
+    }));
+
   return (
     <div className="w-full pb-16">
       {/* 0. Hero Section */}
@@ -22,10 +40,10 @@ export function HomePage() {
       <section className="container mx-auto px-4 mb-12">
         <div className="flex items-end justify-between gap-4 mb-5">
           <div>
-            <h2 className="text-[clamp(1.5rem,3vw,2.15rem)] font-bold text-[#12183A]">Ưu đãi đang chạy</h2>
-            <p className="text-[#565D82] mt-1.5">Chạm vào banner để xem món, sao chép mã để dùng ở giỏ hàng.</p>
+            <h2 className="text-[clamp(1.5rem,3vw,2.15rem)] font-bold text-[var(--ink)]">Ưu đãi đang chạy</h2>
+            <p className="text-[var(--ink-2)] mt-1.5">Chạm vào banner để xem món, sao chép mã để dùng ở giỏ hàng.</p>
           </div>
-          <Link to="/vouchers" className="hidden md:flex font-semibold text-[#12183A] items-center gap-1 border-b-[1.5px] border-[#FFB81C] pb-[1px] hover:border-[#12183A] transition-colors whitespace-nowrap">
+          <Link to="/vouchers" className="hidden md:flex font-semibold text-[var(--ink)] items-center gap-1 border-b-[1.5px] border-[var(--volt)] pb-[1px] hover:border-[var(--ink)] transition-colors whitespace-nowrap">
             Xem tất cả
           </Link>
         </div>
@@ -35,10 +53,18 @@ export function HomePage() {
       {/* 3. Categories Section */}
       <section className="container mx-auto px-4 mb-12">
         <div className="flex flex-col mb-5">
-          <h2 className="text-[clamp(1.5rem,3vw,2.15rem)] font-bold text-[#12183A]">Khám phá danh mục</h2>
-          <p className="text-[#565D82] mt-1.5">Đa dạng món ngon chờ bạn thưởng thức</p>
+          <h2 className="text-[clamp(1.5rem,3vw,2.15rem)] font-bold text-[var(--ink)]">Khám phá danh mục</h2>
+          <p className="text-[var(--ink-2)] mt-1.5">Đa dạng món ngon chờ bạn thưởng thức</p>
         </div>
-        <CategoryList categories={mockCategories} />
+        {isCategoriesPending ? (
+          <p className="text-[var(--ink-2)]">Đang tải danh mục...</p>
+        ) : isCategoriesError ? (
+          <p className="text-red-600" role="alert">Không thể tải danh mục. Vui lòng thử lại sau.</p>
+        ) : categories.length > 0 ? (
+          <CategoryList categories={categories} />
+        ) : (
+          <p className="text-[var(--ink-2)]">Hiện chưa có danh mục nào.</p>
+        )}
       </section>
       
       {/* 4. Best Sellers Section */}
@@ -46,7 +72,7 @@ export function HomePage() {
         <ProductList 
           title="Bán chạy nhất" 
           subtitle="Những món được gọi nhiều nhất tại ThunderFood."
-          products={mockProducts.filter(p => p.isBestSeller)}
+          products={bestSellers}
           viewAllLink="/menu?sort=best"
         />
       </section>

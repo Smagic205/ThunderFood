@@ -48,14 +48,14 @@ export function ReviewSection() {
   return (
     <section className="container mx-auto px-4 mb-12">
       <div className="flex flex-col mb-6">
-        <h2 className="text-[clamp(1.5rem,3vw,2.15rem)] font-bold text-[#12183A]">Khách hàng nói gì</h2>
-        <p className="text-[#565D82] mt-1.5">Đánh giá thực tế từ những người đã trải nghiệm món ngon.</p>
+        <h2 className="text-[clamp(1.5rem,3vw,2.15rem)] font-bold text-[var(--ink)]">Khách hàng nói gì</h2>
+        <p className="text-[var(--ink-2)] mt-1.5">Đánh giá thực tế từ những người đã trải nghiệm món ngon.</p>
       </div>
 
       {/* Sử dụng cuộn ngang trên mobile, grid trên desktop */}
       <div className="flex md:grid overflow-x-auto snap-x snap-mandatory pb-4 -mx-4 px-4 md:mx-0 md:px-0 md:grid-cols-2 gap-5 hide-scrollbar">
         {mockReviews.map((r) => (
-          <article key={r.id} className="min-w-[85%] md:min-w-0 snap-start flex flex-col bg-white border border-[var(--line)] p-5 rounded-3xl shadow-sm">
+          <article key={r.id} className="min-w-[85%] md:min-w-0 snap-start flex flex-col bg-[var(--surface)] border border-[var(--line)] p-5 rounded-3xl shadow-sm">
             <div className="flex gap-3 mb-3">
               <div className="w-10 h-10 rounded-full bg-[var(--volt-soft)] text-[var(--volt)] flex items-center justify-center font-bold text-sm shrink-0">
                 {r.avatar ? <img src={r.avatar} alt={r.user} className="w-full h-full rounded-full object-cover" /> : r.user.charAt(0)}
@@ -71,15 +71,15 @@ export function ReviewSection() {
               </div>
             </div>
             
-            <p className="text-[#12183A] text-sm leading-relaxed mb-4 grow">{r.comment}</p>
+            <p className="text-[var(--ink)] text-sm leading-relaxed mb-4 grow">{r.comment}</p>
             
             {r.adminReply && (
-              <div className="mt-auto bg-[#F3F4FA] rounded-2xl p-4 text-sm">
-                <b className="flex items-center gap-1.5 text-[#12183A] mb-1.5">
-                  <Zap size={15} className="text-[#FFB81C]" />
+              <div className="mt-auto bg-[var(--surface-2)] rounded-2xl p-4 text-sm">
+                <b className="flex items-center gap-1.5 text-[var(--ink)] mb-1.5">
+                  <Zap size={15} className="text-[var(--c-amber)]" />
                   ThunderFood phản hồi
                 </b>
-                <p className="text-[#565D82] leading-relaxed">{r.adminReply}</p>
+                <p className="text-[var(--ink-2)] leading-relaxed">{r.adminReply}</p>
               </div>
             )}
           </article>

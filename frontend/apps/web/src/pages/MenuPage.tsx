@@ -1,9 +1,11 @@
 import { useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Search, Sliders } from 'lucide-react';
-import { mockProducts, mockCategories } from '@/shared/api/mockData';
+import { mockProducts } from '@/shared/api/mockData';
+import { categoryApi } from '@/shared/api/categoryApi';
 import { ProductCard } from '@/shared/components/ui/ProductCard';
 import type { Product } from '@/shared/types';
+import { useQuery } from '@tanstack/react-query';
 
 const PRICE_F = {
   all: { label: 'Tất cả', fn: () => true },
@@ -23,6 +25,14 @@ const SORTS = {
 
 export const MenuPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const {
+    data: categories = [],
+    isPending: isCategoriesPending,
+    isError: isCategoriesError,
+  } = useQuery({
+    queryKey: ['active-categories'],
+    queryFn: categoryApi.getActiveCategories,
+  });
 
   // Parse filters from URL
   const q = searchParams.get('q') || '';
@@ -62,6 +72,7 @@ export const MenuPage = () => {
   const filteredProducts = useMemo(() => {
     const normalize = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').toLowerCase();
     const query = normalize(q.trim());
+    const categoryNames = new Map(categories.map((category) => [category.id, category.name]));
     
     return mockProducts.filter(p => {
       // Category match
@@ -69,7 +80,7 @@ export const MenuPage = () => {
       
       // Keyword match
       if (query) {
-        const catName = mockCategories.find(c => c.id === p.categoryId)?.name || '';
+        const catName = categoryNames.get(p.categoryId ?? -1) || '';
         if (!normalize(p.name).includes(query) && !normalize(catName).includes(query)) return false;
       }
 
@@ -88,8 +99,11 @@ export const MenuPage = () => {
       if (stock && (!p.isAvailable || p.stockQuantity <= 0)) return false;
 
       return true;
-    }).sort(SORTS[sort as keyof typeof SORTS]?.fn || SORTS.best.fn);
-  }, [q, cat, sort, price, rating, best, stock]);
+    }).map((product) => ({
+      ...product,
+      categoryName: categoryNames.get(product.categoryId ?? -1),
+    })).sort(SORTS[sort as keyof typeof SORTS]?.fn || SORTS.best.fn);
+  }, [q, cat, sort, price, rating, best, stock, categories]);
 
   const filterPanelJSX = (
     <>
@@ -210,7 +224,9 @@ export const MenuPage = () => {
         >
           Tất cả
         </button>
-        {mockCategories.filter(c => c.isActive).map(c => (
+        {isCategoriesPending && <span className="muted">Đang tải danh mục...</span>}
+        {isCategoriesError && <span className="text-red-600" role="alert">Không thể tải danh mục.</span>}
+        {categories.map(c => (
           <button
             key={c.id}
             className={`chip ${cat === c.id ? 'on' : ''}`}
