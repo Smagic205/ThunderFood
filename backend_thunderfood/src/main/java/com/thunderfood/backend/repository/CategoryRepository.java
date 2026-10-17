@@ -12,4 +12,6 @@ public interface CategoryRepository extends JpaRepository<Category, Integer> {
     List<Category> findAllByOrderByIdAsc();
     boolean existsBySlug(String slug);
     boolean existsBySlugAndIdNot(String slug, Integer id);
+    java.util.Optional<Category> findBySlug(String slug);
+    java.util.Optional<Category> findBySlugAndIsActiveTrue(String slug);
 }

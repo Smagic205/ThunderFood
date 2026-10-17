@@ -85,6 +85,7 @@ CREATE TABLE IF NOT EXISTS products (
     CONSTRAINT fk_products_category FOREIGN KEY (category_id) REFERENCES categories(id),
     INDEX idx_products_category (category_id),
     INDEX idx_products_name (name),
+    INDEX idx_products_sold_count (sold_count),
     INDEX idx_products_available (is_available)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

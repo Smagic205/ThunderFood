@@ -11,16 +11,41 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
+import com.thunderfood.backend.dto.common.PageResponse;
+import com.thunderfood.backend.dto.product.ProductListItemResponse;
+import com.thunderfood.backend.service.ProductService;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
+
 @RestController
 @RequestMapping("/api/v1/categories")
 @RequiredArgsConstructor
 public class CategoryController {
 
     private final CategoryService categoryService;
+    private final ProductService productService;
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<CategoryResponse>>> getActiveCategories() {
         List<CategoryResponse> categories = categoryService.getActiveCategories();
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách danh mục thành công", categories));
+    }
+
+    @GetMapping("/{slug}/products")
+    public ResponseEntity<ApiResponse<PageResponse<ProductListItemResponse>>> getProductsByCategorySlug(
+            @PathVariable String slug,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "15") int size,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "bestSelling") String sort
+    ) {
+        PageResponse<ProductListItemResponse> response = productService.getProductsByCategorySlug(
+                slug,
+                page,
+                size,
+                keyword,
+                sort
+        );
+        return ResponseEntity.ok(ApiResponse.success("Lấy danh sách sản phẩm theo danh mục thành công", response));
     }
 }
