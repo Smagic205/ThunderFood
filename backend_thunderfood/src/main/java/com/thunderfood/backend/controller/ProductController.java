@@ -3,6 +3,7 @@ package com.thunderfood.backend.controller;
 import com.thunderfood.backend.dto.ApiResponse;
 import com.thunderfood.backend.dto.common.PageResponse;
 import com.thunderfood.backend.dto.product.ProductDetailResponse;
+import com.thunderfood.backend.dto.product.ProductFilterRequest;
 import com.thunderfood.backend.dto.product.ProductListItemResponse;
 import com.thunderfood.backend.service.ProductService;
 import lombok.RequiredArgsConstructor;
@@ -18,43 +19,26 @@ public class ProductController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<ProductListItemResponse>>> getProducts(
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "15") int size,
-            @RequestParam(required = false) Integer categoryId,
-            @RequestParam(required = false) String categorySlug,
-            @RequestParam(required = false) String category,
-            @RequestParam(required = false) String keyword,
-            @RequestParam(defaultValue = "bestSelling") String sort
+            @ModelAttribute ProductFilterRequest filter
     ) {
-        String resolvedCategorySlug = (categorySlug != null && !categorySlug.trim().isEmpty())
-                ? categorySlug
-                : category;
-
-        PageResponse<ProductListItemResponse> response = productService.getProducts(
-                page,
-                size,
-                categoryId,
-                resolvedCategorySlug,
-                keyword,
-                sort
-        );
+        if (filter == null) {
+            filter = new ProductFilterRequest();
+        }
+        PageResponse<ProductListItemResponse> response = productService.getProducts(filter);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách sản phẩm thành công", response));
     }
 
     @GetMapping("/category/{categorySlug}")
     public ResponseEntity<ApiResponse<PageResponse<ProductListItemResponse>>> getProductsByCategorySlug(
             @PathVariable String categorySlug,
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "15") int size,
-            @RequestParam(required = false) String keyword,
-            @RequestParam(defaultValue = "bestSelling") String sort
+            @ModelAttribute ProductFilterRequest filter
     ) {
+        if (filter == null) {
+            filter = new ProductFilterRequest();
+        }
         PageResponse<ProductListItemResponse> response = productService.getProductsByCategorySlug(
                 categorySlug,
-                page,
-                size,
-                keyword,
-                sort
+                filter
         );
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách sản phẩm theo danh mục thành công", response));
     }

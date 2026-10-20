@@ -11,6 +11,7 @@ import com.thunderfood.backend.entity.SystemSetting;
 import com.thunderfood.backend.exception.ResourceNotFoundException;
 import com.thunderfood.backend.repository.*;
 import com.thunderfood.backend.util.SoldCountFormatter;
+import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -37,14 +38,13 @@ public class ProductService {
     private final CategoryRepository categoryRepository;
 
     @Transactional(readOnly = true)
-    public PageResponse<ProductListItemResponse> getProducts(
-            int page,
-            int size,
-            Integer categoryId,
-            String categorySlug,
-            String keyword,
-            String sort
-    ) {
+    public PageResponse<ProductListItemResponse> getProducts(ProductFilterRequest filter) {
+        if (filter == null) {
+            filter = new ProductFilterRequest();
+        }
+        int page = filter.getPage();
+        int size = filter.getSize();
+
         if (page < 1) {
             throw new IllegalArgumentException("Số trang (page) phải lớn hơn hoặc bằng 1");
         }
@@ -52,8 +52,8 @@ public class ProductService {
             throw new IllegalArgumentException("Kích thước trang (size) phải từ 1 đến 50");
         }
 
-        Sort sortObj = resolveSort(sort);
-        Specification<Product> spec = buildSpecification(categoryId, categorySlug, keyword);
+        Sort sortObj = resolveSort(filter.getSort());
+        Specification<Product> spec = buildSpecification(filter);
 
         Pageable pageable = PageRequest.of(page - 1, size, sortObj);
         Page<Product> productPage = productRepository.findAll(spec, pageable);
@@ -146,6 +146,26 @@ public class ProductService {
     }
 
     @Transactional(readOnly = true)
+    public PageResponse<ProductListItemResponse> getProducts(
+            int page,
+            int size,
+            Integer categoryId,
+            String categorySlug,
+            String keyword,
+            String sort
+    ) {
+        ProductFilterRequest filter = ProductFilterRequest.builder()
+                .page(page)
+                .size(size)
+                .categoryId(categoryId)
+                .categorySlug(categorySlug)
+                .keyword(keyword)
+                .sort(sort)
+                .build();
+        return getProducts(filter);
+    }
+
+    @Transactional(readOnly = true)
     public ProductDetailResponse getProductById(Long id) {
         Product product = productRepository.findByIdAndIsAvailableTrue(id)
                 .filter(p -> p.getCategory() == null || Boolean.TRUE.equals(p.getCategory().getIsActive()))
@@ -164,10 +184,7 @@ public class ProductService {
     @Transactional(readOnly = true)
     public PageResponse<ProductListItemResponse> getProductsByCategorySlug(
             String categorySlug,
-            int page,
-            int size,
-            String keyword,
-            String sort
+            ProductFilterRequest filter
     ) {
         if (categorySlug == null || categorySlug.trim().isEmpty()) {
             throw new IllegalArgumentException("Slug danh mục không được để trống");
@@ -176,7 +193,31 @@ public class ProductService {
         Category category = categoryRepository.findBySlugAndIsActiveTrue(categorySlug.trim())
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy danh mục"));
 
-        return getProducts(page, size, category.getId(), null, keyword, sort);
+        if (filter == null) {
+            filter = new ProductFilterRequest();
+        }
+        filter.setCategoryId(category.getId());
+        filter.setCategorySlug(null);
+        filter.setCategory(null);
+
+        return getProducts(filter);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<ProductListItemResponse> getProductsByCategorySlug(
+            String categorySlug,
+            int page,
+            int size,
+            String keyword,
+            String sort
+    ) {
+        ProductFilterRequest filter = ProductFilterRequest.builder()
+                .page(page)
+                .size(size)
+                .keyword(keyword)
+                .sort(sort)
+                .build();
+        return getProductsByCategorySlug(categorySlug, filter);
     }
 
     private Sort resolveSort(String sort) {
@@ -188,28 +229,120 @@ public class ProductService {
             return Sort.by(Sort.Direction.DESC, "price").and(Sort.by(Sort.Direction.DESC, "id"));
         } else if ("newest".equalsIgnoreCase(sort)) {
             return Sort.by(Sort.Direction.DESC, "createdAt").and(Sort.by(Sort.Direction.DESC, "id"));
+        } else if ("soldCountAsc".equalsIgnoreCase(sort)) {
+            return Sort.by(Sort.Direction.ASC, "soldCount").and(Sort.by(Sort.Direction.ASC, "id"));
+        } else if ("discountDesc".equalsIgnoreCase(sort) || "discount".equalsIgnoreCase(sort)) {
+            // Sắp xếp ưu đãi được xử lý trực tiếp trong Specification qua CriteriaBuilder.diff
+            return Sort.unsorted();
         }
-        // Mặc định: bestSelling
+        // Mặc định: bestSelling / soldCountDesc
         return Sort.by(Sort.Direction.DESC, "soldCount").and(Sort.by(Sort.Direction.DESC, "id"));
     }
 
-    private Specification<Product> buildSpecification(Integer categoryId, String categorySlug, String keyword) {
+    private Specification<Product> buildSpecification(ProductFilterRequest filter) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
-            // Chỉ hiển thị sản phẩm đang kinh doanh và thuộc danh mục đang hoạt động
+            // 1. Chỉ hiển thị sản phẩm đang kinh doanh và thuộc danh mục đang hoạt động
             predicates.add(cb.isTrue(root.get("isAvailable")));
             predicates.add(cb.isTrue(root.get("category").get("isActive")));
 
-            if (categoryId != null) {
-                predicates.add(cb.equal(root.get("category").get("id"), categoryId));
-            } else if (categorySlug != null && !categorySlug.trim().isEmpty()) {
-                predicates.add(cb.equal(root.get("category").get("slug"), categorySlug.trim()));
+            // 2. Lọc theo danh mục (categoryId hoặc categorySlug)
+            if (filter.getCategoryId() != null) {
+                predicates.add(cb.equal(root.get("category").get("id"), filter.getCategoryId()));
+            } else if (filter.getEffectiveCategorySlug() != null) {
+                predicates.add(cb.equal(root.get("category").get("slug"), filter.getEffectiveCategorySlug()));
             }
 
-            if (keyword != null && !keyword.trim().isEmpty()) {
-                String pattern = "%" + keyword.trim().toLowerCase() + "%";
+            // 3. Tìm kiếm theo keyword
+            if (filter.getKeyword() != null && !filter.getKeyword().trim().isEmpty()) {
+                String pattern = "%" + filter.getKeyword().trim().toLowerCase() + "%";
                 predicates.add(cb.like(cb.lower(root.get("name")), pattern));
+            }
+
+            // Biểu thức tính giá bán thực tế (effective price): ưu tiên discountPrice nếu có và > 0
+            Expression<BigDecimal> effectivePrice = cb.<BigDecimal>selectCase()
+                    .when(
+                            cb.and(
+                                    cb.isNotNull(root.get("discountPrice")),
+                                    cb.greaterThan(root.get("discountPrice"), BigDecimal.ZERO)
+                            ),
+                            root.get("discountPrice")
+                    )
+                    .otherwise(root.get("price"));
+
+            // 4. Lọc theo khoảng giá (priceRange)
+            if (filter.getPriceRange() != null && !filter.getPriceRange().trim().isEmpty()) {
+                String pr = filter.getPriceRange().trim().toLowerCase();
+                switch (pr) {
+                    case "lt50", "under50k", "under_50k", "duoi50k", "duoi_50k" ->
+                        predicates.add(cb.lessThan(effectivePrice, BigDecimal.valueOf(50000)));
+                    case "m100", "50k-100k", "50k_100k", "50-100", "50_100" -> {
+                        predicates.add(cb.greaterThanOrEqualTo(effectivePrice, BigDecimal.valueOf(50000)));
+                        predicates.add(cb.lessThanOrEqualTo(effectivePrice, BigDecimal.valueOf(100000)));
+                    }
+                    case "m200", "100k-200k", "100k_200k", "100-200", "100_200" -> {
+                        predicates.add(cb.greaterThan(effectivePrice, BigDecimal.valueOf(100000)));
+                        predicates.add(cb.lessThanOrEqualTo(effectivePrice, BigDecimal.valueOf(200000)));
+                    }
+                    case "gt200", "over200k", "over_200k", "tren200k", "tren_200k" ->
+                        predicates.add(cb.greaterThan(effectivePrice, BigDecimal.valueOf(200000)));
+                }
+            }
+
+            // Lọc theo minPrice / maxPrice tùy chỉnh
+            if (filter.getMinPrice() != null) {
+                predicates.add(cb.greaterThanOrEqualTo(effectivePrice, filter.getMinPrice()));
+            }
+            if (filter.getMaxPrice() != null) {
+                predicates.add(cb.lessThanOrEqualTo(effectivePrice, filter.getMaxPrice()));
+            }
+
+            // 5. Lọc theo số sao (ratingRange)
+            if (filter.getRatingRange() != null && !filter.getRatingRange().trim().isEmpty()) {
+                String rr = filter.getRatingRange().trim().toLowerCase();
+                switch (rr) {
+                    case "above4", "gt4", "gte4", "over4", "tren4", "tren_4" ->
+                        predicates.add(cb.greaterThanOrEqualTo(root.get("avgRating"), BigDecimal.valueOf(4.0)));
+                    case "3to4", "3-4", "3_4" -> {
+                        predicates.add(cb.greaterThanOrEqualTo(root.get("avgRating"), BigDecimal.valueOf(3.0)));
+                        predicates.add(cb.lessThanOrEqualTo(root.get("avgRating"), BigDecimal.valueOf(4.0)));
+                    }
+                    case "under3", "lt3", "lte3", "duoi3", "duoi_3" ->
+                        predicates.add(cb.lessThan(root.get("avgRating"), BigDecimal.valueOf(3.0)));
+                }
+            }
+
+            // Lọc theo minRating / maxRating tùy chỉnh
+            if (filter.getMinRating() != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("avgRating"), BigDecimal.valueOf(filter.getMinRating())));
+            }
+            if (filter.getMaxRating() != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("avgRating"), BigDecimal.valueOf(filter.getMaxRating())));
+            }
+
+            // 6. Lọc theo ưu đãi (hasDiscount): chỉ lấy món có discountPrice hợp lệ và nhỏ hơn price
+            if (Boolean.TRUE.equals(filter.getHasDiscount())) {
+                predicates.add(cb.isNotNull(root.get("discountPrice")));
+                predicates.add(cb.greaterThan(root.get("discountPrice"), BigDecimal.ZERO));
+                predicates.add(cb.lessThan(root.get("discountPrice"), root.get("price")));
+            }
+
+            // 7. Lọc theo số lượng bán ra
+            if (filter.getMinSoldCount() != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("soldCount"), filter.getMinSoldCount()));
+            }
+            if (Boolean.TRUE.equals(filter.getBestSeller())) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("soldCount"), 100));
+            }
+
+            // 8. Sắp xếp ưu đãi từ cao xuống thấp (discountDesc)
+            if (query != null && query.getResultType() != Long.class && query.getResultType() != long.class) {
+                if ("discountDesc".equalsIgnoreCase(filter.getSort()) || "discount".equalsIgnoreCase(filter.getSort())) {
+                    Expression<BigDecimal> effectiveDiscount = cb.coalesce(root.get("discountPrice"), root.get("price"));
+                    Expression<BigDecimal> discountDiff = cb.diff(root.get("price"), effectiveDiscount);
+                    query.orderBy(cb.desc(discountDiff), cb.desc(root.get("id")));
+                }
             }
 
             return cb.and(predicates.toArray(new Predicate[0]));

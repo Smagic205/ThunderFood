@@ -103,7 +103,7 @@ class ProductControllerTest {
                 .pagination(pagination)
                 .build();
 
-        when(productService.getProducts(eq(1), eq(15), any(), any(), any(), anyString()))
+        when(productService.getProducts(any(ProductFilterRequest.class)))
                 .thenReturn(pageResponse);
 
         mockMvc.perform(get("/api/v1/products")
@@ -119,8 +119,38 @@ class ProductControllerTest {
     }
 
     @Test
+    void getProducts_withFilterParameters_returns200() throws Exception {
+        PaginationInfo pagination = PaginationInfo.builder()
+                .page(1)
+                .size(15)
+                .totalElements(1)
+                .totalPages(1)
+                .hasNext(false)
+                .hasPrevious(false)
+                .build();
+        PageResponse<ProductListItemResponse> pageResponse = PageResponse.<ProductListItemResponse>builder()
+                .content(List.of(itemResponse))
+                .pagination(pagination)
+                .build();
+
+        when(productService.getProducts(argThat(filter ->
+                "lt50".equals(filter.getPriceRange()) &&
+                "above4".equals(filter.getRatingRange()) &&
+                Boolean.TRUE.equals(filter.getHasDiscount()) &&
+                "discountDesc".equals(filter.getSort()) &&
+                Integer.valueOf(100).equals(filter.getMinSoldCount())
+        ))).thenReturn(pageResponse);
+
+        mockMvc.perform(get("/api/v1/products?priceRange=lt50&ratingRange=above4&hasDiscount=true&sort=discountDesc&minSoldCount=100")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success", is(true)))
+                .andExpect(jsonPath("$.data.content[0].id", is(1)));
+    }
+
+    @Test
     void getProducts_invalidPage_returns400() throws Exception {
-        when(productService.getProducts(eq(0), anyInt(), any(), any(), any(), anyString()))
+        when(productService.getProducts(argThat(f -> f != null && f.getPage() == 0)))
                 .thenThrow(new IllegalArgumentException("Số trang (page) phải lớn hơn hoặc bằng 1"));
 
         mockMvc.perform(get("/api/v1/products?page=0")
@@ -132,7 +162,7 @@ class ProductControllerTest {
 
     @Test
     void getProducts_invalidSize_returns400() throws Exception {
-        when(productService.getProducts(anyInt(), eq(100), any(), any(), any(), anyString()))
+        when(productService.getProducts(argThat(f -> f != null && f.getSize() == 100)))
                 .thenThrow(new IllegalArgumentException("Kích thước trang (size) phải từ 1 đến 50"));
 
         mockMvc.perform(get("/api/v1/products?size=100")
@@ -210,7 +240,7 @@ class ProductControllerTest {
                 .pagination(pagination)
                 .build();
 
-        when(productService.getProductsByCategorySlug(eq("do-uong"), eq(1), eq(15), any(), anyString()))
+        when(productService.getProductsByCategorySlug(eq("do-uong"), any(ProductFilterRequest.class)))
                 .thenReturn(pageResponse);
 
         mockMvc.perform(get("/api/v1/products/category/do-uong")

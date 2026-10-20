@@ -17,6 +17,9 @@ import com.thunderfood.backend.service.ProductService;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import com.thunderfood.backend.dto.product.ProductFilterRequest;
+import org.springframework.web.bind.annotation.ModelAttribute;
+
 @RestController
 @RequestMapping("/api/v1/categories")
 @RequiredArgsConstructor
@@ -34,17 +37,14 @@ public class CategoryController {
     @GetMapping("/{slug}/products")
     public ResponseEntity<ApiResponse<PageResponse<ProductListItemResponse>>> getProductsByCategorySlug(
             @PathVariable String slug,
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "15") int size,
-            @RequestParam(required = false) String keyword,
-            @RequestParam(defaultValue = "bestSelling") String sort
+            @ModelAttribute ProductFilterRequest filter
     ) {
+        if (filter == null) {
+            filter = new ProductFilterRequest();
+        }
         PageResponse<ProductListItemResponse> response = productService.getProductsByCategorySlug(
                 slug,
-                page,
-                size,
-                keyword,
-                sort
+                filter
         );
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách sản phẩm theo danh mục thành công", response));
     }

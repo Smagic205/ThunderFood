@@ -3,6 +3,7 @@ package com.thunderfood.backend.service;
 import com.thunderfood.backend.config.security.UserDetailsImpl;
 import com.thunderfood.backend.dto.common.PageResponse;
 import com.thunderfood.backend.dto.product.ProductDetailResponse;
+import com.thunderfood.backend.dto.product.ProductFilterRequest;
 import com.thunderfood.backend.dto.product.ProductListItemResponse;
 import com.thunderfood.backend.entity.*;
 import com.thunderfood.backend.exception.ResourceNotFoundException;
@@ -310,5 +311,59 @@ class ProductServiceTest {
         assertEquals(1, result.getContent().size());
         assertEquals("Trà đào cam sả", result.getContent().get(0).getName());
         assertEquals("Đồ uống", result.getContent().get(0).getCategoryName());
+    }
+
+    @Test
+    void getProducts_withStackedFilters_success() {
+        Page<Product> page = new PageImpl<>(List.of(product1), Pageable.ofSize(15), 1);
+        when(productRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(page);
+
+        ProductImage img = ProductImage.builder().id(1L).product(product1).imageUrl("https://cdn/img1.png").isThumbnail(true).sortOrder(0).build();
+        when(productImageRepository.findByProductIdInOrderByPriority(anyList())).thenReturn(List.of(img));
+
+        ProductFilterRequest filter = ProductFilterRequest.builder()
+                .page(1)
+                .size(15)
+                .categorySlug("do-uong")
+                .priceRange("lt50")
+                .ratingRange("above4")
+                .hasDiscount(true)
+                .minSoldCount(100)
+                .bestSeller(true)
+                .sort("discountDesc")
+                .build();
+
+        PageResponse<ProductListItemResponse> result = productService.getProducts(filter);
+
+        assertNotNull(result);
+        assertEquals(1, result.getContent().size());
+        assertEquals("Trà đào cam sả", result.getContent().get(0).getName());
+        verify(productRepository, times(1)).findAll(any(Specification.class), any(Pageable.class));
+    }
+
+    @Test
+    void getProducts_withDifferentPriceAndRatingRanges_executesQuery() {
+        Page<Product> page = new PageImpl<>(List.of(product1), Pageable.ofSize(15), 1);
+        when(productRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(page);
+
+        ProductImage img = ProductImage.builder().id(1L).product(product1).imageUrl("https://cdn/img1.png").isThumbnail(true).sortOrder(0).build();
+        when(productImageRepository.findByProductIdInOrderByPriority(anyList())).thenReturn(List.of(img));
+
+        String[] priceRanges = {"lt50", "m100", "m200", "gt200"};
+        String[] ratingRanges = {"above4", "3to4", "under3"};
+
+        for (String pr : priceRanges) {
+            for (String rr : ratingRanges) {
+                ProductFilterRequest filter = ProductFilterRequest.builder()
+                        .priceRange(pr)
+                        .ratingRange(rr)
+                        .sort("soldCountAsc")
+                        .build();
+                PageResponse<ProductListItemResponse> result = productService.getProducts(filter);
+                assertNotNull(result);
+            }
+        }
+
+        verify(productRepository, times(priceRanges.length * ratingRanges.length)).findAll(any(Specification.class), any(Pageable.class));
     }
 }
