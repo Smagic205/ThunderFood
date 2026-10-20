@@ -8,14 +8,16 @@
 
 CREATE TABLE IF NOT EXISTS service_wards (
     id              INT AUTO_INCREMENT PRIMARY KEY,
-    district        VARCHAR(100) NOT NULL          COMMENT 'Tên quận/huyện (vd: Đống Đa, Cầu Giấy)',
     ward_name       VARCHAR(100) NOT NULL          COMMENT 'Tên phường/xã (vd: Yên Lãng, Trung Tự)',
-    shipping_fee    DECIMAL(12,2) NOT NULL DEFAULT 0 COMMENT 'Phí ship áp dụng cho phường này',
-    is_active       BOOLEAN NOT NULL DEFAULT TRUE  COMMENT 'Có phục vụ phường này không',
-    INDEX idx_service_wards_district (district),
-    INDEX idx_service_wards_active (is_active)
+    type            VARCHAR(10)  NOT NULL DEFAULT 'PHUONG'
+                                                   COMMENT 'Loại đơn vị hành chính: PHUONG hoặc XA',
+    shipping_fee    DECIMAL(12,2) NOT NULL DEFAULT 0 COMMENT 'Phí ship áp dụng cho phường/xã này',
+    is_active       BOOLEAN NOT NULL DEFAULT TRUE  COMMENT 'Có phục vụ phường/xã này không',
+    INDEX idx_service_wards_type (type),
+    INDEX idx_service_wards_active (is_active),
+    INDEX idx_service_wards_name (ward_name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-  COMMENT='Danh sách phường/xã tại Hà Nội được phép giao hàng';
+  COMMENT='Danh sách phường/xã tại Hà Nội được phép giao hàng (flat list, tìm kiếm theo tên)';
 
 -- ---------------------------------------------------------------------
 -- 2. SỬA BẢNG ADDRESSES
@@ -137,29 +139,26 @@ INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES
 -- DỮ LIỆU MẪU: MỘT SỐ PHƯỜNG HÀ NỘI
 -- ---------------------------------------------------------------------
 
-INSERT IGNORE INTO service_wards (district, ward_name, shipping_fee, is_active) VALUES
-    -- Đống Đa
-    ('Đống Đa', 'Yên Lãng',           20000, TRUE),
-    ('Đống Đa', 'Trung Tự',           20000, TRUE),
-    ('Đống Đa', 'Phương Liên',        20000, TRUE),
-    ('Đống Đa', 'Kim Liên',           20000, TRUE),
-    ('Đống Đa', 'Ô Chợ Dừa',         20000, TRUE),
-    ('Đống Đa', 'Văn Miếu',          20000, TRUE),
-    -- Cầu Giấy
-    ('Cầu Giấy', 'Dịch Vọng',        22000, TRUE),
-    ('Cầu Giấy', 'Dịch Vọng Hậu',    22000, TRUE),
-    ('Cầu Giấy', 'Nghĩa Đô',         22000, TRUE),
-    ('Cầu Giấy', 'Quan Hoa',         22000, TRUE),
-    ('Cầu Giấy', 'Trung Hòa',        22000, TRUE),
-    -- Hai Bà Trưng
-    ('Hai Bà Trưng', 'Bạch Mai',     25000, TRUE),
-    ('Hai Bà Trưng', 'Thanh Nhàn',   25000, TRUE),
-    ('Hai Bà Trưng', 'Bách Khoa',    25000, TRUE),
-    -- Thanh Xuân
-    ('Thanh Xuân', 'Nhân Chính',     27000, TRUE),
-    ('Thanh Xuân', 'Khương Đình',    27000, TRUE),
-    ('Thanh Xuân', 'Thanh Xuân Bắc', 27000, TRUE),
-    -- Hoàn Kiếm
-    ('Hoàn Kiếm', 'Hàng Bài',       30000, TRUE),
-    ('Hoàn Kiếm', 'Tràng Tiền',     30000, TRUE),
-    ('Hoàn Kiếm', 'Chương Dương',    30000, TRUE);
+INSERT IGNORE INTO service_wards (ward_name, type, shipping_fee, is_active) VALUES
+    -- Phường thuộc khu vực trung tâm (gần hơn)
+    ('Yên Lãng',       'PHUONG', 20000, TRUE),
+    ('Trung Tự',       'PHUONG', 20000, TRUE),
+    ('Phương Liên',    'PHUONG', 20000, TRUE),
+    ('Kim Liên',       'PHUONG', 20000, TRUE),
+    ('Ô Chợ Dừa',     'PHUONG', 20000, TRUE),
+    ('Văn Miếu',      'PHUONG', 20000, TRUE),
+    ('Dịch Vọng',     'PHUONG', 22000, TRUE),
+    ('Dịch Vọng Hậu',  'PHUONG', 22000, TRUE),
+    ('Nghĩa Đô',      'PHUONG', 22000, TRUE),
+    ('Quan Hoa',       'PHUONG', 22000, TRUE),
+    ('Trung Hòa',      'PHUONG', 22000, TRUE),
+    ('Bạch Mai',      'PHUONG', 25000, TRUE),
+    ('Thanh Nhàn',    'PHUONG', 25000, TRUE),
+    ('Bách Khoa',     'PHUONG', 25000, TRUE),
+    ('Nhân Chính',     'PHUONG', 27000, TRUE),
+    ('Khương Đình',    'PHUONG', 27000, TRUE),
+    ('Thanh Xuân Bắc', 'PHUONG', 27000, TRUE),
+    ('Hàng Bài',      'PHUONG', 30000, TRUE),
+    ('Tràng Tiền',    'PHUONG', 30000, TRUE),
+    ('Chương Dương',   'PHUONG', 30000, TRUE);
+

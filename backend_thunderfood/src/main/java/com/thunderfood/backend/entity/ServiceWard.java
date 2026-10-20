@@ -19,29 +19,33 @@ public class ServiceWard {
     private Integer id;
 
     /**
-     * Tên quận/huyện (ví dụ: Đống Đa, Cầu Giấy).
-     * Dùng để nhóm lại trong combo box cấp 1 khi khách chọn địa chỉ.
-     */
-    @Column(nullable = false, length = 100)
-    private String district;
-
-    /**
      * Tên phường/xã (ví dụ: Yên Lãng, Trung Tự).
-     * Hiển thị ở combo box cấp 2 sau khi khách đã chọn quận.
+     * Hiển thị trong flat list có thể tìm kiếm theo tên —
+     * khách gõ để lọc, không còn chọn quận trước nữa.
      */
     @Column(name = "ward_name", nullable = false, length = 100)
     private String wardName;
 
     /**
-     * Phí ship mặc định áp dụng cho phường này.
-     * Được dùng làm giá trị gốc (original_shipping_fee) khi tính phí checkout.
+     * Loại đơn vị hành chính:
+     *   PHUONG – Phường (khu vực đô thị)
+     *   XA     – Xã    (khu vực ngoại thành)
+     * Dùng để hiển thị tiền tố đầy đủ: "Phường Yên Lãng" / "Xã Trung Tự".
+     */
+    @Builder.Default
+    @Column(nullable = false, length = 10)
+    private String type = "PHUONG"; // PHUONG | XA
+
+    /**
+     * Phí ship áp dụng cho phường/xã này.
+     * Dùng làm original_shipping_fee khi tính phí checkout.
      */
     @Builder.Default
     @Column(name = "shipping_fee", nullable = false, precision = 12, scale = 2)
     private BigDecimal shippingFee = BigDecimal.ZERO;
 
     /**
-     * Cờ kích hoạt — chỉ phường có is_active = TRUE mới hiện trong combo box.
+     * Cờ kích hoạt — chỉ phường/xã có is_active = TRUE mới hiện trong danh sách.
      */
     @Builder.Default
     @Column(name = "is_active", nullable = false)

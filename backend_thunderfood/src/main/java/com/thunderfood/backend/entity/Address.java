@@ -30,9 +30,9 @@ public class Address {
     private String phone;
 
     /**
-     * Phường/xã được chọn qua combo box 2 cấp (Quận → Phường).
-     * Chỉ hiện phường có is_active = TRUE và thuộc quận đã chọn.
-     * Khách KHÔNG được tự gõ — phải chọn từ danh sách.
+     * Phường/xã được chọn từ flat list có tìm kiếm theo tên.
+     * Chỉ hiện những đơn vị có is_active = TRUE.
+     * Khách không được tự gõ — phải chọn từ danh sách.
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "ward_id", nullable = false)

@@ -163,6 +163,7 @@ public class AuthService {
                 .id(user.getId())
                 .email(user.getEmail())
                 .fullName(user.getFullName())
+                .phone(user.getPhone())
                 .role(user.getRole().getName())
                 .avatarUrl(user.getAvatarUrl())
                 .build();
