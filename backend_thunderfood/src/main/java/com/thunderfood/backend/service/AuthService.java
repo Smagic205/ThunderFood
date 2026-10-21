@@ -18,7 +18,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.thunderfood.backend.dto.address.AddressResponse;
+import com.thunderfood.backend.repository.AddressRepository;
+
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Random;
 
 @Service
@@ -28,6 +32,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final UserTokenRepository userTokenRepository;
+    private final AddressRepository addressRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
@@ -159,6 +164,16 @@ public class AuthService {
                 .build();
         userTokenRepository.save(userToken);
 
+        List<AddressResponse> addresses = addressRepository.findByUserIdOrderByIsDefaultDescCreatedAtDesc(user.getId())
+                .stream()
+                .map(AddressResponse::fromEntity)
+                .toList();
+
+        AddressResponse defaultAddress = addresses.stream()
+                .filter(a -> Boolean.TRUE.equals(a.getIsDefault()))
+                .findFirst()
+                .orElse(addresses.isEmpty() ? null : addresses.get(0));
+
         AuthResponse.UserDto userDto = AuthResponse.UserDto.builder()
                 .id(user.getId())
                 .email(user.getEmail())
@@ -166,6 +181,8 @@ public class AuthService {
                 .phone(user.getPhone())
                 .role(user.getRole().getName())
                 .avatarUrl(user.getAvatarUrl())
+                .defaultAddress(defaultAddress)
+                .addresses(addresses)
                 .build();
 
         return AuthResponse.builder()

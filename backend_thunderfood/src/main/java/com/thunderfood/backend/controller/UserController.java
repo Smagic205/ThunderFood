@@ -15,7 +15,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping({"/api/v1/users", "/api/v1/customers"})
+@RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
 @Tag(name = "Customer / User Profile", description = "APIs quản lý và cập nhật thông tin khách hàng")
 public class UserController {
@@ -25,7 +25,7 @@ public class UserController {
     /**
      * Lấy thông tin hồ sơ của khách hàng đang đăng nhập
      */
-    @GetMapping({"/profile", "/me"})
+    @GetMapping("/profile")
     @Operation(summary = "Xem thông tin hồ sơ của khách hàng hiện tại (bao gồm email, tên, số điện thoại)")
     public ResponseEntity<ApiResponse<CustomerProfileResponse>> getProfile(
             @AuthenticationPrincipal UserDetailsImpl userDetails
@@ -39,7 +39,7 @@ public class UserController {
      * Cập nhật thông tin khách hàng đang đăng nhập (tên, số điện thoại)
      * Email không cho đổi nhưng vẫn được trả về trong response.
      */
-    @PutMapping({"/profile", "/me"})
+    @PutMapping("/profile")
     @Operation(summary = "Cập nhật thông tin khách hàng (tên, số điện thoại - email giữ nguyên và được trả về trong response)")
     public ResponseEntity<ApiResponse<CustomerProfileResponse>> updateProfile(
             @Valid @RequestBody UpdateCustomerProfileRequest request,

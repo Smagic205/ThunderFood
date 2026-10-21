@@ -49,7 +49,21 @@ public class CustomerProfileResponse {
     @Schema(description = "Thời gian cập nhật gần nhất")
     private LocalDateTime updatedAt;
 
+    @Schema(description = "Địa chỉ giao hàng mặc định của khách hàng")
+    private com.thunderfood.backend.dto.address.AddressResponse defaultAddress;
+
+    @Schema(description = "Danh sách toàn bộ địa chỉ nhận hàng của khách hàng")
+    private java.util.List<com.thunderfood.backend.dto.address.AddressResponse> addresses;
+
     public static CustomerProfileResponse fromEntity(User user) {
+        return fromEntity(user, null, java.util.Collections.emptyList());
+    }
+
+    public static CustomerProfileResponse fromEntity(
+            User user,
+            com.thunderfood.backend.dto.address.AddressResponse defaultAddress,
+            java.util.List<com.thunderfood.backend.dto.address.AddressResponse> addresses
+    ) {
         if (user == null) {
             return null;
         }
@@ -64,6 +78,8 @@ public class CustomerProfileResponse {
                 .status(user.getStatus())
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
+                .defaultAddress(defaultAddress)
+                .addresses(addresses)
                 .build();
     }
 }

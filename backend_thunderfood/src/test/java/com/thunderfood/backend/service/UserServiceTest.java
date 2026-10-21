@@ -27,6 +27,9 @@ class UserServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private com.thunderfood.backend.repository.AddressRepository addressRepository;
+
     @InjectMocks
     private UserService userService;
 

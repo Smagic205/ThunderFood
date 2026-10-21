@@ -38,7 +38,7 @@ public class UserDetailsImpl implements UserDetails {
 
     @Override
     public boolean isAccountNonLocked() {
-        return !"LOCKED".equals(user.getStatus());
+        return !"LOCKED".equalsIgnoreCase(user.getStatus());
     }
 
     @Override
@@ -48,6 +48,6 @@ public class UserDetailsImpl implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return "ACTIVE".equals(user.getStatus());
+        return user.getStatus() == null || "ACTIVE".equalsIgnoreCase(user.getStatus());
     }
 }

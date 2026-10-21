@@ -1,9 +1,12 @@
 package com.thunderfood.backend.dto.auth;
 
+import com.thunderfood.backend.dto.address.AddressResponse;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.util.List;
 
 @Data
 @Builder
@@ -25,5 +28,7 @@ public class AuthResponse {
         private String phone;
         private String role;
         private String avatarUrl;
+        private AddressResponse defaultAddress;
+        private List<AddressResponse> addresses;
     }
 }
