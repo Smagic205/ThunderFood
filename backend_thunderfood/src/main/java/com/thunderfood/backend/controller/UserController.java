@@ -89,7 +89,7 @@ public class UserController {
 
     private void verifyUserAccess(Long targetUserId, UserDetailsImpl userDetails) {
         Long currentUserId = getAuthenticatedUserId(userDetails);
-        boolean isAdmin = userDetails != null && userDetails.getAuthorities().stream()
+        boolean isAdmin = userDetails != null && userDetails.getUser() != null && userDetails.getAuthorities() != null && userDetails.getAuthorities().stream()
                 .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
         if (!isAdmin && !currentUserId.equals(targetUserId)) {
             throw new RuntimeException("Bạn không có quyền truy cập hoặc chỉnh sửa thông tin của người dùng khác");
