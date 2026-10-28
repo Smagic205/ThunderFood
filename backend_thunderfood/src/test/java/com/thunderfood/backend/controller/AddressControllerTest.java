@@ -61,16 +61,22 @@ class AddressControllerTest {
                 .role(Role.builder().id(1).name("CUSTOMER").build())
                 .build();
 
+        ServiceWardResponse sampleWard = ServiceWardResponse.builder()
+                .id(1)
+                .wardName("Yên Lãng")
+                .type("PHUONG")
+                .displayName("Phường Yên Lãng")
+                .shippingFee(BigDecimal.valueOf(15000))
+                .isActive(true)
+                .build();
+
         sampleAddress = AddressResponse.builder()
                 .id(10L)
-                .userId(1L)
                 .receiverName("Nguyễn Văn A")
                 .phone("0987654321")
                 .detailAddress("Số 10, Ngõ 5")
-                .wardName("Yên Lãng")
-                .wardType("PHUONG")
+                .ward(sampleWard)
                 .fullAddress("Số 10, Ngõ 5, Phường Yên Lãng")
-                .shippingFee(BigDecimal.valueOf(15000))
                 .isDefault(true)
                 .build();
 
@@ -92,8 +98,10 @@ class AddressControllerTest {
         ServiceWardResponse ward1 = ServiceWardResponse.builder()
                 .id(1)
                 .wardName("Yên Lãng")
-                .wardType("PHUONG")
+                .type("PHUONG")
+                .displayName("Phường Yên Lãng")
                 .shippingFee(BigDecimal.valueOf(15000))
+                .isActive(true)
                 .build();
 
         when(addressService.getActiveWards(any(), any())).thenReturn(List.of(ward1));

@@ -221,7 +221,7 @@ class AuthServiceTest {
     }
 
     @Test
-    @DisplayName("Đặt lại mật khẩu thất bại khi OTP không chính xác")
+    @DisplayName("Đặt lại mật khẩu thất bại khi OTP không chính xác và tăng số lần thử")
     void testResetPassword_WrongOtp() {
         ResetPasswordRequest request = new ResetPasswordRequest();
         request.setEmail("user@gmail.com");
@@ -232,14 +232,41 @@ class AuthServiceTest {
                 .user(mockUser)
                 .token("123456")
                 .type("OTP")
-                .expiresAt(LocalDateTime.now().plusMinutes(10))
+                .failedAttempts(0)
+                .expiresAt(LocalDateTime.now().plusMinutes(5))
                 .build();
 
         when(userRepository.findByEmail("user@gmail.com")).thenReturn(Optional.of(mockUser));
         when(userTokenRepository.findByUserIdAndType(mockUser.getId(), "OTP")).thenReturn(Optional.of(token));
 
         RuntimeException ex = assertThrows(RuntimeException.class, () -> authService.resetPassword(request));
-        assertEquals("Mã OTP không chính xác", ex.getMessage());
+        assertTrue(ex.getMessage().contains("Mã OTP không chính xác. Bạn còn 4 lần thử."));
+        assertEquals(1, token.getFailedAttempts());
+        verify(userTokenRepository).save(token);
+    }
+
+    @Test
+    @DisplayName("Đặt lại mật khẩu thất bại và vô hiệu hóa mã khi nhập sai quá 5 lần (Brute-force protection)")
+    void testResetPassword_TooManyAttempts() {
+        ResetPasswordRequest request = new ResetPasswordRequest();
+        request.setEmail("user@gmail.com");
+        request.setOtp("999999");
+        request.setNewPassword("newPass123");
+
+        UserToken token = UserToken.builder()
+                .user(mockUser)
+                .token("123456")
+                .type("OTP")
+                .failedAttempts(4) // Đã sai 4 lần, lần này là lần thứ 5
+                .expiresAt(LocalDateTime.now().plusMinutes(5))
+                .build();
+
+        when(userRepository.findByEmail("user@gmail.com")).thenReturn(Optional.of(mockUser));
+        when(userTokenRepository.findByUserIdAndType(mockUser.getId(), "OTP")).thenReturn(Optional.of(token));
+
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> authService.resetPassword(request));
+        assertTrue(ex.getMessage().contains("Mã OTP đã bị vô hiệu hóa do nhập sai quá 5 lần"));
+        verify(userTokenRepository).delete(token);
     }
 
     @Test
@@ -254,7 +281,8 @@ class AuthServiceTest {
                 .user(mockUser)
                 .token("123456")
                 .type("OTP")
-                .expiresAt(LocalDateTime.now().minusMinutes(5)) // đã hết hạn
+                .failedAttempts(0)
+                .expiresAt(LocalDateTime.now().minusMinutes(1)) // đã hết hạn
                 .build();
 
         when(userRepository.findByEmail("user@gmail.com")).thenReturn(Optional.of(mockUser));

@@ -21,13 +21,17 @@ import org.springframework.transaction.annotation.Transactional;
 import com.thunderfood.backend.dto.address.AddressResponse;
 import com.thunderfood.backend.repository.AddressRepository;
 
+import org.springframework.security.access.prepost.PreAuthorize;
+
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Random;
 
 @Service
 @RequiredArgsConstructor
 public class AuthService {
+
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
@@ -83,8 +87,9 @@ public class AuthService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản với email này"));
 
-        // Generate 6-digit OTP
-        String otp = String.format("%06d", new Random().nextInt(999999));
+        // Generate 6-digit OTP using SecureRandom (000000 - 999999)
+        int otpNumber = SECURE_RANDOM.nextInt(1_000_000);
+        String otp = String.format("%06d", otpNumber);
 
         // Delete old OTP if exists
         userTokenRepository.deleteByUserIdAndType(user.getId(), "OTP");
@@ -93,7 +98,8 @@ public class AuthService {
                 .user(user)
                 .token(otp)
                 .type("OTP")
-                .expiresAt(LocalDateTime.now().plusMinutes(15)) // 15 mins expiry
+                .expiresAt(LocalDateTime.now().plusMinutes(5)) // 5 mins expiry (OWASP recommendation)
+                .failedAttempts(0)
                 .build();
 
         userTokenRepository.save(userToken);
@@ -109,15 +115,32 @@ public class AuthService {
         UserToken userToken = userTokenRepository.findByUserIdAndType(user.getId(), "OTP")
                 .orElseThrow(() -> new RuntimeException("Mã OTP không hợp lệ hoặc đã hết hạn"));
 
-        if (!userToken.getToken().equals(request.getOtp())) {
-            throw new RuntimeException("Mã OTP không chính xác");
-        }
-
+        // 1. Kiểm tra hết hạn trước
         if (userToken.getExpiresAt().isBefore(LocalDateTime.now())) {
             userTokenRepository.delete(userToken);
             throw new RuntimeException("Mã OTP đã hết hạn");
         }
 
+        // 2. Kiểm tra số lần đã thử sai trước đó
+        int attempts = userToken.getFailedAttempts() != null ? userToken.getFailedAttempts() : 0;
+        if (attempts >= 5) {
+            userTokenRepository.delete(userToken);
+            throw new RuntimeException("Mã OTP đã bị vô hiệu hóa do nhập sai quá 5 lần. Vui lòng yêu cầu mã mới.");
+        }
+
+        // 3. Kiểm tra mã OTP
+        if (!userToken.getToken().equals(request.getOtp())) {
+            attempts++;
+            userToken.setFailedAttempts(attempts);
+            if (attempts >= 5) {
+                userTokenRepository.delete(userToken);
+                throw new RuntimeException("Mã OTP đã bị vô hiệu hóa do nhập sai quá 5 lần. Vui lòng yêu cầu mã mới.");
+            }
+            userTokenRepository.save(userToken);
+            throw new RuntimeException("Mã OTP không chính xác. Bạn còn " + (5 - attempts) + " lần thử.");
+        }
+
+        // 4. Đúng OTP: Cập nhật mật khẩu và xóa token
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
 
@@ -193,6 +216,7 @@ public class AuthService {
     }
 
     @Transactional
+    @PreAuthorize("hasRole('ADMIN')")
     public AuthResponse registerStaff(RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Email đã được sử dụng");

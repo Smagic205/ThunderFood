@@ -32,6 +32,10 @@ public class UserToken {
     @Column(name = "expires_at", nullable = false)
     private LocalDateTime expiresAt;
 
+    @Builder.Default
+    @Column(name = "failed_attempts", nullable = false)
+    private Integer failedAttempts = 0;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

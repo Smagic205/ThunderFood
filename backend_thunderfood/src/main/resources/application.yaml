@@ -3,9 +3,9 @@ spring:
     name: backend_thunderfood
 
   datasource:
-    url: jdbc:mysql://localhost:3306/db_thunderfood?useSSL=false&serverTimezone=UTC&createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true
-    username: root
-    password: 123456
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/db_thunderfood?useSSL=false&serverTimezone=UTC&createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:123456}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
@@ -22,10 +22,10 @@ spring:
     enabled: false   # Tắt Flyway, dùng Hibernate quản lý schema
 
   mail:
-    host: smtp.gmail.com
-    port: 587
-    username: your-email@gmail.com       # TODO: thay bằng email của bạn
-    password: your-app-password          # TODO: thay bằng App Password của Gmail
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:your-email@gmail.com}
+    password: ${MAIL_PASSWORD:your-app-password}
     properties:
       mail:
         smtp:
@@ -34,7 +34,7 @@ spring:
             enable: true
 
 jwt:
-  secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
-  expiration: 86400000       # 1 ngày (ms)
+  secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+  expiration: ${JWT_EXPIRATION:86400000}       # 1 ngày (ms)
   refresh-token:
-    expiration: 604800000    # 7 ngày (ms)
+    expiration: ${JWT_REFRESH_EXPIRATION:604800000}    # 7 ngày (ms)
