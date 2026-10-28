@@ -17,21 +17,22 @@ export const LoginPage = () => {
 
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
+  const editedCredentialsRef = useRef({ email: false, password: false });
 
   // Chống autofill triệt để từ trình duyệt khi trang vừa load
   useEffect(() => {
-    setEmail('');
-    setPassword('');
     if (emailRef.current) emailRef.current.value = '';
     if (passwordRef.current) passwordRef.current.value = '';
 
     // Xóa thêm 1 lần sau khi DOM render xong đề phòng trình duyệt inject chậm
     const timer = setTimeout(() => {
-      if (emailRef.current && emailRef.current.value && !email) {
-        emailRef.current.value = '';
+      const emailInput = emailRef.current;
+      if (!editedCredentialsRef.current.email && emailInput?.value) {
+        emailInput.value = '';
       }
-      if (passwordRef.current && passwordRef.current.value && !password) {
-        passwordRef.current.value = '';
+      const passwordInput = passwordRef.current;
+      if (!editedCredentialsRef.current.password && passwordInput?.value) {
+        passwordInput.value = '';
       }
     }, 120);
 
@@ -94,6 +95,8 @@ export const LoginPage = () => {
 
   // Điền nhanh thông tin mẫu vào form
   const handleFillDemo = () => {
+    editedCredentialsRef.current.email = true;
+    editedCredentialsRef.current.password = true;
     setIsReadOnly(false);
     setEmail('admin@thunderfood.vn');
     setPassword('admin123');
@@ -151,7 +154,10 @@ export const LoginPage = () => {
                 onFocus={() => setIsReadOnly(false)}
                 onMouseDown={() => setIsReadOnly(false)}
                 onTouchStart={() => setIsReadOnly(false)}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  editedCredentialsRef.current.email = true;
+                  setEmail(e.target.value);
+                }}
                 autoComplete="off"
               />
             </div>
@@ -192,7 +198,10 @@ export const LoginPage = () => {
                 onFocus={() => setIsReadOnly(false)}
                 onMouseDown={() => setIsReadOnly(false)}
                 onTouchStart={() => setIsReadOnly(false)}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  editedCredentialsRef.current.password = true;
+                  setPassword(e.target.value);
+                }}
                 autoComplete="new-password"
               />
               <button

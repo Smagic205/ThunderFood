@@ -45,10 +45,20 @@ export const CategoryFormModal: React.FC<CategoryFormModalProps> = ({
   const [error, setError] = useState('');
   const [localSubmitting, setLocalSubmitting] = useState(false);
   const slugInputRef = useRef<HTMLInputElement>(null);
+  const initializedCategoryIdRef = useRef<number | null | undefined>(undefined);
 
   const busy = isSubmitting || localSubmitting;
 
   useEffect(() => {
+    if (!isOpen) {
+      initializedCategoryIdRef.current = undefined;
+      return;
+    }
+
+    const categoryId = category?.id ?? null;
+    if (initializedCategoryIdRef.current === categoryId) return;
+    initializedCategoryIdRef.current = categoryId;
+
     if (category) {
       setName(category.name);
       setSlug(category.slug || toSlug(category.name));
