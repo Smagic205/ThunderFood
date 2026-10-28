@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { authApi } from '../api/auth';
-import { Zap, Mail, Lock, Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { Zap, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 
 export const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -48,18 +48,6 @@ export const LoginPage = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleDemo = () => {
-    // Quick demo login (mocking state)
-    const mockUser = {
-      id: 999,
-      email: 'demo.staff@thunderfood.vn',
-      fullName: 'Nhân viên Demo',
-      role: 'STAFF',
-    };
-    setAuth(mockUser, 'mock_token', null);
-    navigate('/orders');
   };
 
   return (

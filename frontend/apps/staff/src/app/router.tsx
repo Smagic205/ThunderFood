@@ -8,12 +8,6 @@ import { MyPackagePage } from '@/features/packages/pages/MyPackagePage';
 import { ReviewsPage } from '@/features/reviews/pages/ReviewsPage';
 
 // Fallback component until we implement real pages
-const PlaceholderPage = ({ title }: { title: string }) => (
-  <div>
-    <h2 style={{ fontSize: '1.5rem', marginBottom: '16px' }}>{title}</h2>
-    <p>Nội dung đang được xây dựng.</p>
-  </div>
-);
 
 export const router = createBrowserRouter([
   {

@@ -10,6 +10,17 @@ import { LoginPage } from '../pages/auth/LoginPage';
 import { RegisterPage } from '../pages/auth/RegisterPage';
 import { ForgotPage } from '../pages/auth/ForgotPage';
 
+import { AccountLayout } from '../pages/account/AccountLayout';
+import { AddressesPage } from '../pages/account/AddressesPage';
+import { ProfilePage } from '../pages/account/ProfilePage';
+import { 
+  OrdersPage, 
+  PaymentsPage, 
+  WishlistPage, 
+  NotificationsPage 
+} from '../pages/account/Placeholders';
+import { Navigate } from 'react-router-dom';
+
 export const router = createBrowserRouter([
   {
     path: '/',
@@ -24,7 +35,7 @@ export const router = createBrowserRouter([
         element: <MenuPage />,
       },
       {
-        path: 'product/:id',
+        path: 'product/:slug',
         element: <ProductDetailPage />,
       },
       {
@@ -43,8 +54,38 @@ export const router = createBrowserRouter([
             element: <div className="container mx-auto p-12 text-center text-xl font-bold text-[#12183A]">Trang Giỏ hàng (Đang phát triển)</div>,
           },
           {
-            path: 'account/*',
-            element: <div className="container mx-auto p-12 text-center text-xl font-bold text-[#12183A]">Trang Tài khoản (Đang phát triển)</div>,
+            path: 'account',
+            element: <AccountLayout />,
+            children: [
+              {
+                index: true,
+                element: <Navigate to="profile" replace />,
+              },
+              {
+                path: 'profile',
+                element: <ProfilePage />,
+              },
+              {
+                path: 'addresses',
+                element: <AddressesPage />,
+              },
+              {
+                path: 'orders',
+                element: <OrdersPage />,
+              },
+              {
+                path: 'payments',
+                element: <PaymentsPage />,
+              },
+              {
+                path: 'wishlist',
+                element: <WishlistPage />,
+              },
+              {
+                path: 'notifications',
+                element: <NotificationsPage />,
+              },
+            ],
           },
         ]
       }

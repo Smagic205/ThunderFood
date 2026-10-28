@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import {
   Search,
   Plus,
@@ -7,6 +7,9 @@ import {
   Trash2,
   Check,
   UtensilsCrossed,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
 } from 'lucide-react';
 import { catalogApi } from '../api/catalogApi';
 import { ProductTile } from '../components/ProductTile';
@@ -14,13 +17,35 @@ import { ProductFormDrawer } from '../components/ProductFormDrawer';
 import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal';
 import type { Product, Category, ProductStockFilter } from '../types';
 
+/** Tạo danh sách số trang có dấu rút gọn (...) */
+function getPageNumbers(current: number, total: number): (number | '...')[] {
+  if (total <= 5) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+  const pages: (number | '...')[] = [];
+  if (current <= 3) {
+    pages.push(1, 2, 3, 4, '...', total);
+  } else if (current >= total - 2) {
+    pages.push(1, '...', total - 3, total - 2, total - 1, total);
+  } else {
+    pages.push(1, '...', current - 1, current, current + 1, '...', total);
+  }
+  return pages;
+}
+
 export const ProductsPage: React.FC = () => {
   const queryClient = useQueryClient();
 
   // Search & Filters state
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedKeyword, setDebouncedKeyword] = useState('');
   const [selectedCatId, setSelectedCatId] = useState<number>(0);
+  const [sort, setSort] = useState<string>('bestSelling');
   const [stockFilter, setStockFilter] = useState<ProductStockFilter>('all');
+
+  // Phân trang state (1-based từ backend)
+  const [page, setPage] = useState<number>(1);
+  const [size, setSize] = useState<number>(10);
 
   // Modal / Drawer state
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -28,16 +53,47 @@ export const ProductsPage: React.FC = () => {
   const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // Debounce tìm kiếm (350ms)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedKeyword(searchQuery.trim());
+      setPage(1);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   // Queries
-  const { data: products = [], isLoading: isProductsLoading } = useQuery({
-    queryKey: ['admin-products'],
-    queryFn: catalogApi.getProducts,
+  const {
+    data: productData,
+    isLoading: isProductsLoading,
+    isFetching: isProductsFetching,
+  } = useQuery({
+    queryKey: ['admin-products', { page, size, categoryId: selectedCatId, keyword: debouncedKeyword, sort }],
+    queryFn: () =>
+      catalogApi.getProducts({
+        page,
+        size,
+        categoryId: selectedCatId > 0 ? selectedCatId : undefined,
+        keyword: debouncedKeyword,
+        sort,
+      }),
+    placeholderData: keepPreviousData,
   });
 
   const { data: categories = [] } = useQuery({
     queryKey: ['admin-categories'],
     queryFn: catalogApi.getCategories,
   });
+
+  const products = productData?.content || [];
+  const pagination = productData?.pagination || {
+    page: 1,
+    size: 10,
+    totalElements: 0,
+    totalPages: 1,
+    hasNext: false,
+    hasPrevious: false,
+  };
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -77,28 +133,16 @@ export const ProductsPage: React.FC = () => {
     return new Map<number, Category>(categories.map((c) => [c.id, c]));
   }, [categories]);
 
-  // Low stock count (<= 5)
-  const lowStockCount = useMemo(() => {
-    return products.filter((p) => p.stockQuantity <= 5).length;
-  }, [products]);
-
-  // Filtered products
-  const filteredProducts = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
+  // Client-side stock filter nếu người dùng chọn
+  const displayedProducts = useMemo(() => {
+    if (stockFilter === 'all') return products;
     return products.filter((p) => {
-      const matchName = !q || p.name.toLowerCase().includes(q);
-      const matchCat = selectedCatId === 0 || p.categoryId === selectedCatId;
-      let matchStock = true;
-      if (stockFilter === 'in') {
-        matchStock = p.isAvailable && p.stockQuantity > 0;
-      } else if (stockFilter === 'out') {
-        matchStock = p.isAvailable && p.stockQuantity <= 0;
-      } else if (stockFilter === 'hidden') {
-        matchStock = !p.isAvailable;
-      }
-      return matchName && matchCat && matchStock;
+      if (stockFilter === 'in') return p.isAvailable && p.stockQuantity > 0;
+      if (stockFilter === 'out') return p.isAvailable && p.stockQuantity <= 0;
+      if (stockFilter === 'hidden') return !p.isAvailable;
+      return true;
     });
-  }, [products, searchQuery, selectedCatId, stockFilter]);
+  }, [products, stockFilter]);
 
   const formatVnd = (amount: number) => {
     return amount.toLocaleString('vi-VN') + ' ₫';
@@ -109,8 +153,13 @@ export const ProductsPage: React.FC = () => {
     setIsDrawerOpen(true);
   };
 
-  const handleOpenEdit = (p: Product) => {
-    setEditingProduct(p);
+  const handleOpenEdit = async (p: Product) => {
+    try {
+      const fullDetail = await catalogApi.getProductById(p.id);
+      setEditingProduct(fullDetail || p);
+    } catch {
+      setEditingProduct(p);
+    }
     setIsDrawerOpen(true);
   };
 
@@ -146,9 +195,14 @@ export const ProductsPage: React.FC = () => {
       {/* Header (ahead) */}
       <div className="ah">
         <div>
-          <h2>Quản lý món ăn</h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <h2 style={{ margin: 0 }}>Quản lý món ăn</h2>
+            {isProductsFetching && !isProductsLoading && (
+              <Loader2 size={16} className="spin" style={{ color: 'var(--volt, #FFC107)' }} />
+            )}
+          </div>
           <p>
-            {products.length} món, {lowStockCount} món sắp hết hoặc đã hết hàng.
+            Tổng cộng <b>{pagination.totalElements}</b> món ăn trong cơ sở dữ liệu.
           </p>
         </div>
         <button
@@ -174,7 +228,8 @@ export const ProductsPage: React.FC = () => {
             gap: '12px',
           }}
         >
-          <div className="input-ic" style={{ flex: '1 1 240px', maxWidth: '380px' }}>
+          {/* Tìm kiếm */}
+          <div className="input-ic" style={{ flex: '1 1 240px', maxWidth: '340px' }}>
             <Search size={18} className="muted" />
             <input
               className="input"
@@ -186,14 +241,18 @@ export const ProductsPage: React.FC = () => {
             />
           </div>
 
+          {/* Lọc danh mục */}
           <select
             className="select"
             value={selectedCatId}
-            onChange={(e) => setSelectedCatId(Number(e.target.value))}
+            onChange={(e) => {
+              setSelectedCatId(Number(e.target.value));
+              setPage(1);
+            }}
             style={{ width: 'auto', minWidth: '160px' }}
             aria-label="Danh mục"
           >
-            <option value={0}>Tất cả danh mục</option>
+            <option value={0}>Tất cả danh mục ({categories.length})</option>
             {categories.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -201,11 +260,33 @@ export const ProductsPage: React.FC = () => {
             ))}
           </select>
 
+          {/* Sắp xếp */}
+          <select
+            className="select"
+            value={sort}
+            onChange={(e) => {
+              setSort(e.target.value);
+              setPage(1);
+            }}
+            style={{ width: 'auto', minWidth: '150px' }}
+            aria-label="Sắp xếp"
+          >
+            <option value="bestSelling">Bán chạy nhất</option>
+            <option value="newest">Mới nhất</option>
+            <option value="rating">Đánh giá cao</option>
+            <option value="priceAsc">Giá: Thấp đến cao</option>
+            <option value="priceDesc">Giá: Cao đến thấp</option>
+          </select>
+
+          {/* Tình trạng hàng */}
           <select
             className="select"
             value={stockFilter}
-            onChange={(e) => setStockFilter(e.target.value as ProductStockFilter)}
-            style={{ width: 'auto', minWidth: '160px' }}
+            onChange={(e) => {
+              setStockFilter(e.target.value as ProductStockFilter);
+              setPage(1);
+            }}
+            style={{ width: 'auto', minWidth: '140px' }}
             aria-label="Tình trạng"
           >
             <option value="all">Mọi tình trạng</option>
@@ -233,14 +314,16 @@ export const ProductsPage: React.FC = () => {
               {isProductsLoading ? (
                 <tr>
                   <td colSpan={7}>
-                    <div className="empty" style={{ padding: '40px' }}>
-                      <p className="muted">Đang tải danh sách món ăn…</p>
+                    <div className="empty" style={{ padding: '48px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+                      <Loader2 size={28} className="spin" style={{ color: 'var(--volt, #FFC107)' }} />
+                      <p className="muted" style={{ margin: 0 }}>Đang tải danh sách món ăn từ máy chủ…</p>
                     </div>
                   </td>
                 </tr>
-              ) : filteredProducts.length > 0 ? (
-                filteredProducts.map((p) => {
+              ) : displayedProducts.length > 0 ? (
+                displayedProducts.map((p) => {
                   const cat = categoryMap.get(p.categoryId);
+                  const displayCatName = p.categoryName || cat?.name || 'Chưa phân loại';
                   const isDiscounted = p.discountPrice !== null && p.discountPrice < p.price;
                   const discountPercent = isDiscounted
                     ? Math.round((1 - p.discountPrice! / p.price) * 100)
@@ -253,21 +336,21 @@ export const ProductsPage: React.FC = () => {
                           <ProductTile
                             art={p.art || cat?.art}
                             tint={p.tint || cat?.tint}
-                            imageUrl={p.imgs?.[0] || null}
+                            imageUrl={p.imgs?.[0] || p.thumbnailUrl || null}
                             name={p.name}
                             size="xs"
                           />
                           <div style={{ minWidth: 0 }}>
                             <b style={{ color: 'var(--ink)', display: 'block' }}>{p.name}</b>
                             <small className="muted">
-                              #{p.id} · {p.slug.slice(0, 24)}
+                              #{p.id} · {p.slug ? p.slug.slice(0, 24) : ''}
                             </small>
                           </div>
                         </div>
                       </td>
 
                       <td data-label="Danh mục">
-                        <span style={{ color: 'var(--ink)' }}>{cat?.name || 'Chưa phân loại'}</span>
+                        <span style={{ color: 'var(--ink)' }}>{displayCatName}</span>
                       </td>
 
                       <td data-label="Giá">
@@ -317,7 +400,7 @@ export const ProductsPage: React.FC = () => {
                       </td>
 
                       <td data-label="Đã bán">
-                        <span>{p.soldCount.toLocaleString('vi-VN')}</span>
+                        <span>{p.soldCountDisplay || p.soldCount.toLocaleString('vi-VN')}</span>
                       </td>
 
                       <td data-label="Hiển thị">
@@ -390,6 +473,150 @@ export const ProductsPage: React.FC = () => {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Bar */}
+        {pagination.totalElements > 0 && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '14px',
+              padding: '14px 20px',
+              borderTop: '1px solid var(--line, rgba(255, 255, 255, 0.08))',
+              backgroundColor: 'var(--surface-2, rgba(255, 255, 255, 0.02))',
+            }}
+          >
+            {/* Trái: Thông tin hiển thị & Chọn kích thước trang */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+              <span className="muted" style={{ fontSize: '13.5px' }}>
+                Hiển thị{' '}
+                <b style={{ color: 'var(--ink)' }}>
+                  {(pagination.page - 1) * pagination.size + 1}
+                </b>{' '}
+                –{' '}
+                <b style={{ color: 'var(--ink)' }}>
+                  {Math.min(pagination.page * pagination.size, pagination.totalElements)}
+                </b>{' '}
+                trên tổng số <b style={{ color: 'var(--ink)' }}>{pagination.totalElements}</b> món
+              </span>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span className="muted" style={{ fontSize: '13px' }}>Mỗi trang:</span>
+                <select
+                  className="select"
+                  value={size}
+                  onChange={(e) => {
+                    setSize(Number(e.target.value));
+                    setPage(1);
+                  }}
+                  style={{
+                    padding: '3px 8px',
+                    fontSize: '13px',
+                    width: 'auto',
+                    minWidth: '70px',
+                    height: '32px',
+                  }}
+                  aria-label="Số món mỗi trang"
+                >
+                  <option value={10}>10</option>
+                  <option value={15}>15</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Phải: Nút phân trang */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <button
+                className="btn btn-ghost"
+                onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                disabled={pagination.page <= 1 || isProductsFetching}
+                style={{
+                  padding: '6px 12px',
+                  fontSize: '13px',
+                  height: '34px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                }}
+                aria-label="Trang trước"
+              >
+                <ChevronLeft size={16} />
+                <span>Trước</span>
+              </button>
+
+              <div style={{ display: 'flex', gap: '4px' }}>
+                {getPageNumbers(pagination.page, pagination.totalPages).map((pNum, idx) =>
+                  pNum === '...' ? (
+                    <span
+                      key={`ellipsis-${idx}`}
+                      style={{
+                        width: '34px',
+                        height: '34px',
+                        display: 'grid',
+                        placeItems: 'center',
+                        color: 'var(--muted)',
+                        fontSize: '13px',
+                      }}
+                    >
+                      …
+                    </span>
+                  ) : (
+                    <button
+                      key={`page-${pNum}`}
+                      onClick={() => setPage(Number(pNum))}
+                      disabled={isProductsFetching}
+                      style={{
+                        width: '34px',
+                        height: '34px',
+                        borderRadius: '8px',
+                        fontSize: '13.5px',
+                        fontWeight: 600,
+                        border: '1px solid',
+                        borderColor:
+                          pNum === pagination.page
+                            ? 'var(--volt, #FFC107)'
+                            : 'rgba(255, 255, 255, 0.1)',
+                        backgroundColor:
+                          pNum === pagination.page
+                            ? 'var(--volt, #FFC107)'
+                            : 'rgba(255, 255, 255, 0.04)',
+                        color: pNum === pagination.page ? '#000' : 'var(--ink)',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                      }}
+                      aria-label={`Trang ${pNum}`}
+                      aria-current={pNum === pagination.page ? 'page' : undefined}
+                    >
+                      {pNum}
+                    </button>
+                  )
+                )}
+              </div>
+
+              <button
+                className="btn btn-ghost"
+                onClick={() => setPage((prev) => Math.min(pagination.totalPages, prev + 1))}
+                disabled={pagination.page >= pagination.totalPages || isProductsFetching}
+                style={{
+                  padding: '6px 12px',
+                  fontSize: '13px',
+                  height: '34px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                }}
+                aria-label="Trang sau"
+              >
+                <span>Sau</span>
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Form Drawer */}
@@ -417,3 +644,4 @@ export const ProductsPage: React.FC = () => {
     </div>
   );
 };
+
