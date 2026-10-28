@@ -16,7 +16,7 @@ const renderStars = (rating: number) => {
 
 export const ReviewsPage = () => {
   const { user } = useAuthStore();
-  const [reviews, setReviews] = useState(MOCK_REVIEWS);
+  const [reviews, setReviews] = useState<any[]>(MOCK_REVIEWS);
   const [replyModalOpen, setReplyModalOpen] = useState(false);
   const [selectedReview, setSelectedReview] = useState<any>(null);
   const [replyText, setReplyText] = useState('');
@@ -39,7 +39,7 @@ export const ReviewsPage = () => {
         return {
           ...r,
           staff_reply: replyText.trim(),
-          replied_by: user?.id
+          replied_by: user?.id ?? null
         };
       }
       return r;

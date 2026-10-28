@@ -91,7 +91,13 @@ export const Header = () => {
                     aria-label="Tài khoản của tôi"
                     onClick={() => setShowMenu(!showMenu)}
                   >
-                    <span className="avatar">{getInitials(user.name)}</span>
+                    <span className="avatar overflow-hidden">
+                      {user.avatarUrl ? (
+                        <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" />
+                      ) : (
+                        getInitials(user.name)
+                      )}
+                    </span>
                   </button>
                   {showMenu && (
                     <div className="menu-pop card" role="menu">

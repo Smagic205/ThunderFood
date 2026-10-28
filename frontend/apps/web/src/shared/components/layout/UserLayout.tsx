@@ -5,6 +5,7 @@ import { Footer } from './Footer';
 import { BottomNav } from './BottomNav';
 import { FloatingChat } from '@/shared/components/ui/FloatingChat';
 import { ScrollToTop } from './ScrollToTop';
+import { ToastContainer } from '@/shared/components/ui/ToastContainer';
 
 export const UserLayout = () => {
   useEffect(() => {
@@ -25,6 +26,7 @@ export const UserLayout = () => {
       <Footer />
       <FloatingChat />
       <BottomNav />
+      <ToastContainer />
     </>
   );
 };

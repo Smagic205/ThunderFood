@@ -59,7 +59,7 @@ export function HeroSection() {
             {/* Ảnh minh họa combo */}
             <img src="https://cdn-icons-png.flaticon.com/512/3480/3480823.png" alt="Combo" className="w-[min(80%,340px)] aspect-square drop-shadow-[0_30px_40px_rgba(0,0,0,0.45)]" />
             
-            <Link to="/product/1" className="absolute bottom-[-10px] md:bottom-[0px] left-1/2 -translate-x-1/2 w-[max-content] flex items-center gap-5 p-5 pr-8 rounded-[28px] bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20 transition-colors shadow-2xl">
+            <Link to="/product/combo-sam-set" className="absolute bottom-[-10px] md:bottom-[0px] left-1/2 -translate-x-1/2 w-[max-content] flex items-center gap-5 p-5 pr-8 rounded-[28px] bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20 transition-colors shadow-2xl">
               <span className="w-16 h-16 rounded-[20px] bg-[var(--volt)] text-[var(--on-volt)] flex items-center justify-center">
                 <Zap size={32} />
               </span>

@@ -6,6 +6,7 @@ import { ProductList } from '@/features/home/components/ProductList';
 import { ReviewSection } from '@/features/home/components/ReviewSection';
 import { mockBanners, mockVouchers, mockProducts } from '@/shared/api/mockData';
 import { categoryApi } from '@/shared/api/categoryApi';
+import { productApi } from '@/shared/api/productApi';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 
@@ -19,12 +20,22 @@ export function HomePage() {
     queryFn: categoryApi.getActiveCategories,
   });
 
-  const bestSellers = mockProducts
-    .filter((product) => product.isBestSeller)
-    .map((product) => ({
-      ...product,
-      categoryName: categories.find((category) => category.id === product.categoryId)?.name,
-    }));
+  const {
+    data: bestSellersPage,
+  } = useQuery({
+    queryKey: ['best-selling-products'],
+    queryFn: () => productApi.getProducts({ sort: 'bestSelling', size: 8 }),
+  });
+
+  // Sử dụng dữ liệu thật từ backend; nếu db chưa có món nào thì fallback mockProducts để không bị trống
+  const bestSellers = bestSellersPage?.content && bestSellersPage.content.length > 0
+    ? bestSellersPage.content
+    : mockProducts
+        .filter((product) => product.isBestSeller)
+        .map((product) => ({
+          ...product,
+          categoryName: categories.find((category) => category.id === product.categoryId)?.name,
+        }));
 
   return (
     <div className="w-full pb-16">

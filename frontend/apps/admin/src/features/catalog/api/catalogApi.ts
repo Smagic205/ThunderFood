@@ -1,5 +1,5 @@
 import { axiosClient } from '@/shared/api/axiosClient';
-import type { Category, Product } from '../types';
+import type { Category, Product, ProductPageResponse, GetProductsParams } from '../types';
 
 export const INITIAL_CATEGORIES: Category[] = [
   { id: 1, name: 'Combo', slug: 'combo', isActive: true, art: 'combo', tint: '#FFB81C', description: 'Ăn no, tiết kiệm hơn mua lẻ' },
@@ -335,6 +335,55 @@ function enrichCategory(raw: any): Category {
   };
 }
 
+/** Chuyển đổi dữ liệu sản phẩm từ backend sang model Product của frontend Admin */
+function enrichProduct(raw: any): Product {
+  const cat =
+    memoryCategories.find(
+      (c) =>
+        (raw.categoryName && c.name.toLowerCase() === raw.categoryName.toLowerCase()) ||
+        (raw.categoryId && c.id === raw.categoryId) ||
+        (raw.category?.id && c.id === raw.category.id)
+    ) || memoryCategories[0];
+
+  const rawPrice = Number(raw.price) || 0;
+  const rawOriginal = raw.originalPrice != null ? Number(raw.originalPrice) : null;
+  let price = rawPrice;
+  let discountPrice: number | null = null;
+  if (rawOriginal && rawOriginal > rawPrice) {
+    price = rawOriginal;
+    discountPrice = rawPrice;
+  } else if (raw.discountPrice != null) {
+    discountPrice = Number(raw.discountPrice);
+  }
+
+  const thumb = raw.thumbnailUrl || (Array.isArray(raw.images) && raw.images[0]?.url) || '';
+  const imgs: string[] = Array.isArray(raw.images)
+    ? raw.images.map((img: any) => (typeof img === 'string' ? img : img.url))
+    : raw.imgs || (thumb ? [thumb] : []);
+
+  return {
+    id: raw.id,
+    categoryId: cat?.id || raw.categoryId || raw.category?.id || 1,
+    categoryName: raw.categoryName || raw.category?.name || cat?.name || '',
+    name: raw.name || '',
+    slug: raw.slug || '',
+    price,
+    discountPrice,
+    stockQuantity: raw.stockQuantity ?? (raw.stockStatus?.code === 'OUT_OF_STOCK' ? 0 : 50),
+    soldCount: raw.soldCount ?? 0,
+    soldCountDisplay: raw.soldCountDisplay ?? `${raw.soldCount ?? 0}`,
+    avgRating: raw.ratingAverage ?? raw.avgRating ?? 5.0,
+    reviewCount: raw.reviewCount ?? 0,
+    art: cat?.art || 'plate',
+    tint: cat?.tint || '#FFB81C',
+    description: raw.description || '',
+    isAvailable: raw.isAvailable ?? true,
+    createdAt: raw.createdAt || new Date().toISOString(),
+    imgs,
+    thumbnailUrl: thumb,
+  };
+}
+
 export const catalogApi = {
   // ─── Categories (gọi API thật, fallback mock khi offline) ───────────────────
 
@@ -479,17 +528,98 @@ export const catalogApi = {
     return { success: true, message: 'Đã xóa danh mục thành công' };
   },
 
-  // Products
-  getProducts: async (): Promise<Product[]> => {
+  // ─── Products (kết nối API thật với phân trang, fallback mock khi offline) ───
+
+  getProducts: async (params?: GetProductsParams): Promise<ProductPageResponse> => {
+    const page = params?.page || 1;
+    const size = params?.size || 10;
+    const queryParams: Record<string, any> = {
+      page,
+      size,
+    };
+    if (params?.categoryId && params.categoryId > 0) {
+      queryParams.categoryId = params.categoryId;
+    }
+    if (params?.keyword?.trim()) {
+      queryParams.keyword = params.keyword.trim();
+    }
+    if (params?.sort) {
+      queryParams.sort = params.sort;
+    }
+
     try {
-      const res = await axiosClient.get('/admin/products');
-      if (res.data && Array.isArray(res.data.data)) {
-        memoryProducts = res.data.data;
+      const res = await axiosClient.get('/products', { params: queryParams });
+      if (res.data?.success && res.data?.data) {
+        const { content, pagination } = res.data.data;
+        const mappedList = (content || []).map(enrichProduct);
+
+        // Lưu vào memory cache để đồng bộ
+        mappedList.forEach((prod: Product) => {
+          const idx = memoryProducts.findIndex((p) => p.id === prod.id);
+          if (idx !== -1) {
+            memoryProducts[idx] = { ...memoryProducts[idx], ...prod };
+          } else {
+            memoryProducts.push(prod);
+          }
+        });
+
+        return {
+          content: mappedList,
+          pagination: {
+            page: pagination?.page || page,
+            size: pagination?.size || size,
+            totalElements: pagination?.totalElements || 0,
+            totalPages: pagination?.totalPages || 1,
+            hasNext: Boolean(pagination?.hasNext),
+            hasPrevious: Boolean(pagination?.hasPrevious),
+          },
+        };
+      }
+    } catch (err) {
+      console.warn('Lỗi gọi API /products thật, đang chuyển sang fallback dữ liệu mẫu:', err);
+    }
+
+    // ── Fallback mock khi offline ──
+    let filtered = [...memoryProducts];
+    if (params?.categoryId && params.categoryId > 0) {
+      filtered = filtered.filter((p) => p.categoryId === params.categoryId);
+    }
+    if (params?.keyword?.trim()) {
+      const kw = params.keyword.trim().toLowerCase();
+      filtered = filtered.filter((p) => p.name.toLowerCase().includes(kw));
+    }
+
+    const totalElements = filtered.length;
+    const totalPages = Math.max(1, Math.ceil(totalElements / size));
+    const startIndex = (page - 1) * size;
+    const paginatedContent = filtered.slice(startIndex, startIndex + size);
+
+    return {
+      content: paginatedContent,
+      pagination: {
+        page,
+        size,
+        totalElements,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrevious: page > 1,
+      },
+    };
+  },
+
+  getProductById: async (id: number): Promise<Product | null> => {
+    try {
+      const res = await axiosClient.get(`/products/${id}`);
+      if (res.data?.success && res.data.data) {
+        const p = enrichProduct(res.data.data);
+        const idx = memoryProducts.findIndex((m) => m.id === id);
+        if (idx !== -1) memoryProducts[idx] = p;
+        return p;
       }
     } catch {
-      // Fallback
+      // fallback
     }
-    return [...memoryProducts];
+    return memoryProducts.find((p) => p.id === id) || null;
   },
 
   toggleProductAvailability: async (id: number, isAvailable: boolean): Promise<boolean> => {
@@ -542,3 +672,4 @@ export const catalogApi = {
     return true;
   },
 };
+

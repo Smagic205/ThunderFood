@@ -3,27 +3,79 @@ import { useParams, Link } from 'react-router-dom';
 import { ChevronRight, Star, Heart, ShoppingBag, Minus, Plus, Truck, Flame, Bolt, Image as ImageIcon } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { categoryApi } from '@/shared/api/categoryApi';
+import { productApi } from '@/shared/api/productApi';
 import { mockProducts, mockReviews } from '@/shared/api/mockData';
 import { ProductCard } from '@/shared/components/ui/ProductCard';
 
 export function ProductDetailPage() {
-  const { id } = useParams<{ id: string }>();
+  const { slug } = useParams<{ slug: string }>();
+
+  // 1. Lấy danh mục
   const { data: categories = [] } = useQuery({
     queryKey: ['active-categories'],
     queryFn: categoryApi.getActiveCategories,
   });
-  const product = useMemo(() => mockProducts.find((p) => p.id === Number(id)), [id]);
-  
+
+  // 2. Lấy chi tiết món ăn từ backend API theo slug
+  const {
+    data: apiProduct,
+    isPending: isProductPending,
+  } = useQuery({
+    queryKey: ['product-detail', slug],
+    queryFn: () => productApi.getProductBySlug(slug!),
+    enabled: !!slug,
+    retry: 1,
+  });
+
+  // Fallback sang mockProduct nếu database chưa có món này
+  const mockProduct = useMemo(() => {
+    if (!slug) return undefined;
+    return mockProducts.find((p) => p.slug === slug || String(p.id) === slug);
+  }, [slug]);
+
+  const product = apiProduct || mockProduct;
+
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState<'desc' | 'rv'>('desc');
-  const [selectedImage, setSelectedImage] = useState(product?.imageUrl);
   const [rating, setRating] = useState(0); // for the review form
-  
-  // Update selected image when product changes
+
+  // Lấy danh sách ảnh
+  const imagesList = useMemo(() => {
+    if (apiProduct?.images && apiProduct.images.length > 0) {
+      return apiProduct.images.map((img) => img.url);
+    }
+    if (mockProduct?.images && mockProduct.images.length > 0) {
+      return mockProduct.images;
+    }
+    return [mockProduct?.imageUrl || 'https://cdn-icons-png.flaticon.com/512/3075/3075977.png'];
+  }, [apiProduct, mockProduct]);
+
+  const [selectedImage, setSelectedImage] = useState<string>(imagesList[0] || '');
+
+  // Cập nhật selected image khi món thay đổi
   useEffect(() => {
-    if (product) setSelectedImage(product.imageUrl);
-  }, [product]);
-  
+    if (imagesList.length > 0) {
+      setSelectedImage(imagesList[0]);
+    }
+  }, [imagesList]);
+
+  const resolvedCategoryId = apiProduct?.category?.id || mockProduct?.categoryId;
+
+  // 3. Lấy sản phẩm liên quan từ API
+  const { data: relatedProductsPage } = useQuery({
+    queryKey: ['related-products', resolvedCategoryId],
+    queryFn: () => productApi.getProducts({ categoryId: resolvedCategoryId, size: 5 }),
+    enabled: !!resolvedCategoryId,
+  });
+
+  if (isProductPending && !mockProduct) {
+    return (
+      <div className="container page center py-24 text-center">
+        <h2 className="text-xl font-bold text-[var(--ink)]">Đang tải thông tin món ăn...</h2>
+      </div>
+    );
+  }
+
   if (!product) {
     return (
       <div className="container page center">
@@ -33,27 +85,49 @@ export function ProductDetailPage() {
     );
   }
 
-  const category = categories.find((c) => c.id === product.categoryId);
-  const relatedProducts = mockProducts
-    .filter((p) => p.categoryId === product.categoryId && p.id !== product.id)
-    .slice(0, 4)
-    .map((relatedProduct) => ({
-      ...relatedProduct,
-      categoryName: categories.find((c) => c.id === relatedProduct.categoryId)?.name,
-    }));
+  const categoryName = apiProduct?.category?.name || categories.find((c) => c.id === mockProduct?.categoryId)?.name;
+  const categoryId = apiProduct?.category?.id || mockProduct?.categoryId;
+
+  // Xử lý danh sách món liên quan (ưu tiên backend)
+  const relatedProducts = relatedProductsPage?.content && relatedProductsPage.content.length > 0
+    ? relatedProductsPage.content.filter((p) => p.id !== product.id).slice(0, 4)
+    : mockProducts
+      .filter((p) => p.categoryId === resolvedCategoryId && p.id !== product.id)
+      .slice(0, 4)
+      .map((p) => ({
+        ...p,
+        categoryName: categories.find((c) => c.id === p.categoryId)?.name,
+      }));
+
   const reviews = mockReviews.filter((r) => r.productId === product.id);
-  
-  // Calculate review distribution based on average rating (mock logic matching HTML)
-  const dist = product.avgRating && product.avgRating >= 4.8 
-    ? [0.82, 0.13, 0.03, 0.01, 0.01] 
-    : product.avgRating && product.avgRating >= 4.6 
-    ? [0.68, 0.21, 0.07, 0.02, 0.02] 
-    : [0.55, 0.25, 0.11, 0.05, 0.04];
-  
-  const isOut = !product.isAvailable || (product.stockQuantity ?? 0) <= 0;
-  const isLow = !isOut && (product.stockQuantity ?? 0) <= 5;
-  const off = product.discountPrice ? Math.round((1 - product.discountPrice / product.price) * 100) : 0;
-  
+
+  const avgRating = apiProduct?.ratingAverage ?? mockProduct?.avgRating ?? 0;
+  const reviewCount = apiProduct?.reviewCount ?? mockProduct?.reviewCount ?? 0;
+  const soldCount = apiProduct?.soldCount ?? mockProduct?.soldCount ?? 0;
+
+  // Calculate review distribution based on average rating
+  const dist = avgRating >= 4.8
+    ? [0.82, 0.13, 0.03, 0.01, 0.01]
+    : avgRating >= 4.6
+      ? [0.68, 0.21, 0.07, 0.02, 0.02]
+      : [0.55, 0.25, 0.11, 0.05, 0.04];
+
+  const isOut = apiProduct
+    ? apiProduct.stockStatus?.code === 'OUT_OF_STOCK'
+    : !mockProduct?.isAvailable || (mockProduct?.stockQuantity ?? 0) <= 0;
+  const isLow = !apiProduct && !isOut && (mockProduct?.stockQuantity ?? 0) <= 5;
+
+  const off = apiProduct
+    ? (apiProduct.originalPrice && apiProduct.originalPrice > apiProduct.price
+      ? Math.round((1 - apiProduct.price / apiProduct.originalPrice) * 100)
+      : 0)
+    : (mockProduct?.discountPrice
+      ? Math.round((1 - mockProduct.discountPrice / mockProduct.price) * 100)
+      : 0);
+
+  const originalPriceDisplay = apiProduct?.originalPrice || (mockProduct?.discountPrice ? mockProduct.price : null);
+  const currentPriceDisplay = product.price;
+
   const handleQuantity = (delta: number) => {
     setQuantity((q) => Math.max(1, Math.min(20, q + delta)));
   };
@@ -66,15 +140,15 @@ export function ProductDetailPage() {
           <ChevronRight size={14} className="ic" />
           <Link to="/menu">Thực đơn</Link>
           <ChevronRight size={14} className="ic" />
-          {category && (
+          {categoryName && (
             <>
-              <Link to={`/menu?cat=${category.id}`}>{category.name}</Link>
+              <Link to={categoryId ? `/menu?cat=${categoryId}` : '/menu'}>{categoryName}</Link>
               <ChevronRight size={14} className="ic" />
             </>
           )}
           <span aria-current="page">{product.name}</span>
         </nav>
-        
+
         <div className="pd">
           <div className="gal">
             <div className="gal-main" id="gal-main">
@@ -88,12 +162,12 @@ export function ProductDetailPage() {
               </div>
             </div>
             <div className="thumbs" role="group" aria-label="Ảnh món">
-              {(product.images || [product.imageUrl]).map((img, i) => (
-                <button 
-                  key={i} 
-                  className={`thumb ${selectedImage === img ? 'on' : ''}`} 
+              {imagesList.map((img, i) => (
+                <button
+                  key={i}
+                  className={`thumb ${selectedImage === img ? 'on' : ''}`}
                   onClick={() => setSelectedImage(img)}
-                  aria-label={`Xem ảnh ${i+1}`}
+                  aria-label={`Xem ảnh ${i + 1}`}
                 >
                   <div className="tile xs" style={{ background: 'var(--surface)' }}>
                     <img src={img} alt="" className="photo object-contain p-2" />
@@ -102,50 +176,62 @@ export function ProductDetailPage() {
               ))}
             </div>
           </div>
-          
+
           <div>
             <div className="row wrap" style={{ gap: '8px' }}>
-              {category && <Link className="tag" to={`/menu?cat=${category.id}`}>{category.name}</Link>}
-              {product.isBestSeller && <span className="tag gold">Bán chạy</span>}
+              {categoryName && (
+                <Link className="tag" to={categoryId ? `/menu?cat=${categoryId}` : '/menu'}>
+                  {categoryName}
+                </Link>
+              )}
+              {apiProduct?.badges && apiProduct.badges.length > 0 ? (
+                apiProduct.badges.map((b, i) => (
+                  <span key={i} className="tag gold">{b}</span>
+                ))
+              ) : (
+                (product as any).isBestSeller && <span className="tag gold">Bán chạy</span>
+              )}
             </div>
             <h1>{product.name}</h1>
             <div className="row wrap" style={{ gap: '14px' }}>
               <span className="row" style={{ gap: '8px' }}>
                 <span className="stars" style={{ gap: '2px' }}>
                   {Array.from({ length: 5 }).map((_, i) => (
-                    <Star key={i} size={18} className={i < Math.round(product.avgRating || 0) ? 'ic' : 'ic off'} />
+                    <Star key={i} size={18} className={i < Math.round(avgRating) ? 'ic' : 'ic off'} />
                   ))}
                 </span>
-                <b>{product.avgRating?.toFixed(1) || '0.0'}</b>
+                <b>{avgRating.toFixed(1)}</b>
               </span>
               <button className="tlink" onClick={() => { setActiveTab('rv'); document.getElementById('pd-tabs')?.scrollIntoView({ behavior: 'smooth' }); }}>
-                {product.reviewCount || 0} đánh giá
+                {reviewCount} đánh giá
               </button>
-              <span className="muted">Đã bán {product.soldCount?.toLocaleString('vi-VN')}</span>
+              <span className="muted">
+                Đã bán {apiProduct?.soldCountDisplay || soldCount.toLocaleString('vi-VN')}
+              </span>
             </div>
-            
+
             <div className="pd-price">
-              <b>{(product.discountPrice || product.price).toLocaleString('vi-VN')}đ</b>
-              {product.discountPrice && (
+              <b>{currentPriceDisplay.toLocaleString('vi-VN')}đ</b>
+              {originalPriceDisplay && originalPriceDisplay > currentPriceDisplay && (
                 <>
-                  <s>{product.price.toLocaleString('vi-VN')}đ</s>
-                  <span className="tag gold">Tiết kiệm {(product.price - product.discountPrice).toLocaleString('vi-VN')}đ</span>
+                  <s>{originalPriceDisplay.toLocaleString('vi-VN')}đ</s>
+                  <span className="tag gold">Tiết kiệm {(originalPriceDisplay - currentPriceDisplay).toLocaleString('vi-VN')}đ</span>
                 </>
               )}
             </div>
-            
+
             <p className="muted" style={{ maxWidth: '56ch' }}>{product.description}</p>
-            
+
             <div className="row" style={{ marginTop: '18px', gap: '8px' }}>
               {isOut ? (
                 <span className="pill s-CANCELLED">Tạm hết hàng</span>
               ) : isLow ? (
-                <span className="pill s-PENDING">Sắp hết, còn {product.stockQuantity} phần</span>
+                <span className="pill s-PENDING">Sắp hết hàng</span>
               ) : (
                 <span className="pill s-COMPLETED">Còn hàng</span>
               )}
             </div>
-            
+
             <div className="row wrap" style={{ marginTop: '24px', gap: '12px' }}>
               <div className="stepper lg" role="group" aria-label="Số lượng" style={{ display: 'flex', alignItems: 'center', background: 'var(--surface)', border: '1.5px solid var(--line)', borderRadius: '999px', height: '54px', padding: '0 8px' }}>
                 <button onClick={() => handleQuantity(-1)} aria-label="Giảm" className="ibtn" style={{ width: '38px', height: '38px' }}><Minus size={18} /></button>
@@ -157,23 +243,23 @@ export function ProductDetailPage() {
               </button>
               <button className="btn btn-ghost btn-lg hide-sm" disabled={isOut}>Mua ngay</button>
               <button className="ibtn heart-inline heart" style={{ position: 'static', border: '1.5px solid var(--line)', width: '54px', height: '54px' }} aria-label="Yêu thích">
-                <Heart size={22} className="ic" />
+                <Heart size={22} className={apiProduct?.isFavorite ? "ic fill-[#e13636] text-[#e13636]" : "ic"} />
               </button>
             </div>
-            
+
             <div className="perks">
               <div className="perk">
                 <Truck size={22} className="ic" />
                 <span>
-                  Giao khoảng 30 phút<br />
-                  <span className="faint">Miễn phí từ 200.000đ</span>
+                  Giao khoảng {apiProduct?.delivery?.estimateMinutes || 30} phút<br />
+                  <span className="faint">Miễn phí từ {(apiProduct?.delivery?.freeShipThreshold || 200000).toLocaleString('vi-VN')}đ</span>
                 </span>
               </div>
               <div className="perk">
                 <Flame size={22} className="ic" />
                 <span>
-                  Nấu tươi khi có đơn<br />
-                  <span className="faint">Đóng gói giữ nhiệt</span>
+                  {apiProduct?.highlights?.[0] || 'Nấu tươi khi có đơn'}<br />
+                  <span className="faint">{apiProduct?.highlights?.[1] || 'Đóng gói giữ nhiệt'}</span>
                 </span>
               </div>
             </div>
@@ -186,36 +272,40 @@ export function ProductDetailPage() {
               Chi tiết món
             </button>
             <button className={`tab ${activeTab === 'rv' ? 'on' : ''}`} role="tab" aria-selected={activeTab === 'rv'} onClick={() => setActiveTab('rv')}>
-              Đánh giá<span className="n">{product.reviewCount || 0}</span>
+              Đánh giá<span className="n">{reviewCount}</span>
             </button>
           </div>
-          
+
           {activeTab === 'desc' ? (
             <div className="grid2" style={{ alignItems: 'start' }}>
               <div>
                 <h3 style={{ marginBottom: '12px' }}>Về món này</h3>
                 <p className="muted" style={{ maxWidth: '60ch' }}>
-                  {product.description} Nguyên liệu được nhập mỗi sáng và chế biến trong ngày, không dùng phụ gia bảo quản.
+                  {product.description || 'Nguyên liệu được nhập mỗi sáng và chế biến trong ngày, không dùng phụ gia bảo quản.'}
                 </p>
               </div>
               <dl className="kv card card-p" style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '12px 24px' }}>
-                <dt className="muted" style={{ fontWeight: 600 }}>Thời gian chuẩn bị</dt><dd>10 đến 15 phút</dd>
-                <dt className="muted" style={{ fontWeight: 600 }}>Nên dùng trong</dt><dd>60 phút sau khi nhận</dd>
-                <dt className="muted" style={{ fontWeight: 600 }}>Nhà bếp</dt><dd>86 Hàng Bài, Hoàn Kiếm</dd>
-                <dt className="muted" style={{ fontWeight: 600 }}>Dị ứng</dt><dd>Có thể chứa gluten, sữa, trứng</dd>
+                <dt className="muted" style={{ fontWeight: 600 }}>Giao chỉ trong</dt>
+                <dd>{apiProduct?.details?.prepTime || '30 - 40 phút'}</dd>
+                <dt className="muted" style={{ fontWeight: 600 }}>Nên dùng trong</dt>
+                <dd>{apiProduct?.details?.consumeWithin || '60 phút sau khi nhận'}</dd>
+                <dt className="muted" style={{ fontWeight: 600 }}>Nhà bếp</dt>
+                <dd>{'120 Yên Lãng, Đống Đa, Hà Nội'}</dd>
+                <dt className="muted" style={{ fontWeight: 600 }}>CẢNH BÁO</dt>
+                <dd>{'Người bị bệnh đẹp trai/xinh gái ăn nhiều sẽ làm bệnh thêm trầm trọng'}</dd>
               </dl>
             </div>
           ) : (
             <>
               <div className="card rate-sum">
                 <div className="rate-big">
-                  <b>{product.avgRating?.toFixed(1) || '0.0'}</b>
+                  <b>{avgRating.toFixed(1)}</b>
                   <div className="stars" style={{ margin: '8px 0 4px', justifyContent: 'center' }}>
                     {Array.from({ length: 5 }).map((_, i) => (
-                      <Star key={i} size={18} className={i < Math.round(product.avgRating || 0) ? 'ic' : 'ic off'} />
+                      <Star key={i} size={18} className={i < Math.round(avgRating) ? 'ic' : 'ic off'} />
                     ))}
                   </div>
-                  <span className="muted">{product.reviewCount || 0} đánh giá</span>
+                  <span className="muted">{reviewCount} đánh giá</span>
                 </div>
                 <div className="bars">
                   {dist.map((v, i) => (
@@ -227,7 +317,7 @@ export function ProductDetailPage() {
                   ))}
                 </div>
               </div>
-              
+
               <div className="grid2" style={{ alignItems: 'start', gap: '32px' }}>
                 <div>
                   {reviews.length ? reviews.map(r => (
@@ -273,11 +363,11 @@ export function ProductDetailPage() {
                       <span className="lbl">Bạn chấm mấy sao?</span>
                       <div className="star-pick" role="radiogroup" aria-label="Số sao">
                         {[1, 2, 3, 4, 5].map(i => (
-                          <button 
-                            type="button" 
-                            key={i} 
-                            role="radio" 
-                            aria-checked={rating >= i} 
+                          <button
+                            type="button"
+                            key={i}
+                            role="radio"
+                            aria-checked={rating >= i}
                             className={rating >= i ? 'on' : ''}
                             onClick={() => setRating(i)}
                             aria-label={`${i} sao`}
@@ -308,7 +398,7 @@ export function ProductDetailPage() {
             </>
           )}
         </section>
-        
+
         <section className="sec" style={{ marginTop: '64px' }}>
           <div className="sec-h" style={{ marginBottom: '24px' }}>
             <h2>Có thể bạn cũng thích</h2>

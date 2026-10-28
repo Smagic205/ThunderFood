@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { Search } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { useOrderStore } from '../store/orderStore';
 import { OrderDrawer } from '../components/OrderDrawer';
 import { ConfirmOrderModal } from '../components/ConfirmOrderModal';
+import { addressApi } from '@/shared/api/addressApi';
 
 const STATUS_MAP: Record<string, string> = {
   PENDING: 'Chờ xác nhận',
@@ -12,17 +14,32 @@ const STATUS_MAP: Record<string, string> = {
   CANCELLED: 'Đã hủy'
 };
 
+const normalizeWardName = (value: string) => value
+  .replace(/^(phường|xã)\s+/i, '')
+  .trim()
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .toLocaleLowerCase('vi');
+
 export const OrdersPage = () => {
   const orders = useOrderStore(s => s.orders);
   const packages = useOrderStore(s => s.packages);
   const maxPerPackage = useOrderStore(s => s.maxPerPackage);
   const cancelOrder = useOrderStore(s => s.cancelOrder);
   const confirmOrder = useOrderStore(s => s.confirmOrder);
+  const {
+    data: serviceWards = [],
+    isLoading: isWardsLoading,
+    isError: isWardsError,
+  } = useQuery({
+    queryKey: ['service-wards'],
+    queryFn: addressApi.getServiceWards,
+    staleTime: 5 * 60 * 1000,
+  });
 
   const [activeTab, setActiveTab] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   
-  const [selectedDistrict, setSelectedDistrict] = useState('ALL');
   const [selectedWard, setSelectedWard] = useState('ALL');
 
   const [selectedOrderCode, setSelectedOrderCode] = useState<string | null>(null);
@@ -33,23 +50,19 @@ export const OrdersPage = () => {
 
   const counts = (k: string) => k === 'ALL' ? orders.length : orders.filter(o => o.status === k).length;
 
-  const districts = Array.from(new Set(orders.map(o => o.district).filter(Boolean)));
-  const wards = Array.from(
-    new Set(
-      orders
-        .filter(o => selectedDistrict === 'ALL' || o.district === selectedDistrict)
-        .map(o => o.ward)
-        .filter(Boolean)
-    )
-  );
+  // Chỉ hiển thị khu vực được backend trả về từ danh sách đang phục vụ trong database.
+  const wardOptions = serviceWards
+    .map((ward) => [
+      normalizeWardName(ward.wardName),
+      ward.displayName || `${ward.type === 'XA' ? 'Xã' : 'Phường'} ${ward.wardName}`,
+    ] as const)
+    .filter(([key]) => Boolean(key))
+    .sort((a, b) => a[1].localeCompare(b[1], 'vi'));
 
   const filteredOrders = orders
     .filter(o => activeTab === 'ALL' || o.status === activeTab)
     .filter(o => {
-      if (selectedDistrict === 'ALL' && selectedWard === 'ALL') return true;
-      if (selectedDistrict !== 'ALL' && o.district !== selectedDistrict) return false;
-      if (selectedWard !== 'ALL' && o.ward !== selectedWard) return false;
-      return true;
+      return selectedWard === 'ALL' || normalizeWardName(o.ward || '') === selectedWard;
     })
     .filter(o => {
       if (!searchQuery) return true;
@@ -128,26 +141,20 @@ export const OrdersPage = () => {
           
           <select 
             className="input" 
-            style={{ width: 'auto', minWidth: '160px', paddingRight: '32px' }} 
-            value={selectedDistrict}
-            onChange={(e) => {
-              setSelectedDistrict(e.target.value);
-              setSelectedWard('ALL');
-            }}
-          >
-            <option value="ALL">Tất cả Quận/Huyện</option>
-            {districts.map(d => <option key={d} value={d}>{d}</option>)}
-          </select>
-          
-          <select 
-            className="input" 
-            style={{ width: 'auto', minWidth: '160px', paddingRight: '32px' }}
+            style={{ width: 'auto', minWidth: '220px', paddingRight: '32px' }}
             value={selectedWard}
             onChange={(e) => setSelectedWard(e.target.value)}
           >
             <option value="ALL">Tất cả Phường/Xã</option>
-            {wards.map(w => <option key={w} value={w}>{w}</option>)}
+            {wardOptions.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
           </select>
+          <small className="muted" style={{ alignSelf: 'center' }}>
+            {isWardsLoading
+              ? 'Đang tải khu vực giao hàng…'
+              : isWardsError
+                ? 'Không tải được danh sách phường/xã từ máy chủ.'
+                : `${serviceWards.length} phường/xã đang phục vụ`}
+          </small>
         </div>
 
         <div className="tbl-wrap">

@@ -10,7 +10,7 @@ import { authApi } from '@/shared/api/authApi';
 const loginSchema = z.object({
   email: z.string().min(1, 'Vui lòng nhập email').email('Email chưa đúng định dạng'),
   password: z.string().min(1, 'Vui lòng nhập mật khẩu'),
-  remember: z.boolean().default(true),
+  remember: z.boolean(),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -51,22 +51,38 @@ export const LoginPage = () => {
         return;
       }
       
+      // Lưu thông tin cơ bản vào store trước để có token
       login(
         {
           id: response.user.id,
           email: response.user.email,
           name: response.user.fullName,
-          phone: '', 
-          role: response.user.role as any,
+          fullName: response.user.fullName,
+          phone: response.user.phone || '',
+          role: response.user.role as 'CUSTOMER' | 'ADMIN' | 'STAFF' | 'SHIPPER',
           avatarUrl: response.user.avatarUrl
         },
         response.token,
         response.refreshToken
       );
+
+      // Fetch thêm profile đầy đủ (authProvider, status, createdAt, v.v.) ngay sau login
+      // Import động để tránh circular dependency
+      import('@/shared/api/userApi').then(({ userApi }) => {
+        userApi.getProfile().then((profile) => {
+          useAuthStore.getState().updateUser({
+            authProvider: profile.authProvider as 'LOCAL' | 'GOOGLE',
+            status: profile.status as 'ACTIVE' | 'LOCKED',
+            phone: profile.phone || '',
+            createdAt: profile.createdAt || undefined,
+            updatedAt: profile.updatedAt || undefined,
+          });
+        }).catch(() => { /* silent - không ảnh hưởng luồng login */ });
+      });
       
       navigate('/');
-    } catch (error: any) {
-      const errorMsg = error.response?.data?.message || 'Đã có lỗi xảy ra khi đăng nhập';
+    } catch (error: unknown) {
+      const errorMsg = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Đã có lỗi xảy ra khi đăng nhập';
       setApiError(errorMsg);
       setError('email', { type: 'manual', message: errorMsg });
       setError('password', { type: 'manual', message: errorMsg });
@@ -74,6 +90,7 @@ export const LoginPage = () => {
       setIsLoading(false);
     }
   };
+
 
   return (
     <>
