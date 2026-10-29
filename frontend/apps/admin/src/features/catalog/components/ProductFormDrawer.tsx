@@ -18,7 +18,7 @@ export const ProductFormDrawer: React.FC<ProductFormDrawerProps> = ({
   onSave,
 }) => {
   const [name, setName] = useState('');
-  const [categoryId, setCategoryId] = useState<number>(categories[0]?.id || 1);
+  const [categoryId, setCategoryId] = useState<number>(0);
   const [price, setPrice] = useState<number | ''>('');
   const [discountPrice, setDiscountPrice] = useState<number | ''>('');
   const [stockQuantity, setStockQuantity] = useState<number>(50);
@@ -29,29 +29,49 @@ export const ProductFormDrawer: React.FC<ProductFormDrawerProps> = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const initializedProductIdRef = useRef<number | null | undefined>(undefined);
 
   useEffect(() => {
-    if (product) {
-      setName(product.name);
-      setCategoryId(product.categoryId);
-      setPrice(product.price);
-      setDiscountPrice(product.discountPrice ?? '');
-      setStockQuantity(product.stockQuantity);
-      setDescription(product.description);
-      setIsAvailable(product.isAvailable);
-      setImgs(product.imgs || []);
-    } else {
-      setName('');
-      setCategoryId(categories[0]?.id || 1);
-      setPrice('');
-      setDiscountPrice('');
-      setStockQuantity(50);
-      setDescription('');
-      setIsAvailable(true);
-      setImgs([]);
+    if (!isOpen) {
+      initializedProductIdRef.current = undefined;
+      return;
     }
-    setErrors({});
-  }, [product, categories, isOpen]);
+
+    const productId = product?.id ?? null;
+    if (initializedProductIdRef.current !== productId) {
+      initializedProductIdRef.current = productId;
+
+      if (product) {
+        setName(product.name);
+        setCategoryId(product.categoryId);
+        setPrice(product.price);
+        setDiscountPrice(product.discountPrice ?? '');
+        setStockQuantity(product.stockQuantity);
+        setDescription(product.description);
+        setIsAvailable(product.isAvailable);
+        setImgs(product.imgs || []);
+      } else {
+        setName('');
+        setCategoryId(categories[0]?.id ?? 0);
+        setPrice('');
+        setDiscountPrice('');
+        setStockQuantity(50);
+        setDescription('');
+        setIsAvailable(true);
+        setImgs([]);
+      }
+      setErrors({});
+      return;
+    }
+
+    // If categories arrive after opening a new-product form, choose the first
+    // category once without resetting the rest of the user's input.
+    if (!product && categoryId === 0 && categories.length > 0) {
+      setCategoryId(categories[0].id);
+    }
+  }, [product, categories, categoryId, isOpen]);
+
+  const selectedCategoryId = categoryId || categories[0]?.id || 1;
 
   if (!isOpen) return null;
 
@@ -113,7 +133,7 @@ export const ProductFormDrawer: React.FC<ProductFormDrawerProps> = ({
     onSave({
       id: product?.id,
       name: name.trim(),
-      categoryId: Number(categoryId),
+      categoryId: Number(selectedCategoryId),
       price: Number(price),
       discountPrice: discountPrice !== '' ? Number(discountPrice) : null,
       stockQuantity: Number(stockQuantity),
@@ -205,7 +225,7 @@ export const ProductFormDrawer: React.FC<ProductFormDrawerProps> = ({
             <span>Danh mục <span style={{ color: 'var(--c-red)' }}>*</span></span>
             <select
               className="select"
-              value={categoryId}
+              value={selectedCategoryId}
               onChange={(e) => setCategoryId(Number(e.target.value))}
             >
               {categories.map((c) => (
