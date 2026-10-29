@@ -16,8 +16,7 @@ public class RegisterRequest {
     private String fullName;
 
     @NotBlank(message = "Email không được để trống")
-    @Email(message = "Email không đúng định dạng", regexp = "^[a-zA-Z0-9_!#$%&'*+/=?`{|}~^.-]+@[a-zA-Z0-9.-]+$")
-    @Pattern(regexp = "^[\\w-\\.]+@gmail\\.com$", message = "Vui lòng sử dụng tài khoản Gmail") // As requested: tài khoản đúng định dạng gmail
+    @Email(message = "Email không đúng định dạng", regexp = "^[a-zA-Z0-9_!#$%&'*+/=?`{|}~^.-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$")
     private String email;
 
     @NotBlank(message = "Mật khẩu không được để trống")

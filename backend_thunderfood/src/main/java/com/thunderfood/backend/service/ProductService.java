@@ -223,17 +223,14 @@ public class ProductService {
     private Sort resolveSort(String sort) {
         if ("rating".equalsIgnoreCase(sort)) {
             return Sort.by(Sort.Direction.DESC, "avgRating").and(Sort.by(Sort.Direction.DESC, "soldCount"));
-        } else if ("priceAsc".equalsIgnoreCase(sort)) {
-            return Sort.by(Sort.Direction.ASC, "price").and(Sort.by(Sort.Direction.ASC, "id"));
-        } else if ("priceDesc".equalsIgnoreCase(sort)) {
-            return Sort.by(Sort.Direction.DESC, "price").and(Sort.by(Sort.Direction.DESC, "id"));
+        } else if ("priceAsc".equalsIgnoreCase(sort) || "priceDesc".equalsIgnoreCase(sort)
+                || "discountDesc".equalsIgnoreCase(sort) || "discount".equalsIgnoreCase(sort)) {
+            // Sắp xếp theo giá bán thực tế (effectivePrice) hoặc ưu đãi được xử lý trực tiếp trong Specification
+            return Sort.unsorted();
         } else if ("newest".equalsIgnoreCase(sort)) {
             return Sort.by(Sort.Direction.DESC, "createdAt").and(Sort.by(Sort.Direction.DESC, "id"));
         } else if ("soldCountAsc".equalsIgnoreCase(sort)) {
             return Sort.by(Sort.Direction.ASC, "soldCount").and(Sort.by(Sort.Direction.ASC, "id"));
-        } else if ("discountDesc".equalsIgnoreCase(sort) || "discount".equalsIgnoreCase(sort)) {
-            // Sắp xếp ưu đãi được xử lý trực tiếp trong Specification qua CriteriaBuilder.diff
-            return Sort.unsorted();
         }
         // Mặc định: bestSelling / soldCountDesc
         return Sort.by(Sort.Direction.DESC, "soldCount").and(Sort.by(Sort.Direction.DESC, "id"));
@@ -336,12 +333,16 @@ public class ProductService {
                 predicates.add(cb.greaterThanOrEqualTo(root.get("soldCount"), 100));
             }
 
-            // 8. Sắp xếp ưu đãi từ cao xuống thấp (discountDesc)
+            // 8. Sắp xếp tùy biến (discountDesc, priceAsc, priceDesc theo giá bán thực tế effectivePrice)
             if (query != null && query.getResultType() != Long.class && query.getResultType() != long.class) {
                 if ("discountDesc".equalsIgnoreCase(filter.getSort()) || "discount".equalsIgnoreCase(filter.getSort())) {
                     Expression<BigDecimal> effectiveDiscount = cb.coalesce(root.get("discountPrice"), root.get("price"));
                     Expression<BigDecimal> discountDiff = cb.diff(root.get("price"), effectiveDiscount);
                     query.orderBy(cb.desc(discountDiff), cb.desc(root.get("id")));
+                } else if ("priceAsc".equalsIgnoreCase(filter.getSort())) {
+                    query.orderBy(cb.asc(effectivePrice), cb.asc(root.get("id")));
+                } else if ("priceDesc".equalsIgnoreCase(filter.getSort())) {
+                    query.orderBy(cb.desc(effectivePrice), cb.desc(root.get("id")));
                 }
             }
 

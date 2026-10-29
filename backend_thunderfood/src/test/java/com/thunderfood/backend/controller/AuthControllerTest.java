@@ -78,11 +78,11 @@ class AuthControllerTest {
     }
 
     @Test
-    @DisplayName("POST /api/v1/auth/register trả về 400 khi email không đúng định dạng gmail")
+    @DisplayName("POST /api/v1/auth/register trả về 400 khi email không đúng định dạng")
     void testRegister_InvalidEmail_ReturnsBadRequest() throws Exception {
         RegisterRequest request = new RegisterRequest(
                 "Nguyễn Văn A",
-                "not-a-gmail@yahoo.com",
+                "invalid-email-format",
                 "Pass1234@",
                 "0987654321"
         );

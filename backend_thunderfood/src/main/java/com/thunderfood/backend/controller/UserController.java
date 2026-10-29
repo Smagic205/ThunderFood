@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -92,7 +93,7 @@ public class UserController {
         boolean isAdmin = userDetails != null && userDetails.getUser() != null && userDetails.getAuthorities() != null && userDetails.getAuthorities().stream()
                 .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
         if (!isAdmin && !currentUserId.equals(targetUserId)) {
-            throw new RuntimeException("Bạn không có quyền truy cập hoặc chỉnh sửa thông tin của người dùng khác");
+            throw new AccessDeniedException("Bạn không có quyền truy cập hoặc chỉnh sửa thông tin của người dùng khác");
         }
     }
 }

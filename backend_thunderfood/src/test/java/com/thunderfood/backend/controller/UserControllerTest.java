@@ -138,7 +138,7 @@ class UserControllerTest {
     void testGetCustomerById_OtherUser_ThrowsForbidden() throws Exception {
         // User hiện tại là id=1, cố tình request id=2
         mockMvc.perform(get("/api/v1/users/2"))
-                .andExpect(status().isBadRequest())
+                .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.success", is(false)))
                 .andExpect(jsonPath("$.message", is("Bạn không có quyền truy cập hoặc chỉnh sửa thông tin của người dùng khác")));
 
