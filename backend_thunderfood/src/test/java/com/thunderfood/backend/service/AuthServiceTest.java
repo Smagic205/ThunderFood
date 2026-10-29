@@ -26,6 +26,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -294,7 +295,7 @@ class AuthServiceTest {
     }
 
     @Test
-    @DisplayName("Làm mới token thành công khi Refresh Token hợp lệ")
+    @DisplayName("Làm mới token thành công và xoay vòng Refresh Token (Token Rotation)")
     void testRefreshToken_Success() {
         String refreshToken = "valid-refresh-token";
 
@@ -308,13 +309,57 @@ class AuthServiceTest {
         when(jwtService.extractUsername(refreshToken)).thenReturn("user@gmail.com");
         when(userRepository.findByEmail("user@gmail.com")).thenReturn(Optional.of(mockUser));
         when(jwtService.isTokenValid(eq(refreshToken), any(UserDetailsImpl.class))).thenReturn(true);
-        when(userTokenRepository.findByUserIdAndType(mockUser.getId(), "REFRESH_TOKEN")).thenReturn(Optional.of(tokenEntity));
+        when(userTokenRepository.findByTokenAndType(refreshToken, "REFRESH_TOKEN")).thenReturn(Optional.of(tokenEntity));
         mockAuthResponseGeneration();
 
         AuthResponse response = authService.refreshToken(refreshToken);
 
         assertNotNull(response);
         assertEquals("mock-access-token", response.getToken());
+        assertEquals("mock-refresh-token", response.getRefreshToken());
+        verify(userTokenRepository).save(tokenEntity);
+    }
+
+    @Test
+    @DisplayName("Đăng xuất thiết bị xóa đúng Refresh Token của thiết bị đó")
+    void testLogout_Success() {
+        String refreshToken = "device-refresh-token";
+        authService.logout(refreshToken);
+        verify(userTokenRepository).deleteByToken(refreshToken);
+    }
+
+    @Test
+    @DisplayName("Đăng xuất toàn bộ thiết bị xóa tất cả Refresh Token của user")
+    void testLogoutAllDevices_Success() {
+        authService.logoutAllDevices(1L);
+        verify(userTokenRepository).deleteByUserIdAndType(1L, "REFRESH_TOKEN");
+    }
+
+    @Test
+    @DisplayName("Đăng nhập vượt quá số phiên tối đa sẽ thu hồi các phiên cũ nhất")
+    void testLogin_ExceedsMaxSessions_RemovesOldestSession() {
+        LoginRequest request = new LoginRequest();
+        request.setEmail("user@gmail.com");
+        request.setPassword("12345678");
+
+        UserToken oldToken1 = UserToken.builder().id(101L).build();
+        UserToken oldToken2 = UserToken.builder().id(102L).build();
+        UserToken oldToken3 = UserToken.builder().id(103L).build();
+        UserToken oldToken4 = UserToken.builder().id(104L).build();
+        UserToken oldToken5 = UserToken.builder().id(105L).build();
+        List<UserToken> existingTokens = List.of(oldToken1, oldToken2, oldToken3, oldToken4, oldToken5);
+
+        when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class))).thenReturn(null);
+        when(userRepository.findByEmail("user@gmail.com")).thenReturn(Optional.of(mockUser));
+        when(userTokenRepository.findByUserIdAndTypeOrderByCreatedAtAsc(1L, "REFRESH_TOKEN"))
+                .thenReturn(existingTokens);
+        mockAuthResponseGeneration();
+
+        authService.login(request);
+
+        // Phiên thứ 6 sẽ xóa phiên cũ nhất (oldToken1)
+        verify(userTokenRepository).delete(oldToken1);
+        verify(userTokenRepository).save(any(UserToken.class));
     }
 
     @Test

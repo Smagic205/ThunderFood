@@ -163,6 +163,24 @@ class AuthControllerTest {
     }
 
     @Test
+    @DisplayName("POST /api/v1/auth/logout thành công trả về 200")
+    void testLogout_Success() throws Exception {
+        RefreshTokenRequest request = new RefreshTokenRequest();
+        request.setRefreshToken("valid-refresh-token");
+
+        doNothing().when(authService).logout("valid-refresh-token");
+
+        mockMvc.perform(post("/api/v1/auth/logout")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success", is(true)))
+                .andExpect(jsonPath("$.message", is("Đăng xuất thành công")));
+
+        verify(authService).logout("valid-refresh-token");
+    }
+
+    @Test
     @DisplayName("POST /api/v1/auth/forgot-password thành công trả về 200")
     void testForgotPassword_Success() throws Exception {
         ForgotPasswordRequest request = new ForgotPasswordRequest();

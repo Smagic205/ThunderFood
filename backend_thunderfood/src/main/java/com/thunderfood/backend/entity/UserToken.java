@@ -36,6 +36,12 @@ public class UserToken {
     @Column(name = "failed_attempts", nullable = false)
     private Integer failedAttempts = 0;
 
+    @Column(name = "device_info", length = 255)
+    private String deviceInfo;
+
+    @Column(name = "ip_address", length = 50)
+    private String ipAddress;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

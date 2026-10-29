@@ -32,6 +32,7 @@ import java.util.List;
 public class AuthService {
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+    private static final int MAX_ACTIVE_SESSIONS = 5;
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
@@ -164,21 +165,46 @@ public class AuthService {
             throw new RuntimeException("Refresh token đã hết hạn hoặc không hợp lệ");
         }
 
-        // Verify token exists in DB (prevents use of revoked tokens)
-        userTokenRepository.findByUserIdAndType(user.getId(), "REFRESH_TOKEN")
-                .filter(t -> t.getToken().equals(refreshToken))
+        // 1. Kiểm tra token có tồn tại trong DB không
+        UserToken existingTokenEntity = userTokenRepository.findByTokenAndType(refreshToken, "REFRESH_TOKEN")
                 .orElseThrow(() -> new RuntimeException("Refresh token không tồn tại hoặc đã bị thu hồi"));
 
-        return generateAuthResponse(user);
+        if (!existingTokenEntity.getUser().getId().equals(user.getId())) {
+            throw new RuntimeException("Refresh token không hợp lệ");
+        }
+
+        // 2. Refresh Token Rotation: Xoay vòng token cho phiên này
+        String newJwtToken = jwtService.generateToken(userDetails);
+        String newRefreshToken = jwtService.generateRefreshToken(userDetails);
+
+        existingTokenEntity.setToken(newRefreshToken);
+        existingTokenEntity.setExpiresAt(LocalDateTime.now().plusDays(7));
+        userTokenRepository.save(existingTokenEntity);
+
+        return buildAuthResponse(user, newJwtToken, newRefreshToken);
+    }
+
+    @Transactional
+    public void logout(String refreshToken) {
+        if (refreshToken != null && !refreshToken.isBlank()) {
+            userTokenRepository.deleteByToken(refreshToken);
+        }
+    }
+
+    @Transactional
+    public void logoutAllDevices(Long userId) {
+        userTokenRepository.deleteByUserIdAndType(userId, "REFRESH_TOKEN");
     }
 
     private AuthResponse generateAuthResponse(User user) {
+        // Quản lý số lượng phiên đăng nhập tối đa (FIFO)
+        manageActiveSessions(user.getId());
+
         UserDetailsImpl userDetails = new UserDetailsImpl(user);
         String jwtToken = jwtService.generateToken(userDetails);
         String refreshToken = jwtService.generateRefreshToken(userDetails);
 
-        // Save refresh token to DB
-        userTokenRepository.deleteByUserIdAndType(user.getId(), "REFRESH_TOKEN");
+        // Lưu Refresh Token của thiết bị hiện tại mà không xóa các thiết bị khác
         UserToken userToken = UserToken.builder()
                 .user(user)
                 .token(refreshToken)
@@ -187,6 +213,20 @@ public class AuthService {
                 .build();
         userTokenRepository.save(userToken);
 
+        return buildAuthResponse(user, jwtToken, refreshToken);
+    }
+
+    private void manageActiveSessions(Long userId) {
+        List<UserToken> existingTokens = userTokenRepository.findByUserIdAndTypeOrderByCreatedAtAsc(userId, "REFRESH_TOKEN");
+        if (existingTokens.size() >= MAX_ACTIVE_SESSIONS) {
+            int toRemove = existingTokens.size() - MAX_ACTIVE_SESSIONS + 1;
+            for (int i = 0; i < toRemove; i++) {
+                userTokenRepository.delete(existingTokens.get(i));
+            }
+        }
+    }
+
+    private AuthResponse buildAuthResponse(User user, String jwtToken, String refreshToken) {
         List<AddressResponse> addresses = addressRepository.findByUserIdOrderByIsDefaultDescCreatedAtDesc(user.getId())
                 .stream()
                 .map(AddressResponse::fromEntity)

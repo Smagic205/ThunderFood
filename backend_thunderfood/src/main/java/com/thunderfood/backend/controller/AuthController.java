@@ -41,6 +41,14 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success("Làm mới token thành công", authService.refreshToken(request.getRefreshToken())));
     }
 
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse<String>> logout(
+            @Valid @RequestBody RefreshTokenRequest request
+    ) {
+        authService.logout(request.getRefreshToken());
+        return ResponseEntity.ok(ApiResponse.success("Đăng xuất thành công", null));
+    }
+
     @PostMapping("/forgot-password")
     public ResponseEntity<ApiResponse<String>> forgotPassword(
             @Valid @RequestBody ForgotPasswordRequest request
