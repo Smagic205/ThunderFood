@@ -45,5 +45,9 @@ export const authApi = {
   refreshToken: async (refreshToken: string): Promise<AuthResponse> => {
     const response = await axiosClient.post<ApiResponse<AuthResponse>>('/v1/auth/refresh-token', { refreshToken });
     return response.data.data;
+  },
+
+  logout: async (refreshToken: string): Promise<void> => {
+    await axiosClient.post<ApiResponse<null>>('/v1/auth/logout', { refreshToken }, { timeout: 5000 });
   }
 };

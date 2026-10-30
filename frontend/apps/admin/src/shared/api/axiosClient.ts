@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { useAuthStore } from '@/app/store/authStore';
+import { useForbiddenNoticeStore } from '@/shared/stores/forbiddenNoticeStore';
 
 export const axiosClient = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1',
@@ -73,6 +74,12 @@ axiosClient.interceptors.response.use(
       } finally {
         refreshTokenPromise = null;
       }
+    }
+
+    if (error.response?.status === 403) {
+      useForbiddenNoticeStore.getState().showForbidden(
+        error.response?.data?.message || 'Bạn không có quyền thực hiện thao tác này'
+      );
     }
 
     return Promise.reject(error);

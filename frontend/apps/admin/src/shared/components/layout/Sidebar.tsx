@@ -15,15 +15,25 @@ import {
   LogOut,
 } from 'lucide-react';
 import { useAuthStore } from '@/app/store/authStore';
+import { authApi } from '@/shared/api/authApi';
 
 export const Sidebar = () => {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login', { replace: true });
+  const handleLogout = async () => {
+    const refreshToken = useAuthStore.getState().refreshToken;
+    try {
+      if (refreshToken && !refreshToken.startsWith('demo-') && !refreshToken.startsWith('mock-')) {
+        await authApi.logout(refreshToken);
+      }
+    } catch {
+      // Always clear the local session even when the backend is unavailable.
+    } finally {
+      logout();
+      navigate('/login', { replace: true });
+    }
   };
 
   const getInitials = (name?: string) => {

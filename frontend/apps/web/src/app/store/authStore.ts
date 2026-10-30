@@ -55,7 +55,9 @@ export const useAuthStore = create<AuthState>()(
               }
             : null,
         })),
-      logout: () => set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false }),
+      logout: () => {
+        set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false });
+      },
     }),
     {
       name: 'thunderfood-auth',
