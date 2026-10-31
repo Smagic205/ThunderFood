@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Upload, 
   Trash2, 
@@ -28,6 +28,8 @@ export const ProfilePage = () => {
   const [phone, setPhone] = useState(user?.phone || '');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const [profileErrors, setProfileErrors] = useState<{ name?: string; phone?: string }>({});
 
   // State form Đổi mật khẩu
@@ -86,34 +88,59 @@ export const ProfilePage = () => {
   const strength = calculateStrength(newPassword);
   const strengthLabels = ['', 'Yếu (Cần ít nhất 8 ký tự)', 'Trung bình', 'Khá tốt', 'Mạnh & An toàn'];
 
-  // Xử lý đổi ảnh đại diện
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Xử lý đổi ảnh đại diện (gọi API upload Cloudinary và lưu vào DB)
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.type.startsWith('image/')) {
-      showToast('Vui lòng chọn tệp hình ảnh (JPG, PNG, WebP)', 'error');
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (!validTypes.includes(file.type.toLowerCase())) {
+      showToast('Vui lòng chọn tệp hình ảnh (JPG, PNG, WebP, GIF)', 'error');
       return;
     }
 
-    if (file.size > 2 * 1024 * 1024) {
-      showToast('Kích thước ảnh tối đa là 2MB', 'error');
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('Kích thước ảnh tối đa là 5MB', 'error');
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      updateUser({ avatarUrl: result });
-      showToast('Đã cập nhật ảnh đại diện');
-    };
-    reader.readAsDataURL(file);
+    setIsUploadingAvatar(true);
+    try {
+      const updated = await userApi.uploadAvatar(file);
+      updateUser({
+        avatarUrl: updated.avatarUrl,
+        fullName: updated.fullName,
+        phone: updated.phone || '',
+      });
+      showToast('Đã cập nhật ảnh đại diện thành công');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Tải ảnh đại diện thất bại';
+      showToast(msg, 'error');
+    } finally {
+      setIsUploadingAvatar(false);
+      if (avatarInputRef.current) {
+        avatarInputRef.current.value = '';
+      }
+    }
   };
 
   // Xóa ảnh đại diện (quay về ký tự viết tắt)
-  const handleRemoveAvatar = () => {
-    updateUser({ avatarUrl: null });
-    showToast('Đã gỡ ảnh đại diện');
+  const handleRemoveAvatar = async () => {
+    setIsUploadingAvatar(true);
+    try {
+      await userApi.updateProfile({
+        fullName: fullName.trim() || user?.fullName || '',
+        phone: phone.trim() || user?.phone || '',
+        avatarUrl: null,
+      });
+      updateUser({ avatarUrl: null });
+      showToast('Đã gỡ ảnh đại diện');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Gỡ ảnh thất bại';
+      showToast(msg, 'error');
+    } finally {
+      setIsUploadingAvatar(false);
+    }
   };
 
   // Lưu thông tin cá nhân — gọi thật backend PUT /v1/users/profile
@@ -246,8 +273,24 @@ export const ProfilePage = () => {
             <span 
               className="avatar lg overflow-hidden shadow-sm shrink-0" 
               id="av"
-              style={{ width: 72, height: 72, fontSize: 26 }}
+              style={{ width: 72, height: 72, fontSize: 26, position: 'relative' }}
             >
+              {isUploadingAvatar && (
+                <div 
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#fff',
+                    zIndex: 2,
+                  }}
+                >
+                  <Loader2 className="animate-spin" size={24} />
+                </div>
+              )}
               {user.avatarUrl ? (
                 <img 
                   src={user.avatarUrl} 
@@ -261,13 +304,15 @@ export const ProfilePage = () => {
 
             <div>
               <div className="row wrap" style={{ gap: 10 }}>
-                <label className="btn btn-ghost btn-sm cursor-pointer">
-                  <Upload size={16} />
-                  <span>Đổi ảnh đại diện</span>
+                <label className={`btn btn-ghost btn-sm ${isUploadingAvatar ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}>
+                  {isUploadingAvatar ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+                  <span>{isUploadingAvatar ? 'Đang tải lên...' : 'Đổi ảnh đại diện'}</span>
                   <input 
+                    ref={avatarInputRef}
                     type="file" 
-                    accept="image/png, image/jpeg, image/webp" 
+                    accept="image/png, image/jpeg, image/webp, image/gif" 
                     hidden 
+                    disabled={isUploadingAvatar}
                     onChange={handleAvatarChange} 
                   />
                 </label>
@@ -276,6 +321,7 @@ export const ProfilePage = () => {
                   <button 
                     type="button" 
                     className="btn btn-danger btn-sm"
+                    disabled={isUploadingAvatar}
                     onClick={handleRemoveAvatar}
                   >
                     <Trash2 size={16} />
@@ -284,7 +330,7 @@ export const ProfilePage = () => {
                 )}
               </div>
               <div className="faint" style={{ fontSize: '12.5px', marginTop: 8 }}>
-                Định dạng JPG, PNG hoặc WebP. Kích thước tối đa 2MB.
+                Định dạng JPG, PNG, WebP hoặc GIF. Kích thước tối đa 5MB.
               </div>
             </div>
           </div>

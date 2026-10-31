@@ -356,9 +356,13 @@ function enrichProduct(raw: any): Product {
     discountPrice = Number(raw.discountPrice);
   }
 
-  const thumb = raw.thumbnailUrl || (Array.isArray(raw.images) && raw.images[0]?.url) || '';
+  const thumb =
+    raw.thumbnailUrl ||
+    (Array.isArray(raw.images) && raw.images.find((i: any) => i.isMain)?.url) ||
+    (Array.isArray(raw.images) && raw.images[0]?.url) ||
+    '';
   const imgs: string[] = Array.isArray(raw.images)
-    ? raw.images.map((img: any) => (typeof img === 'string' ? img : img.url))
+    ? raw.images.map((img: any) => (typeof img === 'string' ? img : img.url)).filter(Boolean)
     : raw.imgs || (thumb ? [thumb] : []);
 
   return {
@@ -609,7 +613,7 @@ export const catalogApi = {
 
   getProductById: async (id: number): Promise<Product | null> => {
     try {
-      const res = await axiosClient.get(`/products/${id}`);
+      const res = await axiosClient.get(`/admin/products/${id}`);
       if (res.data?.success && res.data.data) {
         const p = enrichProduct(res.data.data);
         const idx = memoryProducts.findIndex((m) => m.id === id);
@@ -617,12 +621,37 @@ export const catalogApi = {
         return p;
       }
     } catch {
-      // fallback
+      try {
+        const res = await axiosClient.get(`/products/${id}`);
+        if (res.data?.success && res.data.data) {
+          const p = enrichProduct(res.data.data);
+          const idx = memoryProducts.findIndex((m) => m.id === id);
+          if (idx !== -1) memoryProducts[idx] = p;
+          return p;
+        }
+      } catch {
+        // fallback
+      }
     }
     return memoryProducts.find((p) => p.id === id) || null;
   },
 
   toggleProductAvailability: async (id: number, isAvailable: boolean): Promise<boolean> => {
+    const current = await catalogApi.getProductById(id);
+    if (current) {
+      try {
+        const updated = await catalogApi.saveProduct({
+          ...current,
+          isAvailable,
+        });
+        return updated.isAvailable === isAvailable;
+      } catch (err: any) {
+        if (err?.response?.data?.message) {
+          throw new Error(err.response.data.message);
+        }
+        throw err;
+      }
+    }
     const prod = memoryProducts.find((p) => p.id === id);
     if (prod) {
       prod.isAvailable = isAvailable;
@@ -631,8 +660,85 @@ export const catalogApi = {
     return false;
   },
 
+  uploadImages: async (files: File[], folder: string = 'thunderfood/products'): Promise<string[]> => {
+    if (!files || files.length === 0) return [];
+    const formData = new FormData();
+    files.forEach((file) => formData.append('files', file));
+    formData.append('folder', folder);
+
+    const res = await axiosClient.post('/admin/upload/images', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    if (res.data?.success && Array.isArray(res.data.data)) {
+      return res.data.data.map((item: any) => item.imageUrl || item.url).filter(Boolean);
+    }
+    return [];
+  },
+
   saveProduct: async (productData: Partial<Product>): Promise<Product> => {
     const cat = memoryCategories.find((c) => c.id === productData.categoryId) || memoryCategories[0];
+    const rawImages = (productData.imgs || []).filter(Boolean);
+    const imagesPayload = rawImages.map((url, idx) => ({
+      imageUrl: url,
+      isThumbnail: idx === 0, // Ảnh đầu tiên là ảnh chính
+      sortOrder: idx,
+    }));
+
+    const payload = {
+      name: productData.name?.trim() || '',
+      slug: productData.slug?.trim() || undefined,
+      categoryId: Number(productData.categoryId || cat?.id || 1),
+      price: Number(productData.price || 0),
+      discountPrice:
+        productData.discountPrice != null && productData.discountPrice !== ('' as any)
+          ? Number(productData.discountPrice)
+          : null,
+      stockQuantity: productData.stockQuantity != null ? Number(productData.stockQuantity) : 0,
+      description: productData.description?.trim() || '',
+      isAvailable: productData.isAvailable ?? true,
+      images: imagesPayload,
+    };
+
+    try {
+      if (productData.id) {
+        // PUT /admin/products/{id}
+        const res = await axiosClient.put(`/admin/products/${productData.id}`, payload);
+        if (res.data?.success && res.data?.data) {
+          const updated = enrichProduct(res.data.data);
+          const idx = memoryProducts.findIndex((p) => p.id === updated.id);
+          if (idx !== -1) memoryProducts[idx] = updated;
+          return updated;
+        }
+      } else {
+        // POST /admin/products
+        const res = await axiosClient.post('/admin/products', payload);
+        if (res.data?.success && res.data?.data) {
+          const created = enrichProduct(res.data.data);
+          memoryProducts.unshift(created);
+          return created;
+        }
+      }
+    } catch (err: any) {
+      if (err?.response) {
+        const resData = err.response.data;
+        if (resData?.data && typeof resData.data === 'object') {
+          const fieldErrors = Object.values(resData.data).filter(Boolean);
+          if (fieldErrors.length > 0) {
+            throw new Error(fieldErrors.join('; '));
+          }
+        }
+        if (resData?.message) {
+          throw new Error(resData.message);
+        }
+        throw new Error(`Lỗi máy chủ (${err.response.status})`);
+      }
+      throw err;
+    }
+
+    // ── Fallback mock khi offline ──
     if (productData.id) {
       const idx = memoryProducts.findIndex((p) => p.id === productData.id);
       if (idx !== -1) {
@@ -668,6 +774,20 @@ export const catalogApi = {
   },
 
   deleteProduct: async (id: number): Promise<boolean> => {
+    try {
+      const res = await axiosClient.delete(`/admin/products/${id}`);
+      if (res.data?.success) {
+        memoryProducts = memoryProducts.filter((p) => p.id !== id);
+        return true;
+      }
+    } catch (err: any) {
+      if (err?.response) {
+        const serverMsg = err.response.data?.message || 'Lỗi từ máy chủ khi xóa món ăn';
+        throw new Error(serverMsg);
+      }
+      throw err;
+    }
+    // Fallback mock khi offline
     memoryProducts = memoryProducts.filter((p) => p.id !== id);
     return true;
   },
