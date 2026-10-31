@@ -30,8 +30,12 @@ class UserServiceTest {
     @Mock
     private com.thunderfood.backend.repository.AddressRepository addressRepository;
 
+    @Mock
+    private CloudinaryService cloudinaryService;
+
     @InjectMocks
     private UserService userService;
+
 
     private User mockUser;
     private Role customerRole;
@@ -125,4 +129,40 @@ class UserServiceTest {
         verify(userRepository, times(1)).findById(999L);
         verify(userRepository, never()).save(any());
     }
+
+    @Test
+    @DisplayName("Cập nhật avatar thành công qua Cloudinary")
+    void updateAvatar_Success() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(mockUser));
+        when(cloudinaryService.uploadImage(any(), eq("thunderfood/avatars")))
+                .thenReturn(com.thunderfood.backend.dto.upload.ImageUploadResponse.builder()
+                        .imageUrl("https://res.cloudinary.com/avatar-uploaded.jpg")
+                        .build());
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        org.springframework.mock.web.MockMultipartFile file = new org.springframework.mock.web.MockMultipartFile(
+                "file", "avatar.png", "image/png", "avatar bytes".getBytes()
+        );
+
+        CustomerProfileResponse response = userService.updateAvatar(1L, file);
+
+        assertNotNull(response);
+        assertEquals("https://res.cloudinary.com/avatar-uploaded.jpg", response.getAvatarUrl());
+        assertEquals("https://res.cloudinary.com/avatar-uploaded.jpg", mockUser.getAvatarUrl());
+        verify(userRepository).save(mockUser);
+    }
+
+    @Test
+    @DisplayName("Cập nhật avatar thất bại khi không tìm thấy user")
+    void updateAvatar_NotFound() {
+        when(userRepository.findById(999L)).thenReturn(Optional.empty());
+
+        org.springframework.mock.web.MockMultipartFile file = new org.springframework.mock.web.MockMultipartFile(
+                "file", "avatar.png", "image/png", "avatar bytes".getBytes()
+        );
+
+        assertThrows(ResourceNotFoundException.class, () -> userService.updateAvatar(999L, file));
+        verify(userRepository, never()).save(any());
+    }
 }
+

@@ -38,3 +38,8 @@ jwt:
   expiration: ${JWT_EXPIRATION:86400000}       # 1 ngày (ms)
   refresh-token:
     expiration: ${JWT_REFRESH_EXPIRATION:604800000}    # 7 ngày (ms)
+
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME:pmbasb2y}
+  api-key: ${CLOUDINARY_API_KEY:249683232839975}
+  api-secret: ${CLOUDINARY_API_SECRET:d9B6LYN8VbIX1EcMab76dGPToBw}

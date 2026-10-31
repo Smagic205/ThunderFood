@@ -52,6 +52,21 @@ public class UserController {
     }
 
     /**
+     * Tải lên và cập nhật ảnh đại diện cho khách hàng đang đăng nhập
+     */
+    @PostMapping(value = "/profile/avatar", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Tải lên ảnh đại diện lên Cloudinary và cập nhật hồ sơ khách hàng hiện tại")
+    public ResponseEntity<ApiResponse<CustomerProfileResponse>> uploadAvatar(
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+            @AuthenticationPrincipal UserDetailsImpl userDetails
+    ) {
+        Long userId = getAuthenticatedUserId(userDetails);
+        CustomerProfileResponse response = userService.updateAvatar(userId, file);
+        return ResponseEntity.ok(ApiResponse.success("Cập nhật ảnh đại diện thành công", response));
+    }
+
+
+    /**
      * Lấy thông tin khách hàng theo ID (dành cho Admin hoặc chính khách hàng đó)
      */
     @GetMapping("/{id}")
@@ -79,6 +94,22 @@ public class UserController {
         CustomerProfileResponse response = userService.updateCustomerProfile(id, request);
         return ResponseEntity.ok(ApiResponse.success("Cập nhật thông tin khách hàng thành công", response));
     }
+
+    /**
+     * Tải lên và cập nhật ảnh đại diện theo ID người dùng (dành cho Admin hoặc chính người dùng đó)
+     */
+    @PostMapping(value = "/{id}/avatar", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Tải lên ảnh đại diện theo ID người dùng (dành cho Admin hoặc chính người dùng đó)")
+    public ResponseEntity<ApiResponse<CustomerProfileResponse>> uploadAvatarById(
+            @PathVariable Long id,
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+            @AuthenticationPrincipal UserDetailsImpl userDetails
+    ) {
+        verifyUserAccess(id, userDetails);
+        CustomerProfileResponse response = userService.updateAvatar(id, file);
+        return ResponseEntity.ok(ApiResponse.success("Cập nhật ảnh đại diện thành công", response));
+    }
+
 
     private Long getAuthenticatedUserId(UserDetailsImpl userDetails) {
         if (userDetails != null && userDetails.getUser() != null && userDetails.getUser().getId() != null) {

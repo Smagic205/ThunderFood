@@ -11,7 +11,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.thunderfood.backend.dto.address.AddressResponse;
+import com.thunderfood.backend.dto.upload.ImageUploadResponse;
 import com.thunderfood.backend.repository.AddressRepository;
+import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 
 @Service
@@ -21,6 +23,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final AddressRepository addressRepository;
+    private final CloudinaryService cloudinaryService;
 
     /**
      * Lấy thông tin hồ sơ của khách hàng
@@ -92,4 +95,36 @@ public class UserService {
         // Trả về thông tin khách hàng sau khi cập nhật (bao gồm email và địa chỉ)
         return CustomerProfileResponse.fromEntity(updatedUser, defaultAddress, addresses);
     }
+
+    /**
+     * Tải lên ảnh đại diện lên Cloudinary và cập nhật avatarUrl của người dùng
+     *
+     * @param userId ID người dùng
+     * @param file File ảnh tải lên
+     * @return CustomerProfileResponse thông tin khách hàng sau khi cập nhật avatar
+     */
+    @Transactional
+    public CustomerProfileResponse updateAvatar(Long userId, MultipartFile file) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thông tin khách hàng với ID: " + userId));
+
+        ImageUploadResponse uploadResult = cloudinaryService.uploadImage(file, "thunderfood/avatars");
+        user.setAvatarUrl(uploadResult.getImageUrl());
+
+        User updatedUser = userRepository.save(user);
+        log.info("Cập nhật ảnh đại diện thành công: userId={}, avatarUrl={}", userId, updatedUser.getAvatarUrl());
+
+        List<AddressResponse> addresses = addressRepository.findByUserIdOrderByIsDefaultDescCreatedAtDesc(userId)
+                .stream()
+                .map(AddressResponse::fromEntity)
+                .toList();
+
+        AddressResponse defaultAddress = addresses.stream()
+                .filter(a -> Boolean.TRUE.equals(a.getIsDefault()))
+                .findFirst()
+                .orElse(addresses.isEmpty() ? null : addresses.get(0));
+
+        return CustomerProfileResponse.fromEntity(updatedUser, defaultAddress, addresses);
+    }
 }
+

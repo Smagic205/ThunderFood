@@ -28,9 +28,12 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import org.springframework.mock.web.MockMultipartFile;
+
 
 @ExtendWith(MockitoExtension.class)
 class UserControllerTest {
@@ -144,4 +147,62 @@ class UserControllerTest {
 
         verify(userService, never()).getCustomerProfile(2L);
     }
+
+    @Test
+    @DisplayName("POST /api/v1/users/profile/avatar tải lên và cập nhật avatar thành công")
+    void testUploadAvatar_Success() throws Exception {
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "avatar.png", "image/png", "dummy-bytes".getBytes()
+        );
+
+        CustomerProfileResponse avatarUpdatedProfile = CustomerProfileResponse.builder()
+                .id(1L)
+                .fullName("Nguyễn Văn A")
+                .email("user@gmail.com")
+                .avatarUrl("https://res.cloudinary.com/avatar.png")
+                .build();
+
+        when(userService.updateAvatar(eq(1L), any())).thenReturn(avatarUpdatedProfile);
+
+        mockMvc.perform(multipart("/api/v1/users/profile/avatar").file(file))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success", is(true)))
+                .andExpect(jsonPath("$.data.avatarUrl", is("https://res.cloudinary.com/avatar.png")));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/users/{id}/avatar tải lên avatar theo ID thành công khi đúng chính chủ")
+    void testUploadAvatarById_Success() throws Exception {
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "avatar.png", "image/png", "dummy-bytes".getBytes()
+        );
+
+        CustomerProfileResponse avatarUpdatedProfile = CustomerProfileResponse.builder()
+                .id(1L)
+                .avatarUrl("https://res.cloudinary.com/avatar1.png")
+                .build();
+
+        when(userService.updateAvatar(eq(1L), any())).thenReturn(avatarUpdatedProfile);
+
+        mockMvc.perform(multipart("/api/v1/users/1/avatar").file(file))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success", is(true)))
+                .andExpect(jsonPath("$.data.avatarUrl", is("https://res.cloudinary.com/avatar1.png")));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/users/{id}/avatar bị cấm khi user thường cố tình đổi avatar người khác")
+    void testUploadAvatarById_OtherUser_ThrowsForbidden() throws Exception {
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "avatar.png", "image/png", "dummy-bytes".getBytes()
+        );
+
+        mockMvc.perform(multipart("/api/v1/users/2/avatar").file(file))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.success", is(false)))
+                .andExpect(jsonPath("$.message", is("Bạn không có quyền truy cập hoặc chỉnh sửa thông tin của người dùng khác")));
+
+        verify(userService, never()).updateAvatar(eq(2L), any());
+    }
 }
+

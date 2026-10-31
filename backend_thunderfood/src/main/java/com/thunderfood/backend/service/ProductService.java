@@ -10,6 +10,7 @@ import com.thunderfood.backend.entity.ProductImage;
 import com.thunderfood.backend.entity.SystemSetting;
 import com.thunderfood.backend.exception.ResourceNotFoundException;
 import com.thunderfood.backend.repository.*;
+import com.thunderfood.backend.util.SlugUtils;
 import com.thunderfood.backend.util.SoldCountFormatter;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
@@ -453,4 +454,180 @@ public class ProductService {
                 .canPurchase(canPurchase)
                 .build();
     }
+
+    @Transactional(readOnly = true)
+    public ProductAdminResponse getProductDetailForAdmin(Long id) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy món ăn với ID: " + id));
+        return mapToAdminResponse(product);
+    }
+
+    @Transactional
+    public ProductAdminResponse createProduct(ProductCreateRequest request) {
+        String name = request.getName().trim();
+        String slug = (request.getSlug() != null && !request.getSlug().isBlank())
+                ? request.getSlug().trim()
+                : SlugUtils.toSlug(name);
+
+        if (productRepository.existsBySlug(slug)) {
+            throw new IllegalArgumentException("Slug '" + slug + "' đã tồn tại, vui lòng chọn slug khác hoặc đổi tên món");
+        }
+
+        Category category = categoryRepository.findById(request.getCategoryId())
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy danh mục với ID: " + request.getCategoryId()));
+
+        if (request.getDiscountPrice() != null && request.getDiscountPrice().compareTo(BigDecimal.ZERO) > 0) {
+            if (request.getDiscountPrice().compareTo(request.getPrice()) >= 0) {
+                throw new IllegalArgumentException("Giá khuyến mãi phải nhỏ hơn giá gốc");
+            }
+        }
+
+        Product product = Product.builder()
+                .category(category)
+                .name(name)
+                .slug(slug)
+                .description(request.getDescription())
+                .price(request.getPrice())
+                .discountPrice(request.getDiscountPrice())
+                .stockQuantity(request.getStockQuantity() != null ? request.getStockQuantity() : 0)
+                .soldCount(0)
+                .avgRating(BigDecimal.ZERO)
+                .isAvailable(request.getIsAvailable() != null ? request.getIsAvailable() : true)
+                .build();
+
+        Product savedProduct = productRepository.save(product);
+
+        saveProductImages(savedProduct, request.getImages());
+
+        return mapToAdminResponse(savedProduct);
+    }
+
+    @Transactional
+    public ProductAdminResponse updateProduct(Long id, ProductUpdateRequest request) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy món ăn với ID: " + id));
+
+        String name = request.getName().trim();
+        String slug = (request.getSlug() != null && !request.getSlug().isBlank())
+                ? request.getSlug().trim()
+                : SlugUtils.toSlug(name);
+
+        if (productRepository.existsBySlugAndIdNot(slug, id)) {
+            throw new IllegalArgumentException("Slug '" + slug + "' đã tồn tại trên một món ăn khác");
+        }
+
+        Category category = categoryRepository.findById(request.getCategoryId())
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy danh mục với ID: " + request.getCategoryId()));
+
+        if (request.getDiscountPrice() != null && request.getDiscountPrice().compareTo(BigDecimal.ZERO) > 0) {
+            if (request.getDiscountPrice().compareTo(request.getPrice()) >= 0) {
+                throw new IllegalArgumentException("Giá khuyến mãi phải nhỏ hơn giá gốc");
+            }
+        }
+
+        product.setName(name);
+        product.setSlug(slug);
+        product.setCategory(category);
+        product.setPrice(request.getPrice());
+        product.setDiscountPrice(request.getDiscountPrice());
+        if (request.getStockQuantity() != null) {
+            product.setStockQuantity(request.getStockQuantity());
+        }
+        product.setDescription(request.getDescription());
+        if (request.getIsAvailable() != null) {
+            product.setIsAvailable(request.getIsAvailable());
+        }
+
+        Product updatedProduct = productRepository.save(product);
+
+        if (request.getImages() != null) {
+            productImageRepository.deleteByProductId(id);
+            saveProductImages(updatedProduct, request.getImages());
+        }
+
+        return mapToAdminResponse(updatedProduct);
+    }
+
+    @Transactional
+    public void deleteProduct(Long id) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy món ăn với ID: " + id));
+
+        // Xóa mềm: Chuyển isAvailable sang false
+        product.setIsAvailable(false);
+        productRepository.save(product);
+
+        // Xóa món ăn khỏi giỏ hàng của người dùng
+        cartItemRepository.deleteByProductId(id);
+    }
+
+    private void saveProductImages(Product product, List<ProductImageRequest> imageRequests) {
+        if (imageRequests == null || imageRequests.isEmpty()) {
+            return;
+        }
+
+        // Đảm bảo chỉ có tối đa 1 ảnh là thumbnail
+        boolean hasThumbnail = imageRequests.stream().anyMatch(img -> Boolean.TRUE.equals(img.getIsThumbnail()));
+        boolean firstSet = false;
+
+        List<ProductImage> imageEntities = new ArrayList<>();
+        for (int i = 0; i < imageRequests.size(); i++) {
+            ProductImageRequest req = imageRequests.get(i);
+            boolean isThumb = false;
+            if (hasThumbnail) {
+                if (Boolean.TRUE.equals(req.getIsThumbnail()) && !firstSet) {
+                    isThumb = true;
+                    firstSet = true;
+                }
+            } else if (i == 0) {
+                isThumb = true;
+            }
+
+            imageEntities.add(ProductImage.builder()
+                    .product(product)
+                    .imageUrl(req.getImageUrl().trim())
+                    .isThumbnail(isThumb)
+                    .sortOrder(req.getSortOrder() != null ? req.getSortOrder() : i)
+                    .build());
+        }
+        productImageRepository.saveAll(imageEntities);
+    }
+
+    private ProductAdminResponse mapToAdminResponse(Product product) {
+        CategoryBriefDto categoryDto = null;
+        if (product.getCategory() != null) {
+            categoryDto = CategoryBriefDto.builder()
+                    .id(product.getCategory().getId())
+                    .name(product.getCategory().getName())
+                    .slug(product.getCategory().getSlug())
+                    .build();
+        }
+
+        List<ProductImage> imageEntities = productImageRepository
+                .findByProductIdOrderByIsThumbnailDescSortOrderAsc(product.getId());
+        List<ProductImageDto> images = imageEntities.stream()
+                .map(img -> ProductImageDto.builder()
+                        .url(img.getImageUrl())
+                        .isMain(Boolean.TRUE.equals(img.getIsThumbnail()))
+                        .build())
+                .toList();
+
+        return ProductAdminResponse.builder()
+                .id(product.getId())
+                .name(product.getName())
+                .slug(product.getSlug())
+                .category(categoryDto)
+                .price(product.getPrice())
+                .discountPrice(product.getDiscountPrice())
+                .stockQuantity(product.getStockQuantity())
+                .soldCount(product.getSoldCount())
+                .avgRating(product.getAvgRating())
+                .isAvailable(product.getIsAvailable())
+                .description(product.getDescription())
+                .images(images)
+                .createdAt(product.getCreatedAt())
+                .updatedAt(product.getUpdatedAt())
+                .build();
+    }
 }
+
