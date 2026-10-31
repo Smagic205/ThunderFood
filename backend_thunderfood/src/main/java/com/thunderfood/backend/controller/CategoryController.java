@@ -37,15 +37,13 @@ public class CategoryController {
     @GetMapping("/{slug}/products")
     public ResponseEntity<ApiResponse<PageResponse<ProductListItemResponse>>> getProductsByCategorySlug(
             @PathVariable String slug,
-            @ModelAttribute ProductFilterRequest filter
-    ) {
+            @ModelAttribute ProductFilterRequest filter) {
         if (filter == null) {
             filter = new ProductFilterRequest();
         }
         PageResponse<ProductListItemResponse> response = productService.getProductsByCategorySlug(
                 slug,
-                filter
-        );
+                filter);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách sản phẩm theo danh mục thành công", response));
     }
 }

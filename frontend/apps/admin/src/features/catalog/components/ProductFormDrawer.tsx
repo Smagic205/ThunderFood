@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Upload } from 'lucide-react';
+import { X, Upload, Loader2 } from 'lucide-react';
 import type { Product, Category } from '../types';
+import { catalogApi } from '../api/catalogApi';
 
 interface ProductFormDrawerProps {
   isOpen: boolean;
   product: Product | null;
   categories: Category[];
+  isSubmitting?: boolean;
   onClose: () => void;
   onSave: (productData: Partial<Product>) => void;
 }
@@ -14,10 +16,12 @@ export const ProductFormDrawer: React.FC<ProductFormDrawerProps> = ({
   isOpen,
   product,
   categories,
+  isSubmitting = false,
   onClose,
   onSave,
 }) => {
   const [name, setName] = useState('');
+  const [slug, setSlug] = useState('');
   const [categoryId, setCategoryId] = useState<number>(0);
   const [price, setPrice] = useState<number | ''>('');
   const [discountPrice, setDiscountPrice] = useState<number | ''>('');
@@ -26,6 +30,8 @@ export const ProductFormDrawer: React.FC<ProductFormDrawerProps> = ({
   const [isAvailable, setIsAvailable] = useState(true);
   const [imgs, setImgs] = useState<string[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -43,6 +49,7 @@ export const ProductFormDrawer: React.FC<ProductFormDrawerProps> = ({
 
       if (product) {
         setName(product.name);
+        setSlug(product.slug || '');
         setCategoryId(product.categoryId);
         setPrice(product.price);
         setDiscountPrice(product.discountPrice ?? '');
@@ -52,6 +59,7 @@ export const ProductFormDrawer: React.FC<ProductFormDrawerProps> = ({
         setImgs(product.imgs || []);
       } else {
         setName('');
+        setSlug('');
         setCategoryId(categories[0]?.id ?? 0);
         setPrice('');
         setDiscountPrice('');
@@ -61,6 +69,7 @@ export const ProductFormDrawer: React.FC<ProductFormDrawerProps> = ({
         setImgs([]);
       }
       setErrors({});
+      setUploadError(null);
       return;
     }
 
@@ -75,22 +84,44 @@ export const ProductFormDrawer: React.FC<ProductFormDrawerProps> = ({
 
   if (!isOpen) return null;
 
-  const handleFiles = (files: FileList | null) => {
-    if (!files) return;
+  const handleFiles = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setUploadError(null);
     const remainingSlots = 8 - imgs.length;
+    if (remainingSlots <= 0) {
+      setUploadError('Tối đa 8 hình ảnh cho mỗi món ăn');
+      return;
+    }
+
     const filesToProcess = Array.from(files)
       .filter((f) => f.type.startsWith('image/'))
       .slice(0, remainingSlots);
 
-    filesToProcess.forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (reader.result) {
-          setImgs((prev) => (prev.length < 8 ? [...prev, reader.result as string] : prev));
-        }
-      };
-      reader.readAsDataURL(file);
-    });
+    if (filesToProcess.length === 0) {
+      setUploadError('Vui lòng chọn tệp hình ảnh hợp lệ (JPG, PNG, WebP, GIF)');
+      return;
+    }
+
+    const MAX_SIZE = 5 * 1024 * 1024;
+    const oversized = filesToProcess.find((f) => f.size > MAX_SIZE);
+    if (oversized) {
+      setUploadError(`Tệp "${oversized.name}" vượt quá dung lượng tối đa 5MB`);
+      return;
+    }
+
+    try {
+      setIsUploading(true);
+      const uploadedUrls = await catalogApi.uploadImages(filesToProcess);
+      setImgs((prev) => [...prev, ...uploadedUrls].slice(0, 8));
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || 'Không thể tải ảnh lên hệ thống lưu trữ Cloudinary';
+      setUploadError(msg);
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
   };
 
   const handleMakeMainImage = (index: number) => {
@@ -129,19 +160,23 @@ export const ProductFormDrawer: React.FC<ProductFormDrawerProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
+    if (isUploading) {
+      setUploadError('Vui lòng đợi ảnh tải lên Cloudinary hoàn tất');
+      return;
+    }
 
     onSave({
       id: product?.id,
       name: name.trim(),
+      slug: slug.trim() || undefined,
       categoryId: Number(selectedCategoryId),
       price: Number(price),
-      discountPrice: discountPrice !== '' ? Number(discountPrice) : null,
+      discountPrice: discountPrice !== '' && discountPrice !== null ? Number(discountPrice) : null,
       stockQuantity: Number(stockQuantity),
       description: description.trim(),
       isAvailable,
       imgs,
     });
-    onClose();
   };
 
   return (
@@ -218,6 +253,20 @@ export const ProductFormDrawer: React.FC<ProductFormDrawerProps> = ({
               placeholder="Ví dụ: Burger Bò Thunder, Gà Giòn Sốt Cay..."
             />
             {errors.name && <small style={{ color: 'var(--c-red)', marginTop: '4px' }}>{errors.name}</small>}
+          </div>
+
+          {/* Slug */}
+          <div className="field">
+            <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>Đường dẫn (Slug)</span>
+              <span className="muted" style={{ fontSize: '12px' }}>Tùy chọn (tự sinh theo tên nếu để trống)</span>
+            </span>
+            <input
+              className="input"
+              value={slug}
+              onChange={(e) => setSlug(e.target.value)}
+              placeholder="Ví dụ: burger-bo-thunder"
+            />
           </div>
 
           {/* Danh mục */}
@@ -305,6 +354,12 @@ export const ProductFormDrawer: React.FC<ProductFormDrawerProps> = ({
               </span>
             </div>
 
+            {uploadError && (
+              <div style={{ color: 'var(--c-red)', fontSize: '13px', marginBottom: '8px' }}>
+                {uploadError}
+              </div>
+            )}
+
             <div
               className={`drop ${isDragOver ? 'over' : ''}`}
               style={{
@@ -313,16 +368,17 @@ export const ProductFormDrawer: React.FC<ProductFormDrawerProps> = ({
                 padding: '24px 16px',
                 textAlign: 'center',
                 backgroundColor: isDragOver ? 'rgba(255, 193, 7, 0.05)' : 'rgba(255, 255, 255, 0.02)',
-                cursor: 'pointer',
+                cursor: isUploading ? 'not-allowed' : 'pointer',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 gap: '8px',
                 transition: 'all 0.15s ease',
+                opacity: isUploading ? 0.7 : 1,
               }}
               onDragOver={(e) => {
                 e.preventDefault();
-                setIsDragOver(true);
+                if (!isUploading) setIsDragOver(true);
               }}
               onDragLeave={(e) => {
                 e.preventDefault();
@@ -331,21 +387,36 @@ export const ProductFormDrawer: React.FC<ProductFormDrawerProps> = ({
               onDrop={(e) => {
                 e.preventDefault();
                 setIsDragOver(false);
-                handleFiles(e.dataTransfer.files);
+                if (!isUploading) handleFiles(e.dataTransfer.files);
               }}
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => {
+                if (!isUploading) fileInputRef.current?.click();
+              }}
             >
-              <Upload size={28} className="muted" />
-              <b style={{ color: 'var(--ink)', fontSize: '14px' }}>Kéo thả ảnh vào đây</b>
-              <span className="muted" style={{ fontSize: '12.5px' }}>
-                hoặc bấm để chọn từ máy tính (JPG, PNG, WebP)
-              </span>
+              {isUploading ? (
+                <>
+                  <Loader2 size={28} className="animate-spin text-volt" />
+                  <b style={{ color: 'var(--ink)', fontSize: '14px' }}>Đang tải ảnh lên Cloudinary...</b>
+                  <span className="muted" style={{ fontSize: '12.5px' }}>
+                    Vui lòng đợi trong giây lát
+                  </span>
+                </>
+              ) : (
+                <>
+                  <Upload size={28} className="muted" />
+                  <b style={{ color: 'var(--ink)', fontSize: '14px' }}>Kéo thả ảnh vào đây</b>
+                  <span className="muted" style={{ fontSize: '12.5px' }}>
+                    hoặc bấm để chọn từ máy tính (Tối đa 5MB: JPG, PNG, WebP, GIF)
+                  </span>
+                </>
+              )}
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp,image/gif"
                 multiple
                 hidden
+                disabled={isUploading}
                 onChange={(e) => handleFiles(e.target.files)}
               />
             </div>
@@ -480,11 +551,24 @@ export const ProductFormDrawer: React.FC<ProductFormDrawerProps> = ({
             backgroundColor: 'var(--surface, #1e2238)',
           }}
         >
-          <button type="button" className="btn btn-ghost" onClick={onClose}>
+          <button type="button" className="btn btn-ghost" onClick={onClose} disabled={isSubmitting || isUploading}>
             Hủy
           </button>
-          <button type="submit" form="product-form" className="btn btn-primary">
-            {product ? 'Lưu thay đổi' : 'Thêm món'}
+          <button
+            type="submit"
+            form="product-form"
+            className="btn btn-primary"
+            disabled={isSubmitting || isUploading}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 size={16} className="animate-spin" />
+                <span>Đang lưu...</span>
+              </>
+            ) : (
+              product ? 'Lưu thay đổi' : 'Thêm món'
+            )}
           </button>
         </div>
       </div>

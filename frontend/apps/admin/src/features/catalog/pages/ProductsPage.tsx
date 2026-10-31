@@ -107,6 +107,10 @@ export const ProductsPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['admin-products'] });
       queryClient.invalidateQueries({ queryKey: ['admin-categories'] });
       showToast(editingProduct ? `Đã lưu thay đổi món “${saved.name}”` : `Đã thêm món mới “${saved.name}”`);
+      setIsDrawerOpen(false);
+    },
+    onError: (err: any) => {
+      showToast(err?.message || 'Có lỗi xảy ra khi lưu món ăn');
     },
   });
 
@@ -116,6 +120,10 @@ export const ProductsPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['admin-products'] });
       queryClient.invalidateQueries({ queryKey: ['admin-categories'] });
       showToast('Đã xóa món ăn khỏi thực đơn');
+      setDeletingProduct(null);
+    },
+    onError: (err: any) => {
+      showToast(err?.message || 'Không thể xóa món ăn');
     },
   });
 
@@ -125,6 +133,9 @@ export const ProductsPage: React.FC = () => {
     onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ['admin-products'] });
       showToast(vars.isAvailable ? 'Đã hiển thị món trên cửa hàng' : 'Đã ẩn món khỏi thực đơn');
+    },
+    onError: (err: any) => {
+      showToast(err?.message || 'Không thể cập nhật trạng thái món ăn');
     },
   });
 
@@ -624,6 +635,7 @@ export const ProductsPage: React.FC = () => {
         isOpen={isDrawerOpen}
         product={editingProduct}
         categories={categories}
+        isSubmitting={saveProductMutation.isPending}
         onClose={() => setIsDrawerOpen(false)}
         onSave={(data) => saveProductMutation.mutate(data)}
       />

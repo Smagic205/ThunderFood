@@ -51,4 +51,23 @@ export const userApi = {
     }
     return res.data.data;
   },
+
+  /**
+   * POST /api/v1/users/profile/avatar
+   * Tải ảnh đại diện lên Cloudinary và cập nhật avatarUrl của người dùng
+   */
+  uploadAvatar: async (file: File): Promise<CustomerProfile> => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const res = await axiosClient.post<ApiResponse<CustomerProfile>>('/v1/users/profile/avatar', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    if (!res.data.success) {
+      throw new Error(res.data.message || 'Không thể tải lên ảnh đại diện');
+    }
+    return res.data.data;
+  },
 };
