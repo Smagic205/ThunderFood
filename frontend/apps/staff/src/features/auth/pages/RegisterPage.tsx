@@ -146,7 +146,7 @@ export const RegisterPage = () => {
                   className="input" 
                   type="email" 
                   name="email" 
-                  placeholder="ten@gmail.com" 
+                  placeholder="ten@email.com"
                   autoComplete="email" 
                   inputMode="email"
                   value={formData.email}

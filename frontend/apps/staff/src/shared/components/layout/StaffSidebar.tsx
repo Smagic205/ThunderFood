@@ -1,13 +1,21 @@
 import { Link, NavLink } from 'react-router-dom';
 import { Zap, Receipt, Box, Truck, MessageSquare, LogOut } from 'lucide-react';
 import { useAuthStore } from '@/features/auth/store/authStore';
+import { authApi } from '@/features/auth/api/auth';
 
 export const StaffSidebar = () => {
   const { user, logout } = useAuthStore();
 
-  const handleLogout = () => {
-    logout();
-    window.location.href = '/login';
+  const handleLogout = async () => {
+    const refreshToken = useAuthStore.getState().refreshToken;
+    try {
+      if (refreshToken) await authApi.logout(refreshToken);
+    } catch {
+      // Always clear the local session even when the backend is unavailable.
+    } finally {
+      logout();
+      window.location.href = '/login';
+    }
   };
 
   return (

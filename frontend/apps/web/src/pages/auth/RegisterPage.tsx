@@ -9,7 +9,7 @@ import { authApi } from '@/shared/api/authApi';
 
 const registerSchema = z.object({
   name: z.string().min(1, 'Vui lòng nhập họ và tên'),
-  email: z.string().min(1, 'Vui lòng nhập email').regex(/^[\w-\.]+@gmail\.com$/, 'Vui lòng sử dụng tài khoản Gmail'),
+  email: z.string().min(1, 'Vui lòng nhập email').email('Email không đúng định dạng'),
   phone: z.string().regex(/^(0|\+84)(\s|\.)?((3[2-9])|(5[689])|(7[06-9])|(8[1-689])|(9[0-46-9]))(\d)(\s|\.)?(\d{3})(\s|\.)?(\d{3})$/, 'Số điện thoại không hợp lệ'),
   password: z.string().regex(/^(?=.*[A-Z])(?=.*[@#$%^&+=!_]).{8,12}$/, 'Mật khẩu 8-12 ký tự, ít nhất 1 hoa & 1 đặc biệt'),
   confirmPassword: z.string().min(1, 'Vui lòng nhập lại mật khẩu'),
@@ -121,11 +121,11 @@ export const RegisterPage = () => {
         
         <div className="grid2 keep">
           <label className="field">
-            <span>Email (Bắt buộc Gmail)</span>
+            <span>Email</span>
             <input 
               className="input" 
               type="email" 
-              placeholder="ten@gmail.com" 
+              placeholder="ten@email.com"
               autoComplete="email" 
               inputMode="email"
               {...register('email')}

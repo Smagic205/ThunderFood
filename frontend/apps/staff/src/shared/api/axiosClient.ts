@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { useAuthStore } from '../../features/auth/store/authStore';
 import { authApi, type ApiResponse, type StaffAuthResponse } from '../../features/auth/api/auth';
+import { useForbiddenNoticeStore } from '../stores/forbiddenNoticeStore';
 
 export const axiosClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8080/api',
@@ -65,6 +66,12 @@ axiosClient.interceptors.response.use(
         refreshTokenPromise = null;
       }
     }
+    if (error.response?.status === 403) {
+      useForbiddenNoticeStore.getState().showForbidden(
+        error.response?.data?.message || 'Bạn không có quyền thực hiện thao tác này'
+      );
+    }
+
     return Promise.reject(error);
   }
 );

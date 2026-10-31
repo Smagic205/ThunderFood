@@ -12,16 +12,24 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@/app/store/authStore';
 import { useToastStore } from '@/shared/stores/toastStore';
+import { authApi } from '@/shared/api/authApi';
 
 export const AccountLayout = () => {
   const { user, logout } = useAuthStore();
   const { showToast } = useToastStore();
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    logout();
-    showToast('Đã đăng xuất khỏi tài khoản', 'info');
-    navigate('/');
+  const handleLogout = async () => {
+    const refreshToken = useAuthStore.getState().refreshToken;
+    try {
+      if (refreshToken) await authApi.logout(refreshToken);
+    } catch {
+      // Always clear the local session even when the backend is unavailable.
+    } finally {
+      logout();
+      showToast('Đã đăng xuất khỏi tài khoản', 'info');
+      navigate('/');
+    }
   };
 
   const getInitials = (name?: string) => {

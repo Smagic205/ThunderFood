@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { useAuthStore } from '@/app/store/authStore';
+import { useToastStore } from '@/shared/stores/toastStore';
 import { authApi } from './authApi';
 
 export const axiosClient = axios.create({
@@ -66,6 +67,12 @@ axiosClient.interceptors.response.use(
       } finally {
         refreshTokenPromise = null;
       }
+    }
+
+    // Xử lý lỗi 403 Forbidden (không có quyền truy cập dữ liệu người khác hoặc chức năng bị cấm)
+    if (error.response?.status === 403) {
+      const message = error.response.data?.message || 'Bạn không có quyền thực hiện thao tác này';
+      useToastStore.getState().showToast(message, 'error');
     }
 
     return Promise.reject(error);

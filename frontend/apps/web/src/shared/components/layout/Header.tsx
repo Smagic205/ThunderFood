@@ -2,6 +2,7 @@ import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { Zap, Search, Bell, Heart, ShoppingBag, Moon, Sun, User, Receipt, Layout, LogOut } from 'lucide-react';
 import { useThemeStore } from '@/shared/stores/themeStore';
 import { useAuthStore } from '@/app/store/authStore';
+import { authApi } from '@/shared/api/authApi';
 import { useEffect, useState, useRef } from 'react';
 
 export const Header = () => {
@@ -25,10 +26,17 @@ export const Header = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleLogout = () => {
-    logout();
-    setShowMenu(false);
-    navigate('/login');
+  const handleLogout = async () => {
+    const refreshToken = useAuthStore.getState().refreshToken;
+    try {
+      if (refreshToken) await authApi.logout(refreshToken);
+    } catch {
+      // Always clear the local session even when the backend is unavailable.
+    } finally {
+      logout();
+      setShowMenu(false);
+      navigate('/login');
+    }
   };
 
   const getInitials = (name: string) => {
