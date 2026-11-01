@@ -68,6 +68,64 @@ public class Voucher {
     private LocalDateTime endDate;
 
     @Builder.Default
+    @Column(name = "usage_limit_per_user")
+    private Integer usageLimitPerUser = 1;
+
+    @Builder.Default
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
+
+    @org.hibernate.annotations.CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @org.hibernate.annotations.UpdateTimestamp
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
+
+    // ── Helper methods ────────────────────────────────────────────────────────
+
+    public boolean isProductVoucher() {
+        return "PRODUCT".equalsIgnoreCase(this.voucherType);
+    }
+
+    public boolean isShippingVoucher() {
+        return "SHIPPING".equalsIgnoreCase(this.voucherType);
+    }
+
+    public boolean isPercentDiscount() {
+        return "PERCENT".equalsIgnoreCase(this.discountType);
+    }
+
+    public boolean isFixedAmountDiscount() {
+        return "FIXED_AMOUNT".equalsIgnoreCase(this.discountType);
+    }
+
+    public boolean isUpcoming(LocalDateTime now) {
+        return this.startDate != null && now.isBefore(this.startDate);
+    }
+
+    public boolean isExpired(LocalDateTime now) {
+        return this.endDate != null && now.isAfter(this.endDate);
+    }
+
+    public boolean isDepleted() {
+        return this.usageLimit != null && this.usedCount != null && this.usedCount >= this.usageLimit;
+    }
+
+    public String computeStatus(LocalDateTime now) {
+        if (Boolean.FALSE.equals(this.isActive)) {
+            return "INACTIVE";
+        }
+        if (isUpcoming(now)) {
+            return "UPCOMING";
+        }
+        if (isExpired(now)) {
+            return "EXPIRED";
+        }
+        if (isDepleted()) {
+            return "DEPLETED";
+        }
+        return "ACTIVE";
+    }
 }
