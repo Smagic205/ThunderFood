@@ -8,6 +8,7 @@ import { OrdersPage } from '@/features/orders/pages/OrdersPage';
 import { PackagesPage } from '@/features/packages/pages/PackagesPage';
 import { ProductsPage } from '@/features/catalog/pages/ProductsPage';
 import { CategoriesPage } from '@/features/catalog/pages/CategoriesPage';
+import { VouchersPage } from '@/features/vouchers/pages/VouchersPage';
 
 export const router = createBrowserRouter([
   {
@@ -74,12 +75,7 @@ export const router = createBrowserRouter([
           },
           {
             path: 'admin/vouchers',
-            element: (
-              <div className="card card-p">
-                <h3>Khuyến mãi</h3>
-                <p className="muted" style={{ marginTop: '8px' }}>Trang quản lý khuyến mãi đang được xây dựng.</p>
-              </div>
-            ),
+            element: <VouchersPage />,
           },
           {
             path: 'admin/banners',

@@ -6,6 +6,9 @@ import { createBrowserRouter } from 'react-router-dom';
 import { HomePage } from '../pages/HomePage';
 import { MenuPage } from '../pages/MenuPage';
 import { ProductDetailPage } from '../pages/ProductDetailPage';
+import { CartPage } from '../pages/CartPage';
+import { CheckoutPage } from '../pages/CheckoutPage';
+import { VouchersPage } from '../pages/VouchersPage';
 import { LoginPage } from '../pages/auth/LoginPage';
 import { RegisterPage } from '../pages/auth/RegisterPage';
 import { ForgotPage } from '../pages/auth/ForgotPage';
@@ -13,8 +16,8 @@ import { ForgotPage } from '../pages/auth/ForgotPage';
 import { AccountLayout } from '../pages/account/AccountLayout';
 import { AddressesPage } from '../pages/account/AddressesPage';
 import { ProfilePage } from '../pages/account/ProfilePage';
+import { OrdersPage } from '../pages/account/OrdersPage';
 import { 
-  OrdersPage, 
   PaymentsPage, 
   WishlistPage, 
   NotificationsPage 
@@ -40,7 +43,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'vouchers',
-        element: <div className="container mx-auto p-12 text-center text-xl font-bold text-[#12183A]">Trang Ưu đãi (Đang phát triển)</div>,
+        element: <VouchersPage />,
       },
       {
         path: 'support',
@@ -51,7 +54,11 @@ export const router = createBrowserRouter([
         children: [
           {
             path: 'cart',
-            element: <div className="container mx-auto p-12 text-center text-xl font-bold text-[#12183A]">Trang Giỏ hàng (Đang phát triển)</div>,
+            element: <CartPage />,
+          },
+          {
+            path: 'checkout',
+            element: <CheckoutPage />,
           },
           {
             path: 'account',

@@ -1,21 +1,40 @@
-import { Heart, ShoppingBag, Star } from 'lucide-react';
+import { useState } from 'react';
+import { Heart, ShoppingBag, Star, Loader2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/app/store/authStore';
+import { useCartStore } from '@/shared/stores/cartStore';
+import { useToastStore } from '@/shared/stores/toastStore';
 
 import type { Product } from '@/shared/types';
 
 export function ProductCard({ product: p }: { product: Product }) {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuthStore();
+  const { addToCart } = useCartStore();
+  const { showToast } = useToastStore();
+  const [isAdding, setIsAdding] = useState(false);
 
-  const handleAction = (e: React.MouseEvent, actionName: string) => {
+  const handleAction = async (e: React.MouseEvent, actionName: string) => {
     e.preventDefault();
+    e.stopPropagation();
     if (!isAuthenticated) {
+      showToast('Vui lòng đăng nhập để thêm món vào giỏ hàng', 'info');
       navigate('/login');
       return;
     }
-    // TODO: Implement actual action logic
-    console.log(`${actionName} clicked for ${p.id}`);
+
+    if (actionName === 'add-to-cart') {
+      try {
+        setIsAdding(true);
+        await addToCart(p.id, 1);
+        showToast(`Đã thêm “${p.name}” vào giỏ hàng`, 'success');
+      } catch (err: any) {
+        showToast(err?.message || 'Không thể thêm vào giỏ', 'error');
+      } finally {
+        setIsAdding(false);
+      }
+      return;
+    }
   };
 
   const imageSrc = p.thumbnailUrl || p.imageUrl || 'https://cdn-icons-png.flaticon.com/512/3075/3075977.png';
@@ -98,11 +117,12 @@ export function ProductCard({ product: p }: { product: Product }) {
           </div>
           {/* Add to cart button */}
           <button 
-            className="w-[48px] h-[48px] rounded-full bg-[#2450D6] text-white flex items-center justify-center hover:bg-[#1C3FB3] hover:scale-105 transition-all shadow-md shrink-0" 
+            className="w-[48px] h-[48px] rounded-full bg-[#2450D6] text-white flex items-center justify-center hover:bg-[#1C3FB3] hover:scale-105 transition-all shadow-md shrink-0 disabled:opacity-60" 
             aria-label="Thêm vào giỏ"
+            disabled={isAdding}
             onClick={(e) => handleAction(e, 'add-to-cart')}
           >
-            <ShoppingBag size={22} />
+            {isAdding ? <Loader2 size={20} className="animate-spin" /> : <ShoppingBag size={22} />}
           </button>
         </div>
       </div>

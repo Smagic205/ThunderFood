@@ -1,56 +1,92 @@
+import { Copy, Percent, Truck } from 'lucide-react';
+import { useToastStore } from '@/shared/stores/toastStore';
+import type { VoucherClientResponse } from '@/shared/api/voucherApi';
 import type { Voucher } from '@/shared/types';
-import { Copy, Percent } from 'lucide-react';
 
 interface VoucherListProps {
-  vouchers: Voucher[];
+  vouchers: (VoucherClientResponse | Voucher)[];
 }
 
 export function VoucherList({ vouchers }: VoucherListProps) {
+  const { showToast } = useToastStore();
+
   if (!vouchers || vouchers.length === 0) return null;
 
   const handleCopy = (code: string) => {
     navigator.clipboard.writeText(code);
-    // TODO: Add toast notification
-    alert(`Đã sao chép mã ${code}`);
+    showToast(`Đã sao chép mã “${code}”`, 'success');
+  };
+
+  const formatDiscount = (v: VoucherClientResponse | Voucher) => {
+    const isClient = 'voucherType' in v;
+    const isShipping = isClient && v.voucherType === 'SHIPPING';
+    const isPercent = v.discountType === 'PERCENTAGE';
+
+    if (isShipping) {
+      return isPercent ? `Giảm ${v.discountValue}% ship` : `Giảm ${Number(v.discountValue).toLocaleString('vi-VN')}đ ship`;
+    }
+    return isPercent ? `Giảm ${v.discountValue}%` : `Giảm ${Number(v.discountValue).toLocaleString('vi-VN')}đ`;
   };
 
   return (
     <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-none pb-4 -mx-4 px-4 md:mx-0 md:px-0">
-      {vouchers.map((v) => (
-        <div 
-          key={v.id} 
-          className="flex-none w-[300px] md:w-[350px] snap-center bg-[var(--surface)] border border-[var(--line)] rounded-xl flex overflow-hidden shadow-sm hover:shadow-md transition-shadow relative"
-          style={{
-            maskImage: 'radial-gradient(circle at 0 50%, transparent 8px, black 8px), radial-gradient(circle at 100% 50%, transparent 8px, black 8px)',
-            maskSize: '100% 100%',
-            maskPosition: 'center',
-            maskRepeat: 'no-repeat'
-          }}
-        >
-          {/* Lề trái */}
-          <div className="w-[60px] flex items-center justify-center bg-[var(--volt)] text-[var(--ink)]">
-            <Percent size={24} strokeWidth={2.5} />
-          </div>
-          
-          {/* Lề phải / Nét đứt */}
-          <div className="flex-1 p-3 flex items-center justify-between border-l border-dashed border-[var(--line)]">
-            <div className="flex-1 min-w-0 pr-2">
-              <h4 className="font-bold text-[var(--ink)] text-lg leading-tight truncate">{v.code}</h4>
-              <p className="text-sm text-[var(--ink-2)] line-clamp-1">{v.description}</p>
-              <p className="text-xs text-[var(--ink-3)] mt-1">
-                Hết hạn: {new Date(v.endDate).toLocaleDateString('vi-VN')}
-              </p>
-            </div>
-            <button 
-              onClick={() => handleCopy(v.code)}
-              className="flex-none flex flex-col items-center justify-center bg-[var(--surface-2)] text-[var(--ink)] hover:bg-[var(--line)] h-full px-3 rounded-lg font-medium transition-colors"
+      {vouchers.map((v) => {
+        const isClient = 'voucherType' in v;
+        const isShipping = isClient && v.voucherType === 'SHIPPING';
+        const formattedDiscount = formatDiscount(v);
+
+        return (
+          <div 
+            key={v.id} 
+            className="flex-none w-[310px] md:w-[350px] snap-center bg-[var(--surface)] border border-[var(--line)] rounded-xl flex overflow-hidden shadow-sm hover:shadow-md transition-shadow relative"
+            style={{
+              maskImage: 'radial-gradient(circle at 0 50%, transparent 8px, black 8px), radial-gradient(circle at 100% 50%, transparent 8px, black 8px)',
+              maskSize: '100% 100%',
+              maskPosition: 'center',
+              maskRepeat: 'no-repeat'
+            }}
+          >
+            {/* Lề trái */}
+            <div 
+              className={`w-[68px] flex flex-col items-center justify-center p-2 text-center ${
+                isShipping 
+                  ? 'bg-emerald-500 text-white' 
+                  : 'bg-[var(--volt)] text-[var(--on-volt)]'
+              }`}
             >
-              <Copy size={16} className="mb-1" />
-              <span className="text-xs">Chép</span>
-            </button>
+              {isShipping ? <Truck size={24} strokeWidth={2.2} /> : <Percent size={24} strokeWidth={2.4} />}
+              <span className="text-[10px] font-bold mt-1 tracking-tight uppercase">
+                {isShipping ? 'Freeship' : 'Voucher'}
+              </span>
+            </div>
+            
+            {/* Lề phải / Nét đứt */}
+            <div className="flex-1 p-3 flex items-center justify-between border-l border-dashed border-[var(--line)]">
+              <div className="flex-1 min-w-0 pr-2">
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <h4 className="font-bold text-[var(--ink)] text-base leading-tight truncate">{v.code}</h4>
+                  <span className="text-xs font-semibold px-1.5 py-0.5 rounded bg-[var(--surface-2)] text-[var(--ink)]">
+                    {formattedDiscount}
+                  </span>
+                </div>
+                <p className="text-xs text-[var(--ink-2)] line-clamp-1">{v.description || ('name' in v ? v.name : '')}</p>
+                <p className="text-[11px] text-[var(--ink-3)] mt-1">
+                  HSD: {new Date(v.endDate).toLocaleDateString('vi-VN')}
+                </p>
+              </div>
+              <button 
+                type="button"
+                onClick={() => handleCopy(v.code)}
+                className="flex-none flex flex-col items-center justify-center bg-[var(--surface-2)] text-[var(--ink)] hover:bg-[var(--line)] h-full px-3 py-2 rounded-lg font-medium transition-colors"
+                title="Sao chép mã"
+              >
+                <Copy size={15} className="mb-1" />
+                <span className="text-[11px]">Chép</span>
+              </button>
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

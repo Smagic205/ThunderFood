@@ -2,12 +2,14 @@ import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { Zap, Search, Bell, Heart, ShoppingBag, Moon, Sun, User, Receipt, Layout, LogOut } from 'lucide-react';
 import { useThemeStore } from '@/shared/stores/themeStore';
 import { useAuthStore } from '@/app/store/authStore';
+import { useCartStore } from '@/shared/stores/cartStore';
 import { authApi } from '@/shared/api/authApi';
 import { useEffect, useState, useRef } from 'react';
 
 export const Header = () => {
   const { theme, toggleTheme, initTheme } = useThemeStore();
   const { user, isAuthenticated, logout } = useAuthStore();
+  const { totalQuantity, fetchCartCount, resetCart } = useCartStore();
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLSpanElement>(null);
   const navigate = useNavigate();
@@ -15,6 +17,14 @@ export const Header = () => {
   useEffect(() => {
     initTheme();
   }, [initTheme]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchCartCount();
+    } else {
+      resetCart();
+    }
+  }, [isAuthenticated, fetchCartCount, resetCart]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -87,7 +97,11 @@ export const Header = () => {
             </Link>
             <Link className="ibtn cart-btn" to="/cart" aria-label="Giỏ hàng">
               <ShoppingBag size={22} />
-              <span className="badge" data-cart-badge>0</span>
+              {totalQuantity > 0 && (
+                <span className="badge" data-cart-badge>
+                  {totalQuantity > 99 ? '99+' : totalQuantity}
+                </span>
+              )}
             </Link>
             <span className="hide-sm" data-acct ref={menuRef}>
               {isAuthenticated && user ? (

@@ -1,14 +1,22 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { ChevronRight, Star, Heart, ShoppingBag, Minus, Plus, Truck, Flame, Bolt, Image as ImageIcon } from 'lucide-react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { ChevronRight, Star, Heart, ShoppingBag, Minus, Plus, Truck, Flame, Bolt, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { categoryApi } from '@/shared/api/categoryApi';
 import { productApi } from '@/shared/api/productApi';
 import { mockProducts, mockReviews } from '@/shared/api/mockData';
 import { ProductCard } from '@/shared/components/ui/ProductCard';
+import { useAuthStore } from '@/app/store/authStore';
+import { useCartStore } from '@/shared/stores/cartStore';
+import { useToastStore } from '@/shared/stores/toastStore';
 
 export function ProductDetailPage() {
   const { slug } = useParams<{ slug: string }>();
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuthStore();
+  const { addToCart } = useCartStore();
+  const { showToast } = useToastStore();
+  const [isAdding, setIsAdding] = useState(false);
 
   // 1. Lấy danh mục
   const { data: categories = [] } = useQuery({
@@ -132,6 +140,44 @@ export function ProductDetailPage() {
     setQuantity((q) => Math.max(1, Math.min(20, q + delta)));
   };
 
+  const handleAddToCart = async () => {
+    if (!isAuthenticated) {
+      showToast('Vui lòng đăng nhập để thêm món vào giỏ hàng', 'info');
+      navigate('/login');
+      return;
+    }
+    if (!product) return;
+
+    try {
+      setIsAdding(true);
+      await addToCart(product.id, quantity);
+      showToast(`Đã thêm ${quantity} “${product.name}” vào giỏ hàng!`, 'success');
+    } catch (err: any) {
+      showToast(err?.message || 'Không thể thêm vào giỏ hàng', 'error');
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
+  const handleBuyNow = async () => {
+    if (!isAuthenticated) {
+      showToast('Vui lòng đăng nhập để đặt món', 'info');
+      navigate('/login');
+      return;
+    }
+    if (!product) return;
+
+    try {
+      setIsAdding(true);
+      await addToCart(product.id, quantity);
+      navigate('/cart');
+    } catch (err: any) {
+      showToast(err?.message || 'Không thể đặt món lúc này', 'error');
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
   return (
     <>
       <div className="container page">
@@ -238,10 +284,22 @@ export function ProductDetailPage() {
                 <output style={{ minWidth: '40px', textAlign: 'center', fontWeight: 'bold', fontSize: '1.1rem' }}>{quantity}</output>
                 <button onClick={() => handleQuantity(1)} aria-label="Tăng" className="ibtn" style={{ width: '38px', height: '38px' }}><Plus size={18} /></button>
               </div>
-              <button className="btn btn-primary btn-lg grow" disabled={isOut}>
-                <ShoppingBag size={20} className="ic" /> Thêm vào giỏ
+              <button 
+                className="btn btn-primary btn-lg grow" 
+                disabled={isOut || isAdding}
+                onClick={handleAddToCart}
+                style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+              >
+                {isAdding ? <Loader2 size={20} className="animate-spin" /> : <ShoppingBag size={20} className="ic" />}
+                <span>{isAdding ? 'Đang thêm...' : 'Thêm vào giỏ'}</span>
               </button>
-              <button className="btn btn-ghost btn-lg hide-sm" disabled={isOut}>Mua ngay</button>
+              <button 
+                className="btn btn-ghost btn-lg hide-sm" 
+                disabled={isOut || isAdding}
+                onClick={handleBuyNow}
+              >
+                Mua ngay
+              </button>
               <button className="ibtn heart-inline heart" style={{ position: 'static', border: '1.5px solid var(--line)', width: '54px', height: '54px' }} aria-label="Yêu thích">
                 <Heart size={22} className={apiProduct?.isFavorite ? "ic fill-[#e13636] text-[#e13636]" : "ic"} />
               </button>
