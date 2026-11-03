@@ -290,9 +290,26 @@ public class OrderServiceImpl implements OrderService {
         Map<Long, String> thumbnailMap = loadThumbnailMap(cartItems.stream().map(ci -> ci.getProduct().getId()).toList());
 
         for (CartItem item : cartItems) {
-            Product product = item.getProduct();
-            BigDecimal effectivePrice = getEffectivePrice(product);
+            // Lấy lại sản phẩm với pessimistic write lock để tránh race condition
+            // khi nhiều đơn hàng cùng trừ tồn kho của cùng 1 sản phẩm đồng thời
+            Product product = productRepository.findByIdWithLock(item.getProduct().getId())
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Không tìm thấy sản phẩm khi xử lý đơn hàng: ID " + item.getProduct().getId()));
+
             int qty = item.getQuantity() != null ? item.getQuantity() : 1;
+
+            // Kiểm tra lại tồn kho sau khi đã lock (tránh oversell)
+            if (!Boolean.TRUE.equals(product.getIsAvailable())) {
+                throw new IllegalArgumentException("Món '" + product.getName() +
+                        "' hiện đã ngừng kinh doanh. Vui lòng cập nhật giỏ hàng và đặt lại.");
+            }
+            if (product.getStockQuantity() == null || product.getStockQuantity() < qty) {
+                throw new IllegalArgumentException("Món '" + product.getName() +
+                        "' không đủ tồn kho. Còn " + product.getStockQuantity() +
+                        " phần, đơn hàng cần " + qty + " phần.");
+            }
+
+            BigDecimal effectivePrice = getEffectivePrice(product);
             BigDecimal lineTotal = effectivePrice.multiply(BigDecimal.valueOf(qty));
 
             OrderItem orderItem = OrderItem.builder()
@@ -601,7 +618,12 @@ public class OrderServiceImpl implements OrderService {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyMMdd");
         String datePrefix = LocalDateTime.now().format(formatter);
         String code;
+        int maxAttempts = 10;
+        int attempt = 0;
         do {
+            if (attempt++ >= maxAttempts) {
+                throw new IllegalStateException("Không thể sinh mã đơn hàng duy nhất sau " + maxAttempts + " lần thử. Vui lòng thử lại.");
+            }
             int randomNum = 100000 + RANDOM.nextInt(900000);
             code = "TF" + datePrefix + randomNum;
         } while (orderRepository.existsByOrderCode(code));

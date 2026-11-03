@@ -53,20 +53,39 @@ public class VoucherServiceImpl implements VoucherService {
             isActiveFilter = true;
         }
 
-        Page<Voucher> voucherPage = voucherRepository.findAllWithFilters(cleanKeyword, cleanType, isActiveFilter, pageable);
+        // Khi lọc theo status computed (UPCOMING, EXPIRED, DEPLETED) phải fetch toàn bộ rồi filter in-memory
+        // vì đây là các trạng thái tính toán, không có column tương ứng trong DB
+        boolean needsComputedFilter = status != null && !status.isBlank()
+                && !"ALL".equalsIgnoreCase(status)
+                && !"INACTIVE".equalsIgnoreCase(status);
 
         List<VoucherAdminResponse> items;
         long totalElements;
         int totalPages;
 
-        if (status != null && !status.isBlank() && !"ALL".equalsIgnoreCase(status) && !"INACTIVE".equalsIgnoreCase(status)) {
-            items = voucherPage.getContent().stream()
+        if (needsComputedFilter) {
+            // Fetch toàn bộ trang hiện tại từ DB, rồi filter in-memory theo status computed
+            // Lấy tất cả record phù hợp không phân trang để đếm đúng totalElements
+            org.springframework.data.domain.Pageable unpagedRequest = org.springframework.data.domain.Pageable.unpaged();
+            Page<Voucher> allMatchingPage = voucherRepository.findAllWithFilters(cleanKeyword, cleanType, isActiveFilter, unpagedRequest);
+            List<VoucherAdminResponse> allFiltered = allMatchingPage.getContent().stream()
                     .map(VoucherAdminResponse::fromEntity)
                     .filter(res -> status.equalsIgnoreCase(res.getStatus()))
                     .toList();
-            totalElements = items.size();
-            totalPages = totalElements == 0 ? 0 : 1;
+
+            totalElements = allFiltered.size();
+            int pageSize = pageable.getPageSize();
+            totalPages = totalElements == 0 ? 0 : (int) Math.ceil((double) totalElements / pageSize);
+
+            // Phân trang thủ công từ danh sách đã filter
+            int pageNumber = pageable.getPageNumber();
+            int fromIndex = pageNumber * pageSize;
+            int toIndex = Math.min(fromIndex + pageSize, (int) totalElements);
+            items = fromIndex >= totalElements
+                    ? List.of()
+                    : allFiltered.subList(fromIndex, toIndex);
         } else {
+            Page<Voucher> voucherPage = voucherRepository.findAllWithFilters(cleanKeyword, cleanType, isActiveFilter, pageable);
             items = voucherPage.getContent().stream()
                     .map(VoucherAdminResponse::fromEntity)
                     .toList();

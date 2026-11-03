@@ -45,6 +45,8 @@ public class DataInitializer implements ApplicationRunner {
     private void seedSystemSettings() {
         insertSettingIfAbsent("DEFAULT_SHIPPING_FEE", "15000");
         insertSettingIfAbsent("FREE_SHIPPING_THRESHOLD", "200000");
+        insertSettingIfAbsent("ESTIMATE_DELIVERY_MINUTES", "30");
+        insertSettingIfAbsent("KITCHEN_ADDRESS", "86 Hàng Bài, Hoàn Kiếm, Hà Nội");
     }
 
     private void insertSettingIfAbsent(String key, String value) {

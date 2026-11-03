@@ -116,7 +116,7 @@ public class UserController {
             return userDetails.getUser().getId();
         }
         return SecurityUtils.getCurrentUserId()
-                .orElseThrow(() -> new RuntimeException("Người dùng chưa đăng nhập hoặc phiên làm việc đã hết hạn"));
+                .orElseThrow(() -> new AccessDeniedException("Người dùng chưa đăng nhập hoặc phiên làm việc đã hết hạn"));
     }
 
     private void verifyUserAccess(Long targetUserId, UserDetailsImpl userDetails) {

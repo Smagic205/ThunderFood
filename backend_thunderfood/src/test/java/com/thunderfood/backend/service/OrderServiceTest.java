@@ -343,6 +343,7 @@ class OrderServiceTest {
         when(addressRepository.findByIdAndUserId(100L, 1L)).thenReturn(Optional.of(address));
         when(systemSettingRepository.findBySettingKey("FREE_SHIPPING_THRESHOLD"))
                 .thenReturn(Optional.of(SystemSetting.builder().settingValue("200000").build()));
+        when(productRepository.findByIdWithLock(101L)).thenReturn(Optional.of(product1));
 
         when(orderRepository.save(any(Order.class))).thenAnswer(inv -> {
             Order o = inv.getArgument(0);
@@ -381,6 +382,43 @@ class OrderServiceTest {
 
         // Kiểm tra giỏ hàng bị xóa
         verify(cartItemRepository).deleteByCartId(50L);
+    }
+
+    @Test
+    @DisplayName("placeOrder ném ngoại lệ khi kiểm tra sau lock phát hiện sản phẩm đã bị người khác mua hết")
+    void testPlaceOrder_OutOfStockAfterPessimisticLock() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(cartRepository.findByUserId(1L)).thenReturn(Optional.of(cart));
+        when(cartItemRepository.findByCartId(50L)).thenReturn(List.of(cartItem1)); // Cần 2 phần
+        when(addressRepository.findByIdAndUserId(100L, 1L)).thenReturn(Optional.of(address));
+        when(systemSettingRepository.findBySettingKey("FREE_SHIPPING_THRESHOLD"))
+                .thenReturn(Optional.of(SystemSetting.builder().settingValue("200000").build()));
+
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> {
+            Order o = inv.getArgument(0);
+            o.setId(10L);
+            return o;
+        });
+
+        // Khi acquire lock, phát hiện người khác vừa mua xong và chỉ còn 1 phần
+        Product lockedProduct = Product.builder()
+                .id(101L)
+                .name("Cơm gà Hội An")
+                .stockQuantity(1)
+                .isAvailable(true)
+                .price(new BigDecimal("60000.00"))
+                .build();
+        when(productRepository.findByIdWithLock(101L)).thenReturn(Optional.of(lockedProduct));
+
+        PlaceOrderRequest req = PlaceOrderRequest.builder()
+                .addressId(100L)
+                .paymentMethod("COD")
+                .build();
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> orderService.placeOrder(1L, req));
+
+        assertTrue(ex.getMessage().contains("không đủ tồn kho"));
     }
 
     // =========================================================================

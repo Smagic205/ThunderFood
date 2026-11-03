@@ -50,7 +50,7 @@ public class VoucherController {
         if (response.isValid()) {
             return ResponseEntity.ok(ApiResponse.success(response.getMessage(), response));
         } else {
-            return ResponseEntity.ok(ApiResponse.error(response.getMessage()));
+            return ResponseEntity.ok(ApiResponse.error(response.getMessage(), response));
         }
     }
 }

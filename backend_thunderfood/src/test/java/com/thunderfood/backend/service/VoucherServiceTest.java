@@ -133,6 +133,25 @@ class VoucherServiceTest {
     }
 
     @Test
+    @DisplayName("getAllVouchersForAdmin lọc đúng voucher theo trạng thái tính toán (ACTIVE/UPCOMING/EXPIRED)")
+    void testGetAllVouchersForAdmin_WithComputedStatusFilter() {
+        Pageable pageable = PageRequest.of(0, 10);
+        // productVoucher có status ACTIVE (ngày trong khoảng), shippingVoucher cũng ACTIVE
+        Page<Voucher> unpaged = new PageImpl<>(List.of(productVoucher, shippingVoucher));
+
+        when(voucherRepository.findAllWithFilters(isNull(), isNull(), eq(true), eq(org.springframework.data.domain.Pageable.unpaged())))
+                .thenReturn(unpaged);
+
+        com.thunderfood.backend.dto.common.PageResponse<VoucherAdminResponse> result =
+                voucherService.getAllVouchersForAdmin(null, null, "ACTIVE", pageable);
+
+        assertNotNull(result);
+        assertEquals(2, result.getPagination().getTotalElements());
+        assertEquals(1, result.getPagination().getTotalPages());
+        assertEquals(2, result.getContent().size());
+    }
+
+    @Test
     @DisplayName("getVoucherById trả về thông tin chi tiết voucher khi ID tồn tại")
     void testGetVoucherById_Success() {
         when(voucherRepository.findById(1L)).thenReturn(Optional.of(productVoucher));

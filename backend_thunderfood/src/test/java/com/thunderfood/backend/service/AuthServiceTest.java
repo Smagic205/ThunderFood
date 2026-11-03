@@ -8,6 +8,9 @@ import com.thunderfood.backend.dto.auth.ResetPasswordRequest;
 import com.thunderfood.backend.entity.Role;
 import com.thunderfood.backend.entity.User;
 import com.thunderfood.backend.entity.UserToken;
+import com.thunderfood.backend.exception.ConflictException;
+import com.thunderfood.backend.exception.ResourceNotFoundException;
+import com.thunderfood.backend.exception.UnauthorizedException;
 import com.thunderfood.backend.repository.AddressRepository;
 import com.thunderfood.backend.repository.RoleRepository;
 import com.thunderfood.backend.repository.UserRepository;
@@ -20,6 +23,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -117,14 +121,14 @@ class AuthServiceTest {
     }
 
     @Test
-    @DisplayName("Đăng ký ném ngoại lệ khi email đã tồn tại")
+    @DisplayName("Đăng ký ném ConflictException khi email đã tồn tại (HTTP 409)")
     void testRegister_EmailAlreadyExists() {
         RegisterRequest request = new RegisterRequest();
         request.setEmail("user@gmail.com");
 
         when(userRepository.existsByEmail("user@gmail.com")).thenReturn(true);
 
-        RuntimeException ex = assertThrows(RuntimeException.class, () -> authService.register(request));
+        ConflictException ex = assertThrows(ConflictException.class, () -> authService.register(request));
         assertEquals("Email đã được sử dụng", ex.getMessage());
         verify(userRepository, never()).save(any());
     }
@@ -148,7 +152,7 @@ class AuthServiceTest {
     }
 
     @Test
-    @DisplayName("Đăng nhập thất bại khi tài khoản bị khóa")
+    @DisplayName("Đăng nhập thất bại khi tài khoản bị khóa (HTTP 403 AccessDeniedException)")
     void testLogin_LockedAccount() {
         LoginRequest request = new LoginRequest();
         request.setEmail("user@gmail.com");
@@ -159,7 +163,7 @@ class AuthServiceTest {
         when(authenticationManager.authenticate(any())).thenReturn(null);
         when(userRepository.findByEmail("user@gmail.com")).thenReturn(Optional.of(mockUser));
 
-        RuntimeException ex = assertThrows(RuntimeException.class, () -> authService.login(request));
+        AccessDeniedException ex = assertThrows(AccessDeniedException.class, () -> authService.login(request));
         assertEquals("Tài khoản đã bị khóa", ex.getMessage());
     }
 
@@ -189,11 +193,11 @@ class AuthServiceTest {
     }
 
     @Test
-    @DisplayName("Quên mật khẩu thất bại khi email không tồn tại")
+    @DisplayName("Quên mật khẩu thất bại khi email không tồn tại (HTTP 404 ResourceNotFoundException)")
     void testForgotPassword_UserNotFound() {
         when(userRepository.findByEmail("notfound@gmail.com")).thenReturn(Optional.empty());
 
-        RuntimeException ex = assertThrows(RuntimeException.class, () -> authService.forgotPassword("notfound@gmail.com"));
+        ResourceNotFoundException ex = assertThrows(ResourceNotFoundException.class, () -> authService.forgotPassword("notfound@gmail.com"));
         assertEquals("Không tìm thấy tài khoản với email này", ex.getMessage());
     }
 
@@ -241,7 +245,7 @@ class AuthServiceTest {
         when(userRepository.findByEmail("user@gmail.com")).thenReturn(Optional.of(mockUser));
         when(userTokenRepository.findByUserIdAndType(mockUser.getId(), "OTP")).thenReturn(Optional.of(token));
 
-        RuntimeException ex = assertThrows(RuntimeException.class, () -> authService.resetPassword(request));
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> authService.resetPassword(request));
         assertTrue(ex.getMessage().contains("Mã OTP không chính xác. Bạn còn 4 lần thử."));
         assertEquals(1, token.getFailedAttempts());
         verify(userTokenRepository).save(token);
@@ -266,7 +270,7 @@ class AuthServiceTest {
         when(userRepository.findByEmail("user@gmail.com")).thenReturn(Optional.of(mockUser));
         when(userTokenRepository.findByUserIdAndType(mockUser.getId(), "OTP")).thenReturn(Optional.of(token));
 
-        RuntimeException ex = assertThrows(RuntimeException.class, () -> authService.resetPassword(request));
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> authService.resetPassword(request));
         assertTrue(ex.getMessage().contains("Mã OTP đã bị vô hiệu hóa do nhập sai quá 5 lần"));
         verify(userTokenRepository).delete(token);
     }
@@ -290,7 +294,7 @@ class AuthServiceTest {
         when(userRepository.findByEmail("user@gmail.com")).thenReturn(Optional.of(mockUser));
         when(userTokenRepository.findByUserIdAndType(mockUser.getId(), "OTP")).thenReturn(Optional.of(expiredToken));
 
-        RuntimeException ex = assertThrows(RuntimeException.class, () -> authService.resetPassword(request));
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> authService.resetPassword(request));
         assertEquals("Mã OTP đã hết hạn", ex.getMessage());
         verify(userTokenRepository).delete(expiredToken);
     }
@@ -364,7 +368,36 @@ class AuthServiceTest {
     }
 
     @Test
-    @DisplayName("Đăng nhập nhân viên thất bại khi tài khoản không phải STAFF")
+    @DisplayName("Làm mới token thất bại khi token không tồn tại trong DB (HTTP 401 UnauthorizedException)")
+    void testRefreshToken_TokenNotInDb() {
+        String refreshToken = "revoked-refresh-token";
+
+        when(jwtService.extractUsername(refreshToken)).thenReturn("user@gmail.com");
+        when(userRepository.findByEmail("user@gmail.com")).thenReturn(Optional.of(mockUser));
+        when(jwtService.isTokenValid(eq(refreshToken), any(UserDetailsImpl.class))).thenReturn(true);
+        when(userTokenRepository.findByTokenAndType(refreshToken, "REFRESH_TOKEN")).thenReturn(Optional.empty());
+
+        UnauthorizedException ex = assertThrows(UnauthorizedException.class,
+                () -> authService.refreshToken(refreshToken));
+        assertEquals("Refresh token không tồn tại hoặc đã bị thu hồi", ex.getMessage());
+    }
+
+    @Test
+    @DisplayName("Làm mới token thất bại khi token hết hạn/invalid (HTTP 401 UnauthorizedException)")
+    void testRefreshToken_InvalidToken() {
+        String refreshToken = "expired-refresh-token";
+
+        when(jwtService.extractUsername(refreshToken)).thenReturn("user@gmail.com");
+        when(userRepository.findByEmail("user@gmail.com")).thenReturn(Optional.of(mockUser));
+        when(jwtService.isTokenValid(eq(refreshToken), any(UserDetailsImpl.class))).thenReturn(false);
+
+        UnauthorizedException ex = assertThrows(UnauthorizedException.class,
+                () -> authService.refreshToken(refreshToken));
+        assertEquals("Refresh token đã hết hạn hoặc không hợp lệ", ex.getMessage());
+    }
+
+    @Test
+    @DisplayName("Đăng nhập nhân viên thất bại khi tài khoản không phải STAFF (HTTP 403 AccessDeniedException)")
     void testLoginStaff_WrongRole() {
         LoginRequest request = new LoginRequest();
         request.setEmail("user@gmail.com");
@@ -373,7 +406,7 @@ class AuthServiceTest {
         when(authenticationManager.authenticate(any())).thenReturn(null);
         when(userRepository.findByEmail("user@gmail.com")).thenReturn(Optional.of(mockUser)); // Role is CUSTOMER
 
-        RuntimeException ex = assertThrows(RuntimeException.class, () -> authService.loginStaff(request));
+        AccessDeniedException ex = assertThrows(AccessDeniedException.class, () -> authService.loginStaff(request));
         assertEquals("Tài khoản này không có quyền truy cập của nhân viên", ex.getMessage());
     }
 }

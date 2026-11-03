@@ -9,6 +9,9 @@ import com.thunderfood.backend.dto.auth.ResetPasswordRequest;
 import com.thunderfood.backend.entity.Role;
 import com.thunderfood.backend.entity.User;
 import com.thunderfood.backend.entity.UserToken;
+import com.thunderfood.backend.exception.ConflictException;
+import com.thunderfood.backend.exception.ResourceNotFoundException;
+import com.thunderfood.backend.exception.UnauthorizedException;
 import com.thunderfood.backend.repository.AddressRepository;
 import com.thunderfood.backend.repository.RoleRepository;
 import com.thunderfood.backend.repository.UserRepository;
@@ -17,6 +20,8 @@ import com.thunderfood.backend.service.AuthService;
 import com.thunderfood.backend.service.EmailService;
 import com.thunderfood.backend.service.JwtService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -25,6 +30,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -34,6 +40,9 @@ public class AuthServiceImpl implements AuthService {
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private static final int MAX_ACTIVE_SESSIONS = 5;
+
+    @Value("${jwt.refresh-token.expiration:604800000}")
+    private long refreshExpirationMs = 604800000L;
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
@@ -48,7 +57,7 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email đã được sử dụng");
+            throw new ConflictException("Email đã được sử dụng");
         }
 
         Role userRole = roleRepository.findByName("CUSTOMER")
@@ -80,7 +89,7 @@ public class AuthServiceImpl implements AuthService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
 
         if ("LOCKED".equals(user.getStatus())) {
-            throw new RuntimeException("Tài khoản đã bị khóa");
+            throw new AccessDeniedException("Tài khoản đã bị khóa");
         }
 
         return generateAuthResponse(user);
@@ -90,7 +99,7 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public void forgotPassword(String email) {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản với email này"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản với email này"));
 
         // Generate 6-digit OTP using SecureRandom (000000 - 999999)
         int otpNumber = SECURE_RANDOM.nextInt(1_000_000);
@@ -116,22 +125,22 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public void resetPassword(ResetPasswordRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản với email này"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản với email này"));
 
         UserToken userToken = userTokenRepository.findByUserIdAndType(user.getId(), "OTP")
-                .orElseThrow(() -> new RuntimeException("Mã OTP không hợp lệ hoặc đã hết hạn"));
+                .orElseThrow(() -> new IllegalArgumentException("Mã OTP không hợp lệ hoặc đã hết hạn"));
 
         // 1. Kiểm tra hết hạn trước
         if (userToken.getExpiresAt().isBefore(LocalDateTime.now())) {
             userTokenRepository.delete(userToken);
-            throw new RuntimeException("Mã OTP đã hết hạn");
+            throw new IllegalArgumentException("Mã OTP đã hết hạn");
         }
 
         // 2. Kiểm tra số lần đã thử sai trước đó
         int attempts = userToken.getFailedAttempts() != null ? userToken.getFailedAttempts() : 0;
         if (attempts >= 5) {
             userTokenRepository.delete(userToken);
-            throw new RuntimeException("Mã OTP đã bị vô hiệu hóa do nhập sai quá 5 lần. Vui lòng yêu cầu mã mới.");
+            throw new IllegalArgumentException("Mã OTP đã bị vô hiệu hóa do nhập sai quá 5 lần. Vui lòng yêu cầu mã mới.");
         }
 
         // 3. Kiểm tra mã OTP
@@ -140,10 +149,10 @@ public class AuthServiceImpl implements AuthService {
             userToken.setFailedAttempts(attempts);
             if (attempts >= 5) {
                 userTokenRepository.delete(userToken);
-                throw new RuntimeException("Mã OTP đã bị vô hiệu hóa do nhập sai quá 5 lần. Vui lòng yêu cầu mã mới.");
+                throw new IllegalArgumentException("Mã OTP đã bị vô hiệu hóa do nhập sai quá 5 lần. Vui lòng yêu cầu mã mới.");
             }
             userTokenRepository.save(userToken);
-            throw new RuntimeException("Mã OTP không chính xác. Bạn còn " + (5 - attempts) + " lần thử.");
+            throw new IllegalArgumentException("Mã OTP không chính xác. Bạn còn " + (5 - attempts) + " lần thử.");
         }
 
         // 4. Đúng OTP: Cập nhật mật khẩu và xóa token
@@ -159,24 +168,24 @@ public class AuthServiceImpl implements AuthService {
     public AuthResponse refreshToken(String refreshToken) {
         String userEmail = jwtService.extractUsername(refreshToken);
         if (userEmail == null) {
-            throw new RuntimeException("Refresh token không hợp lệ");
+            throw new UnauthorizedException("Refresh token không hợp lệ");
         }
 
         User user = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
 
         UserDetailsImpl userDetails = new UserDetailsImpl(user);
 
         if (!jwtService.isTokenValid(refreshToken, userDetails)) {
-            throw new RuntimeException("Refresh token đã hết hạn hoặc không hợp lệ");
+            throw new UnauthorizedException("Refresh token đã hết hạn hoặc không hợp lệ");
         }
 
         // 1. Kiểm tra token có tồn tại trong DB không
         UserToken existingTokenEntity = userTokenRepository.findByTokenAndType(refreshToken, "REFRESH_TOKEN")
-                .orElseThrow(() -> new RuntimeException("Refresh token không tồn tại hoặc đã bị thu hồi"));
+                .orElseThrow(() -> new UnauthorizedException("Refresh token không tồn tại hoặc đã bị thu hồi"));
 
         if (!existingTokenEntity.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("Refresh token không hợp lệ");
+            throw new UnauthorizedException("Refresh token không hợp lệ");
         }
 
         // 2. Refresh Token Rotation: Xoay vòng token cho phiên này
@@ -184,7 +193,7 @@ public class AuthServiceImpl implements AuthService {
         String newRefreshToken = jwtService.generateRefreshToken(userDetails);
 
         existingTokenEntity.setToken(newRefreshToken);
-        existingTokenEntity.setExpiresAt(LocalDateTime.now().plusDays(7));
+        existingTokenEntity.setExpiresAt(LocalDateTime.now().plus(Duration.ofMillis(refreshExpirationMs)));
         userTokenRepository.save(existingTokenEntity);
 
         return buildAuthResponse(user, newJwtToken, newRefreshToken);
@@ -217,7 +226,7 @@ public class AuthServiceImpl implements AuthService {
                 .user(user)
                 .token(refreshToken)
                 .type("REFRESH_TOKEN")
-                .expiresAt(LocalDateTime.now().plusDays(7))
+                .expiresAt(LocalDateTime.now().plus(Duration.ofMillis(refreshExpirationMs)))
                 .build();
         userTokenRepository.save(userToken);
 
@@ -268,7 +277,7 @@ public class AuthServiceImpl implements AuthService {
     @PreAuthorize("hasRole('ADMIN')")
     public AuthResponse registerStaff(RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email đã được sử dụng");
+            throw new ConflictException("Email đã được sử dụng");
         }
 
         Role userRole = roleRepository.findByName("STAFF")
@@ -300,14 +309,13 @@ public class AuthServiceImpl implements AuthService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
 
         if (!"STAFF".equals(user.getRole().getName())) {
-            throw new RuntimeException("Tài khoản này không có quyền truy cập của nhân viên");
+            throw new AccessDeniedException("Tài khoản này không có quyền truy cập của nhân viên");
         }
 
         if ("LOCKED".equals(user.getStatus())) {
-            throw new RuntimeException("Tài khoản đã bị khóa");
+            throw new AccessDeniedException("Tài khoản đã bị khóa");
         }
 
         return generateAuthResponse(user);
     }
 }
-

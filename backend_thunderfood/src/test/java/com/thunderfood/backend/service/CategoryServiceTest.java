@@ -4,6 +4,8 @@ import com.thunderfood.backend.dto.category.CategoryAdminResponse;
 import com.thunderfood.backend.dto.category.CategoryRequest;
 import com.thunderfood.backend.dto.category.CategoryResponse;
 import com.thunderfood.backend.entity.Category;
+import com.thunderfood.backend.exception.ConflictException;
+import com.thunderfood.backend.exception.ResourceNotFoundException;
 import com.thunderfood.backend.repository.CategoryRepository;
 import com.thunderfood.backend.service.impl.CategoryServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
@@ -94,11 +96,11 @@ class CategoryServiceTest {
     }
 
     @Test
-    @DisplayName("getCategoryById ném ngoại lệ khi không tìm thấy danh mục")
+    @DisplayName("getCategoryById ném ngoại lệ khi không tìm thấy danh mục (HTTP 404)")
     void testGetCategoryById_NotFound() {
         when(categoryRepository.findById(99)).thenReturn(Optional.empty());
 
-        RuntimeException ex = assertThrows(RuntimeException.class, () -> categoryService.getCategoryById(99));
+        ResourceNotFoundException ex = assertThrows(ResourceNotFoundException.class, () -> categoryService.getCategoryById(99));
         assertTrue(ex.getMessage().contains("Không tìm thấy danh mục với ID: 99"));
     }
 
@@ -132,7 +134,7 @@ class CategoryServiceTest {
     }
 
     @Test
-    @DisplayName("createCategory ném ngoại lệ khi slug đã tồn tại")
+    @DisplayName("createCategory ném ngoại lệ khi slug đã tồn tại (HTTP 409)")
     void testCreateCategory_SlugDuplicate() {
         CategoryRequest request = CategoryRequest.builder()
                 .name("Đồ ăn nhanh mới")
@@ -141,7 +143,7 @@ class CategoryServiceTest {
 
         when(categoryRepository.existsBySlug("do-an-nhanh")).thenReturn(true);
 
-        RuntimeException ex = assertThrows(RuntimeException.class, () -> categoryService.createCategory(request));
+        ConflictException ex = assertThrows(ConflictException.class, () -> categoryService.createCategory(request));
         assertTrue(ex.getMessage().contains("Slug 'do-an-nhanh' đã tồn tại"));
         verify(categoryRepository, never()).save(any());
     }
@@ -168,7 +170,7 @@ class CategoryServiceTest {
     }
 
     @Test
-    @DisplayName("updateCategory ném ngoại lệ khi trùng slug với danh mục khác")
+    @DisplayName("updateCategory ném ngoại lệ khi trùng slug với danh mục khác (HTTP 409)")
     void testUpdateCategory_SlugDuplicate() {
         CategoryRequest request = CategoryRequest.builder()
                 .name("Đổi tên")
@@ -178,9 +180,18 @@ class CategoryServiceTest {
         when(categoryRepository.findById(1)).thenReturn(Optional.of(category1));
         when(categoryRepository.existsBySlugAndIdNot("do-uong", 1)).thenReturn(true);
 
-        RuntimeException ex = assertThrows(RuntimeException.class, () -> categoryService.updateCategory(1, request));
+        ConflictException ex = assertThrows(ConflictException.class, () -> categoryService.updateCategory(1, request));
         assertTrue(ex.getMessage().contains("Slug 'do-uong' đã tồn tại trên một danh mục khác"));
         verify(categoryRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("deleteCategory ném ngoại lệ khi không tìm thấy danh mục (HTTP 404)")
+    void testDeleteCategory_NotFound() {
+        when(categoryRepository.findById(99)).thenReturn(Optional.empty());
+
+        ResourceNotFoundException ex = assertThrows(ResourceNotFoundException.class, () -> categoryService.deleteCategory(99));
+        assertTrue(ex.getMessage().contains("Không tìm thấy danh mục với ID: 99"));
     }
 
     @Test
