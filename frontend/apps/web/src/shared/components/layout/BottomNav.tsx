@@ -1,7 +1,10 @@
 import { NavLink } from 'react-router-dom';
 import { Home, Utensils, ShoppingBag, Receipt, User } from 'lucide-react';
+import { useCartStore } from '@/shared/stores/cartStore';
 
 export function BottomNav() {
+  const totalQuantity = useCartStore((state) => state.totalQuantity);
+
   return (
     <nav className="bnav" aria-label="Điều hướng nhanh">
       <NavLink to="/" end className={({ isActive }) => (isActive ? 'on' : '')}>
@@ -15,7 +18,11 @@ export function BottomNav() {
       <NavLink to="/cart" className={({ isActive }) => (isActive ? 'on' : '')}>
         <ShoppingBag size={22} className="ic" />
         <span>Giỏ hàng</span>
-        <span className="badge" data-cart-badge>0</span>
+        {totalQuantity > 0 && (
+          <span className="badge" data-cart-badge>
+            {totalQuantity > 99 ? '99+' : totalQuantity}
+          </span>
+        )}
       </NavLink>
       <NavLink to="/account/orders" className={({ isActive }) => (isActive ? 'on' : '')}>
         <Receipt size={22} className="ic" />

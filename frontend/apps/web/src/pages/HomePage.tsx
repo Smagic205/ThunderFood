@@ -7,6 +7,7 @@ import { ReviewSection } from '@/features/home/components/ReviewSection';
 import { mockBanners, mockVouchers, mockProducts } from '@/shared/api/mockData';
 import { categoryApi } from '@/shared/api/categoryApi';
 import { productApi } from '@/shared/api/productApi';
+import { voucherApi } from '@/shared/api/voucherApi';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 
@@ -27,7 +28,16 @@ export function HomePage() {
     queryFn: () => productApi.getProducts({ sort: 'bestSelling', size: 8 }),
   });
 
-  // Sử dụng dữ liệu thật từ backend; nếu db chưa có món nào thì fallback mockProducts để không bị trống
+  const {
+    data: availableVouchers = [],
+  } = useQuery({
+    queryKey: ['available-vouchers-home'],
+    queryFn: () => voucherApi.getAvailableVouchers(),
+  });
+
+  // Sử dụng dữ liệu thật từ backend; nếu db chưa có thì fallback mock
+  const vouchersToDisplay = availableVouchers.length > 0 ? availableVouchers : mockVouchers;
+
   const bestSellers = bestSellersPage?.content && bestSellersPage.content.length > 0
     ? bestSellersPage.content
     : mockProducts
@@ -58,7 +68,7 @@ export function HomePage() {
             Xem tất cả
           </Link>
         </div>
-        <VoucherList vouchers={mockVouchers} />
+        <VoucherList vouchers={vouchersToDisplay} />
       </section>
 
       {/* 3. Categories Section */}
