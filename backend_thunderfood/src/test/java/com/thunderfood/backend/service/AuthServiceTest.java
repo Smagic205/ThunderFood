@@ -12,6 +12,7 @@ import com.thunderfood.backend.repository.AddressRepository;
 import com.thunderfood.backend.repository.RoleRepository;
 import com.thunderfood.backend.repository.UserRepository;
 import com.thunderfood.backend.repository.UserTokenRepository;
+import com.thunderfood.backend.service.impl.AuthServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -62,7 +63,7 @@ class AuthServiceTest {
     private EmailService emailService;
 
     @InjectMocks
-    private AuthService authService;
+    private AuthServiceImpl authService;
 
     private User mockUser;
     private Role customerRole;

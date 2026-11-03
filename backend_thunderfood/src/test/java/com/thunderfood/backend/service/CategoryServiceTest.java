@@ -5,6 +5,7 @@ import com.thunderfood.backend.dto.category.CategoryRequest;
 import com.thunderfood.backend.dto.category.CategoryResponse;
 import com.thunderfood.backend.entity.Category;
 import com.thunderfood.backend.repository.CategoryRepository;
+import com.thunderfood.backend.service.impl.CategoryServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -27,7 +28,7 @@ class CategoryServiceTest {
     private CategoryRepository categoryRepository;
 
     @InjectMocks
-    private CategoryService categoryService;
+    private CategoryServiceImpl categoryService;
 
     private Category category1;
     private Category category2;

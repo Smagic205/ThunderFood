@@ -11,6 +11,7 @@ import com.thunderfood.backend.exception.ResourceNotFoundException;
 import com.thunderfood.backend.repository.AddressRepository;
 import com.thunderfood.backend.repository.ServiceWardRepository;
 import com.thunderfood.backend.repository.UserRepository;
+import com.thunderfood.backend.service.impl.AddressServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -41,7 +42,7 @@ class AddressServiceTest {
     private UserRepository userRepository;
 
     @InjectMocks
-    private AddressService addressService;
+    private AddressServiceImpl addressService;
 
     private User mockUser;
     private ServiceWard mockWardPhuong;

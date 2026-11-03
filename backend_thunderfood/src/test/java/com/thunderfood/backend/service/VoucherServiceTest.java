@@ -8,6 +8,7 @@ import com.thunderfood.backend.entity.VoucherUsage;
 import com.thunderfood.backend.exception.ResourceNotFoundException;
 import com.thunderfood.backend.repository.VoucherRepository;
 import com.thunderfood.backend.repository.VoucherUsageRepository;
+import com.thunderfood.backend.service.impl.VoucherServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -41,7 +42,7 @@ class VoucherServiceTest {
     private VoucherUsageRepository voucherUsageRepository;
 
     @InjectMocks
-    private VoucherService voucherService;
+    private VoucherServiceImpl voucherService;
 
     private Voucher productVoucher;
     private Voucher shippingVoucher;

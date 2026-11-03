@@ -8,6 +8,7 @@ import com.thunderfood.backend.dto.product.ProductListItemResponse;
 import com.thunderfood.backend.entity.*;
 import com.thunderfood.backend.exception.ResourceNotFoundException;
 import com.thunderfood.backend.repository.*;
+import com.thunderfood.backend.service.impl.ProductServiceImpl;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -54,7 +55,7 @@ class ProductServiceTest {
     private CategoryRepository categoryRepository;
 
     @InjectMocks
-    private ProductService productService;
+    private ProductServiceImpl productService;
 
     private Category category;
     private Product product1;

@@ -1,5 +1,6 @@
 package com.thunderfood.backend.service;
 
+import com.thunderfood.backend.service.impl.JwtServiceImpl;
 import io.jsonwebtoken.ExpiredJwtException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -24,7 +25,7 @@ class JwtServiceTest {
 
     @BeforeEach
     void setUp() {
-        jwtService = new JwtService();
+        jwtService = new JwtServiceImpl();
         ReflectionTestUtils.setField(jwtService, "secretKey", testSecret);
         ReflectionTestUtils.setField(jwtService, "jwtExpiration", 86400000L); // 1 day
         ReflectionTestUtils.setField(jwtService, "refreshExpiration", 604800000L); // 7 days

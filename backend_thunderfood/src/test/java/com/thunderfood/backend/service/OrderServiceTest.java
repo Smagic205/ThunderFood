@@ -7,6 +7,7 @@ import com.thunderfood.backend.dto.voucher.VoucherClientResponse;
 import com.thunderfood.backend.entity.*;
 import com.thunderfood.backend.exception.ResourceNotFoundException;
 import com.thunderfood.backend.repository.*;
+import com.thunderfood.backend.service.impl.OrderServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -69,7 +70,7 @@ class OrderServiceTest {
     private VoucherService voucherService;
 
     @InjectMocks
-    private OrderService orderService;
+    private OrderServiceImpl orderService;
 
     private User user;
     private Cart cart;

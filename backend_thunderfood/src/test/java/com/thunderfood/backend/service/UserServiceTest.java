@@ -6,6 +6,7 @@ import com.thunderfood.backend.entity.Role;
 import com.thunderfood.backend.entity.User;
 import com.thunderfood.backend.exception.ResourceNotFoundException;
 import com.thunderfood.backend.repository.UserRepository;
+import com.thunderfood.backend.service.impl.UserServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -34,7 +35,7 @@ class UserServiceTest {
     private CloudinaryService cloudinaryService;
 
     @InjectMocks
-    private UserService userService;
+    private UserServiceImpl userService;
 
 
     private User mockUser;

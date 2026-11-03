@@ -12,6 +12,7 @@ import com.thunderfood.backend.repository.CartItemRepository;
 import com.thunderfood.backend.repository.CategoryRepository;
 import com.thunderfood.backend.repository.ProductImageRepository;
 import com.thunderfood.backend.repository.ProductRepository;
+import com.thunderfood.backend.service.impl.ProductServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -46,7 +47,7 @@ class ProductAdminServiceTest {
     private CartItemRepository cartItemRepository;
 
     @InjectMocks
-    private ProductService productService;
+    private ProductServiceImpl productService;
 
     private Category category;
     private Product product;

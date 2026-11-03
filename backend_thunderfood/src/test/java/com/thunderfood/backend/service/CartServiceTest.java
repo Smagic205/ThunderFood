@@ -15,6 +15,7 @@ import com.thunderfood.backend.repository.CartRepository;
 import com.thunderfood.backend.repository.ProductImageRepository;
 import com.thunderfood.backend.repository.ProductRepository;
 import com.thunderfood.backend.repository.UserRepository;
+import com.thunderfood.backend.service.impl.CartServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -53,7 +54,7 @@ class CartServiceTest {
     private UserRepository userRepository;
 
     @InjectMocks
-    private CartService cartService;
+    private CartServiceImpl cartService;
 
     private User mockUser;
     private Cart mockCart;

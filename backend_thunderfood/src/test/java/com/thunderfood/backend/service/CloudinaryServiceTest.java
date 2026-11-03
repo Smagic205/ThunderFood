@@ -3,6 +3,7 @@ package com.thunderfood.backend.service;
 import com.cloudinary.Cloudinary;
 import com.cloudinary.Uploader;
 import com.thunderfood.backend.dto.upload.ImageUploadResponse;
+import com.thunderfood.backend.service.impl.CloudinaryServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -31,7 +32,7 @@ class CloudinaryServiceTest {
     private Uploader uploader;
 
     @InjectMocks
-    private CloudinaryService cloudinaryService;
+    private CloudinaryServiceImpl cloudinaryService;
 
     @BeforeEach
     void setUp() {
