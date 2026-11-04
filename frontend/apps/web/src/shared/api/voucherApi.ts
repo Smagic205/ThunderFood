@@ -6,7 +6,7 @@ export interface VoucherClientResponse {
   name: string;
   description: string;
   voucherType: 'PRODUCT' | 'SHIPPING';
-  discountType: 'PERCENTAGE' | 'FIXED_AMOUNT';
+  discountType: 'PERCENT' | 'PERCENTAGE' | 'FIXED_AMOUNT';
   discountValue: number;
   minOrderAmount: number;
   maxDiscountAmount: number | null;

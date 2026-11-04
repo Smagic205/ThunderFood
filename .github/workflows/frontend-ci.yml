@@ -42,6 +42,9 @@ jobs:
       - name: Run Linter (oxlint)
         run: npm run lint
 
+      - name: Run Automated Tests (Vitest)
+        run: npm run test
+
       - name: Typecheck & Build Apps (Admin, Staff, Web)
         run: npm run build
         env:

@@ -134,7 +134,7 @@ export const VouchersPage: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filtered.map((v) => {
             const isShipping = v.voucherType === 'SHIPPING';
-            const isPercent = v.discountType === 'PERCENTAGE';
+            const isPercent = v.discountType === 'PERCENT' || v.discountType === 'PERCENTAGE';
             const discountLabel = isShipping
               ? isPercent ? `Giảm ${v.discountValue}% ship` : `Giảm ${Number(v.discountValue).toLocaleString('vi-VN')}đ ship`
               : isPercent ? `Giảm ${v.discountValue}%` : `Giảm ${Number(v.discountValue).toLocaleString('vi-VN')}đ`;

@@ -76,6 +76,11 @@ axiosClient.interceptors.response.use(
       }
     }
 
+    // Chuẩn hóa error.message từ ApiResponse phía backend nếu có (400, 404, 409, 500,...)
+    if (error.response?.data?.message) {
+      error.message = error.response.data.message;
+    }
+
     if (error.response?.status === 403) {
       useForbiddenNoticeStore.getState().showForbidden(
         error.response?.data?.message || 'Bạn không có quyền thực hiện thao tác này'
