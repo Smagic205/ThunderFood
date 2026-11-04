@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Zap, Mail, Lock, Eye, EyeOff, Loader2, Sparkles } from 'lucide-react';
-import { useAuthStore, type User } from '@/app/store/authStore';
+import { Zap, Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { useAuthStore } from '@/app/store/authStore';
 import { authApi } from '@/shared/api/authApi';
 
 export const LoginPage = () => {
@@ -80,30 +80,6 @@ export const LoginPage = () => {
     }
   };
 
-  // Đăng nhập nhanh dành cho bản Demo / phát triển giao diện
-  const handleDemoLogin = () => {
-    const demoAdmin: User = {
-      id: 1,
-      email: 'admin@thunderfood.vn',
-      fullName: 'Trương Thanh Sơn',
-      role: 'ADMIN',
-      avatarUrl: null,
-    };
-    login(demoAdmin, 'demo-admin-access-token', 'demo-admin-refresh-token');
-    navigate('/admin', { replace: true });
-  };
-
-  // Điền nhanh thông tin mẫu vào form
-  const handleFillDemo = () => {
-    editedCredentialsRef.current.email = true;
-    editedCredentialsRef.current.password = true;
-    setIsReadOnly(false);
-    setEmail('admin@thunderfood.vn');
-    setPassword('admin123');
-    if (emailRef.current) emailRef.current.value = 'admin@thunderfood.vn';
-    if (passwordRef.current) passwordRef.current.value = 'admin123';
-  };
-
   return (
     <div className="login-page">
       {/* Background decorative elements */}
@@ -164,26 +140,9 @@ export const LoginPage = () => {
           </div>
 
           <div className="login-field">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <label className="login-label" htmlFor="admin-pass-input">
-                Mật khẩu
-              </label>
-              <button
-                type="button"
-                onClick={handleFillDemo}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--admin-primary)',
-                  fontSize: '0.75rem',
-                  cursor: 'pointer',
-                  padding: 0,
-                  textDecoration: 'underline',
-                }}
-              >
-                Điền mẫu admin
-              </button>
-            </div>
+            <label className="login-label" htmlFor="admin-pass-input">
+              Mật khẩu
+            </label>
             <div className="login-input-wrap">
               <Lock size={18} className="login-input-icon" />
               <input
@@ -229,17 +188,6 @@ export const LoginPage = () => {
             ) : (
               'Đăng nhập'
             )}
-          </button>
-
-          <div className="login-divider">hoặc</div>
-
-          <button
-            type="button"
-            className="login-demo-btn"
-            onClick={handleDemoLogin}
-          >
-            <Sparkles size={16} />
-            Đăng nhập nhanh (Admin Demo)
           </button>
         </form>
 
