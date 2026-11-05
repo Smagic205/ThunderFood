@@ -9,7 +9,7 @@ axios.defaults.adapter = 'fetch'
 
 // 1. Khởi động MSW Server chặn các cuộc gọi mạng trước khi chạy bài test
 beforeAll(() => {
-  server.listen({ onUnhandledRequest: 'warn' })
+  server.listen({ onUnhandledFrame: 'warn' })
 })
 
 // 2. Reset lại các handlers tùy biến sau mỗi bài test và cleanup DOM
