@@ -63,6 +63,9 @@ class StaffOrderServiceTest {
     @Mock
     private VoucherService voucherService;
 
+    @Mock
+    private NotificationService notificationService;
+
     @InjectMocks
     private StaffOrderServiceImpl staffOrderService;
 

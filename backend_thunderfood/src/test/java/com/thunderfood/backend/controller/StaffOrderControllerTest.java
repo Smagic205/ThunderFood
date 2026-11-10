@@ -114,7 +114,7 @@ class StaffOrderControllerTest {
                         .param("ward", "Kim Liên")
                         .param("streetKeyword", "Yên Lãng"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status", is("SUCCESS")))
+                .andExpect(jsonPath("$.success", is(true)))
                 .andExpect(jsonPath("$.data.content", hasSize(1)))
                 .andExpect(jsonPath("$.data.content[0].orderCode", is("TF261110001")));
     }
@@ -126,7 +126,7 @@ class StaffOrderControllerTest {
 
         mockMvc.perform(get("/api/v1/staff/orders/districts"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status", is("SUCCESS")))
+                .andExpect(jsonPath("$.success", is(true)))
                 .andExpect(jsonPath("$.data", hasSize(2)))
                 .andExpect(jsonPath("$.data[0]", is("Ba Đình")));
     }
@@ -153,7 +153,7 @@ class StaffOrderControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status", is("SUCCESS")))
+                .andExpect(jsonPath("$.success", is(true)))
                 .andExpect(jsonPath("$.data.status", is("CONFIRMED")))
                 .andExpect(jsonPath("$.data.packageCode", is("GOI-DONGDA-01")));
     }
@@ -178,7 +178,7 @@ class StaffOrderControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status", is("SUCCESS")))
+                .andExpect(jsonPath("$.success", is(true)))
                 .andExpect(jsonPath("$.data.status", is("CANCELLED")));
     }
 
@@ -196,7 +196,7 @@ class StaffOrderControllerTest {
 
         mockMvc.perform(post("/api/v1/staff/orders/packages/10/claim"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status", is("SUCCESS")))
+                .andExpect(jsonPath("$.success", is(true)))
                 .andExpect(jsonPath("$.data.status", is("DELIVERING")));
     }
 
@@ -215,7 +215,7 @@ class StaffOrderControllerTest {
 
         mockMvc.perform(post("/api/v1/staff/orders/1/deliver"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status", is("SUCCESS")))
+                .andExpect(jsonPath("$.success", is(true)))
                 .andExpect(jsonPath("$.data.status", is("DELIVERED")))
                 .andExpect(jsonPath("$.data.paymentStatus", is("PAID")));
     }
@@ -240,7 +240,7 @@ class StaffOrderControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status", is("SUCCESS")))
+                .andExpect(jsonPath("$.success", is(true)))
                 .andExpect(jsonPath("$.data.status", is("CANCELLED")));
     }
 }
