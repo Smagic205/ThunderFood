@@ -15,3 +15,4 @@ export interface CreateStaffPayload {
   phone: string;
   password: string;
 }
+
