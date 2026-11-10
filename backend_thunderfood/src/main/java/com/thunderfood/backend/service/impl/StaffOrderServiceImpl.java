@@ -11,6 +11,7 @@ import com.thunderfood.backend.entity.*;
 import com.thunderfood.backend.exception.ConflictException;
 import com.thunderfood.backend.exception.ResourceNotFoundException;
 import com.thunderfood.backend.repository.*;
+import com.thunderfood.backend.service.NotificationService;
 import com.thunderfood.backend.service.StaffOrderService;
 import com.thunderfood.backend.service.VoucherService;
 import jakarta.persistence.criteria.Join;
@@ -43,6 +44,7 @@ public class StaffOrderServiceImpl implements StaffOrderService {
     private final SystemSettingRepository systemSettingRepository;
     private final ServiceWardRepository serviceWardRepository;
     private final VoucherService voucherService;
+    private final NotificationService notificationService;
 
     @Override
     @Transactional(readOnly = true)
@@ -222,6 +224,14 @@ public class StaffOrderServiceImpl implements StaffOrderService {
                 .build();
         orderStatusHistoryRepository.save(history);
 
+        // Bắn thông báo đổi trạng thái đơn cho khách hàng
+        notificationService.sendNotification(
+                savedOrder.getUser(),
+                "Đơn hàng đã được xác nhận",
+                "Đơn hàng " + savedOrder.getOrderCode() + " đã được xác nhận và đang được bếp chuẩn bị món.",
+                "ORDER_STATUS"
+        );
+
         log.info("Staff đã xác nhận đơn hàng thành công: orderId={}, orderCode={}, package={}",
                 savedOrder.getId(), savedOrder.getOrderCode(), deliveryPackage.getPackageName());
 
@@ -269,6 +279,14 @@ public class StaffOrderServiceImpl implements StaffOrderService {
 
         // 2. Hoàn lại lượt sử dụng voucher (nếu có)
         voucherService.revertVoucherUsage(order);
+
+        // Bắn thông báo đơn bị hủy cho khách hàng
+        notificationService.sendNotification(
+                savedOrder.getUser(),
+                "Đơn hàng đã bị hủy",
+                "Đơn hàng " + savedOrder.getOrderCode() + " đã bị hủy bởi nhà hàng. Lý do: " + request.getReason().trim(),
+                "ORDER_STATUS"
+        );
 
         log.info("Nhân viên hủy đơn hàng: orderId={}, orderCode={}, lý do='{}'",
                 orderId, order.getOrderCode(), request.getReason().trim());
@@ -330,6 +348,13 @@ public class StaffOrderServiceImpl implements StaffOrderService {
                         .changedBy(staffUser)
                         .build();
                 orderStatusHistoryRepository.save(h);
+
+                notificationService.sendNotification(
+                        o.getUser(),
+                        "Đơn hàng đang trên đường giao",
+                        "Đơn hàng " + o.getOrderCode() + " đang được shipper " + staffUser.getFullName() + " giao đến bạn.",
+                        "ORDER_STATUS"
+                );
             }
         }
 
@@ -372,6 +397,13 @@ public class StaffOrderServiceImpl implements StaffOrderService {
                 .build();
         orderStatusHistoryRepository.save(history);
 
+        notificationService.sendNotification(
+                savedOrder.getUser(),
+                "Giao hàng thành công",
+                "Đơn hàng " + savedOrder.getOrderCode() + " đã được giao thành công. Chúc bạn ngon miệng!",
+                "ORDER_STATUS"
+        );
+
         log.info("Giao đơn thành công: orderCode={}, paymentStatus={}", savedOrder.getOrderCode(), savedOrder.getPaymentStatus());
 
         // Tự động hoàn tất gói hàng nếu tất cả các đơn trong gói đã hoàn tất (DELIVERED hoặc CANCELLED)
@@ -403,6 +435,13 @@ public class StaffOrderServiceImpl implements StaffOrderService {
                 .changedBy(staffUser)
                 .build();
         orderStatusHistoryRepository.save(history);
+
+        notificationService.sendNotification(
+                savedOrder.getUser(),
+                "Giao hàng không thành công",
+                "Đơn hàng " + savedOrder.getOrderCode() + " giao thất bại vì lý do: " + request.getReason().trim(),
+                "ORDER_STATUS"
+        );
 
         log.warn("Giao đơn thất bại: orderCode={}, lý do={}", savedOrder.getOrderCode(), request.getReason().trim());
 
