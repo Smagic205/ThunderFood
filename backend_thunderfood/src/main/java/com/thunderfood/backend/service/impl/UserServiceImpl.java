@@ -1,17 +1,23 @@
 package com.thunderfood.backend.service.impl;
 
 import com.thunderfood.backend.dto.address.AddressResponse;
+import com.thunderfood.backend.dto.auth.RegisterRequest;
+import com.thunderfood.backend.dto.staff.StaffAccountResponse;
 import com.thunderfood.backend.dto.upload.ImageUploadResponse;
 import com.thunderfood.backend.dto.user.CustomerProfileResponse;
 import com.thunderfood.backend.dto.user.UpdateCustomerProfileRequest;
+import com.thunderfood.backend.entity.Role;
 import com.thunderfood.backend.entity.User;
+import com.thunderfood.backend.exception.ConflictException;
 import com.thunderfood.backend.exception.ResourceNotFoundException;
 import com.thunderfood.backend.repository.AddressRepository;
+import com.thunderfood.backend.repository.RoleRepository;
 import com.thunderfood.backend.repository.UserRepository;
 import com.thunderfood.backend.service.CloudinaryService;
 import com.thunderfood.backend.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -24,8 +30,10 @@ import java.util.List;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
     private final AddressRepository addressRepository;
     private final CloudinaryService cloudinaryService;
+    private final PasswordEncoder passwordEncoder;
 
     /**
      * Lấy thông tin hồ sơ của khách hàng
@@ -130,6 +138,42 @@ public class UserServiceImpl implements UserService {
                 .orElse(addresses.isEmpty() ? null : addresses.get(0));
 
         return CustomerProfileResponse.fromEntity(updatedUser, defaultAddress, addresses);
+    }
+
+    @Override
+    @Transactional
+    public StaffAccountResponse createStaffAccount(RegisterRequest request) {
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new ConflictException("Email đã được sử dụng");
+        }
+
+        Role staffRole = roleRepository.findByName("STAFF")
+                .orElseThrow(() -> new ResourceNotFoundException("Role STAFF không tồn tại trong hệ thống"));
+
+        User staffUser = User.builder()
+                .fullName(request.getFullName().trim())
+                .email(request.getEmail().trim().toLowerCase())
+                .passwordHash(passwordEncoder.encode(request.getPassword()))
+                .phone(request.getPhone() != null ? request.getPhone().trim() : null)
+                .role(staffRole)
+                .authProvider("LOCAL")
+                .status("ACTIVE")
+                .build();
+
+        User savedStaff = userRepository.save(staffUser);
+        log.info("Admin đã tạo tài khoản nhân viên mới: userId={}, email={}, fullName={}",
+                savedStaff.getId(), savedStaff.getEmail(), savedStaff.getFullName());
+
+        return StaffAccountResponse.fromEntity(savedStaff);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<StaffAccountResponse> getAllStaffs() {
+        return userRepository.findByRoleNameOrderByCreatedAtDesc("STAFF")
+                .stream()
+                .map(StaffAccountResponse::fromEntity)
+                .toList();
     }
 }
 

@@ -330,7 +330,15 @@ public class OrderServiceImpl implements OrderService {
             productRepository.save(product);
         }
 
-        savedOrder.setItems(savedItems);
+        // Đồng bộ danh sách items vào savedOrder trên cùng collection hiện tại của Hibernate
+        // Tuyệt đối không gán đè new ArrayList để tránh lỗi:
+        // "A collection with orphan deletion was no longer referenced by the owning entity instance"
+        if (savedOrder.getItems() == null) {
+            savedOrder.setItems(new ArrayList<>(savedItems));
+        } else {
+            savedOrder.getItems().clear();
+            savedOrder.getItems().addAll(savedItems);
+        }
 
         // Ghi nhận lượt sử dụng Voucher (nếu có)
         if (productVoucher != null) {
