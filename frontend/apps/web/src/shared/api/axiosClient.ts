@@ -69,6 +69,11 @@ axiosClient.interceptors.response.use(
       }
     }
 
+    // Chuẩn hóa error.message từ ApiResponse phía backend nếu có (400, 404, 409, 500,...)
+    if (error.response?.data?.message) {
+      error.message = error.response.data.message;
+    }
+
     // Xử lý lỗi 403 Forbidden (không có quyền truy cập dữ liệu người khác hoặc chức năng bị cấm)
     if (error.response?.status === 403) {
       const message = error.response.data?.message || 'Bạn không có quyền thực hiện thao tác này';

@@ -12,6 +12,8 @@
 
 # Thư mục tham khảo nội bộ
 ThamKhao/
+TESTING_PROGRESS.txt
+BACKEND_LEARNING_GUIDE.txt
 
 # Node.js / Frontend
 node_modules/

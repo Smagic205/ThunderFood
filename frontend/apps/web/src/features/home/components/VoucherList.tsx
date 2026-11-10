@@ -20,7 +20,7 @@ export function VoucherList({ vouchers }: VoucherListProps) {
   const formatDiscount = (v: VoucherClientResponse | Voucher) => {
     const isClient = 'voucherType' in v;
     const isShipping = isClient && v.voucherType === 'SHIPPING';
-    const isPercent = v.discountType === 'PERCENTAGE';
+    const isPercent = v.discountType === 'PERCENT' || v.discountType === 'PERCENTAGE';
 
     if (isShipping) {
       return isPercent ? `Giảm ${v.discountValue}% ship` : `Giảm ${Number(v.discountValue).toLocaleString('vi-VN')}đ ship`;

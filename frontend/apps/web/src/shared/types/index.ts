@@ -12,7 +12,7 @@ export interface Voucher {
   code: string;
   description: string;
   discountValue: number;
-  discountType: 'PERCENTAGE' | 'FIXED_AMOUNT';
+  discountType: 'PERCENT' | 'PERCENTAGE' | 'FIXED_AMOUNT';
   minOrderValue: number;
   maxDiscount?: number;
   startDate: string;

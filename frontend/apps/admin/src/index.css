@@ -369,49 +369,6 @@ body {
   to { transform: rotate(360deg); }
 }
 
-/* Divider & Demo Login Button */
-.login-divider {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  color: var(--admin-text-muted);
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin: 2px 0;
-}
-
-.login-divider::before,
-.login-divider::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: var(--admin-border);
-}
-
-.login-demo-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  width: 100%;
-  padding: 11px 18px;
-  border-radius: var(--admin-radius-sm);
-  border: 1px dashed rgba(59, 130, 246, 0.45);
-  background: rgba(59, 130, 246, 0.08);
-  color: #93c5fd;
-  font-size: 0.88rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all var(--admin-transition);
-}
-
-.login-demo-btn:hover {
-  background: rgba(59, 130, 246, 0.18);
-  border-color: rgba(59, 130, 246, 0.7);
-  color: #bfdbfe;
-  transform: translateY(-1px);
-}
 
 /* Footer */
 .login-footer {

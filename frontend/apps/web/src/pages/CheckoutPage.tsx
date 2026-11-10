@@ -682,7 +682,7 @@ export const CheckoutPage: React.FC = () => {
                 </div>
               ) : (
                 (voucherModalType === 'PRODUCT' ? productVouchers : shippingVouchers).map((v) => {
-                  const isPercent = v.discountType === 'PERCENTAGE';
+                  const isPercent = v.discountType === 'PERCENT' || v.discountType === 'PERCENTAGE';
                   const isEligible = v.eligible;
                   const isSelected = (voucherModalType === 'PRODUCT' ? productVoucherCode : shippingVoucherCode) === v.code;
 
