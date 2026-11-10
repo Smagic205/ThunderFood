@@ -9,6 +9,7 @@ import { PackagesPage } from '@/features/packages/pages/PackagesPage';
 import { ProductsPage } from '@/features/catalog/pages/ProductsPage';
 import { CategoriesPage } from '@/features/catalog/pages/CategoriesPage';
 import { VouchersPage } from '@/features/vouchers/pages/VouchersPage';
+import { StaffsPage } from '@/features/staffs/pages/StaffsPage';
 
 export const router = createBrowserRouter([
   {
@@ -57,12 +58,7 @@ export const router = createBrowserRouter([
           },
           {
             path: 'admin/staffs',
-            element: (
-              <div className="card card-p">
-                <h3>Nhân viên</h3>
-                <p className="muted" style={{ marginTop: '8px' }}>Trang quản lý nhân viên đang được xây dựng.</p>
-              </div>
-            ),
+            element: <StaffsPage />,
           },
           {
             path: 'admin/reviews',

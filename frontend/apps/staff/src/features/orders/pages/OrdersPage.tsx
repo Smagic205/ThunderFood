@@ -1,9 +1,16 @@
-import { useState } from 'react';
-import { Search } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
-import { useOrderStore } from '../store/orderStore';
+import { useState, useEffect } from 'react';
+import { Search, Loader2, ChevronLeft, ChevronRight, CheckCircle2, AlertCircle } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  staffOrderApi,
+  type StaffOrderListItem,
+  type StaffOrderDetail,
+  type PageResponse,
+  type DeliveryPackage,
+} from '../api/staffOrderApi';
 import { OrderDrawer } from '../components/OrderDrawer';
 import { ConfirmOrderModal } from '../components/ConfirmOrderModal';
+import { CancelOrderModal } from '../components/CancelOrderModal';
 import { addressApi } from '@/shared/api/addressApi';
 
 const STATUS_MAP: Record<string, string> = {
@@ -11,7 +18,7 @@ const STATUS_MAP: Record<string, string> = {
   CONFIRMED: 'Đã xác nhận',
   DELIVERING: 'Đang giao',
   DELIVERED: 'Đã giao',
-  CANCELLED: 'Đã hủy'
+  CANCELLED: 'Đã hủy',
 };
 
 const normalizeWardName = (value: string) => value
@@ -22,11 +29,53 @@ const normalizeWardName = (value: string) => value
   .toLocaleLowerCase('vi');
 
 export const OrdersPage = () => {
-  const orders = useOrderStore(s => s.orders);
-  const packages = useOrderStore(s => s.packages);
-  const maxPerPackage = useOrderStore(s => s.maxPerPackage);
-  const cancelOrder = useOrderStore(s => s.cancelOrder);
-  const confirmOrder = useOrderStore(s => s.confirmOrder);
+  const queryClient = useQueryClient();
+
+  const [activeTab, setActiveTab] = useState<string>('ALL');
+  const [searchInput, setSearchInput] = useState<string>('');
+  const [debouncedSearch, setDebouncedSearch] = useState<string>('');
+  const [selectedWard, setSelectedWard] = useState<string>('ALL');
+  const [page, setPage] = useState<number>(0);
+  const pageSize = 15;
+
+  // Selected order for drawer
+  const [selectedOrder, setSelectedOrder] = useState<StaffOrderListItem | null>(null);
+
+  // Modal states
+  const [confirmingOrder, setConfirmingOrder] = useState<StaffOrderListItem | null>(null);
+  const [cancellingOrder, setCancellingOrder] = useState<StaffOrderListItem | null>(null);
+  const [confirmError, setConfirmError] = useState<string>('');
+  const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchInput);
+      setPage(0);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  // Reset page when tab or ward changes
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    setPage(0);
+  };
+
+  const handleWardChange = (ward: string) => {
+    setSelectedWard(ward);
+    setPage(0);
+  };
+
+  // Auto clear notification after 4s
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => setNotification(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
+
+  // Fetch service wards
   const {
     data: serviceWards = [],
     isLoading: isWardsLoading,
@@ -37,20 +86,90 @@ export const OrdersPage = () => {
     staleTime: 5 * 60 * 1000,
   });
 
-  const [activeTab, setActiveTab] = useState('ALL');
-  const [searchQuery, setSearchQuery] = useState('');
-  
-  const [selectedWard, setSelectedWard] = useState('ALL');
+  // Fetch staff orders
+  const {
+    data: ordersData,
+    isLoading: isOrdersLoading,
+    isFetching: isOrdersFetching,
+    isError: isOrdersError,
+    error: ordersError,
+    refetch: refetchOrders,
+  } = useQuery<PageResponse<StaffOrderListItem>>({
+    queryKey: ['staff-orders', activeTab, selectedWard, debouncedSearch, page, pageSize],
+    queryFn: () => staffOrderApi.getOrders({
+      status: activeTab === 'ALL' ? undefined : activeTab,
+      ward: selectedWard === 'ALL' ? undefined : selectedWard,
+      search: debouncedSearch || undefined,
+      page,
+      size: pageSize,
+    }),
+    staleTime: 10 * 1000,
+  });
 
-  const [selectedOrderCode, setSelectedOrderCode] = useState<string | null>(null);
-  const [confirmingOrderCode, setConfirmingOrderCode] = useState<string | null>(null);
-  const [confirmError, setConfirmError] = useState<string>('');
+  // Fetch open packages for confirmation modal
+  const { data: openPackages = [] } = useQuery<DeliveryPackage[]>({
+    queryKey: ['open-packages'],
+    queryFn: staffOrderApi.getOpenPackages,
+    staleTime: 15 * 1000,
+  });
 
-  const pendingCount = orders.filter(o => o.status === 'PENDING').length;
+  // Mutation: Confirm order
+  const confirmMutation = useMutation<
+    StaffOrderDetail,
+    any,
+    { id: number; packageName: string; isNew: boolean }
+  >({
+    mutationFn: ({ id, packageName, isNew }) =>
+      staffOrderApi.confirmOrder(id, { packageName, isNewPackage: isNew }),
+    onSuccess: (data: StaffOrderDetail) => {
+      queryClient.invalidateQueries({ queryKey: ['staff-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['open-packages'] });
+      setConfirmingOrder(null);
+      setSelectedOrder(null);
+      setConfirmError('');
+      setNotification({
+        type: 'success',
+        message: `Đơn ${data.orderCode} đã xác nhận và gán vào gói ${data.packageCode || ''}`,
+      });
+    },
+    onError: (err: any) => {
+      const message = err.response?.data?.message || err.message || 'Xác nhận đơn thất bại';
+      setConfirmError(message);
+    },
+  });
 
-  const counts = (k: string) => k === 'ALL' ? orders.length : orders.filter(o => o.status === k).length;
+  // Mutation: Cancel order
+  const cancelMutation = useMutation<
+    StaffOrderDetail,
+    any,
+    { id: number; reason: string }
+  >({
+    mutationFn: ({ id, reason }) =>
+      staffOrderApi.cancelOrder(id, { reason }),
+    onSuccess: (data: StaffOrderDetail) => {
+      queryClient.invalidateQueries({ queryKey: ['staff-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['open-packages'] });
+      setCancellingOrder(null);
+      setSelectedOrder(null);
+      setNotification({
+        type: 'success',
+        message: `Đơn ${data.orderCode} đã được hủy thành công`,
+      });
+    },
+    onError: (err: any) => {
+      const message = err.response?.data?.message || err.message || 'Hủy đơn thất bại';
+      setNotification({
+        type: 'error',
+        message,
+      });
+    },
+  });
 
-  // Chỉ hiển thị khu vực được backend trả về từ danh sách đang phục vụ trong database.
+  const orders = ordersData?.content || [];
+  const pagination = ordersData?.pagination;
+  const totalCount = pagination?.totalElements ?? 0;
+
+  // Prepare ward options
   const wardOptions = serviceWards
     .map((ward) => [
       normalizeWardName(ward.wardName),
@@ -59,104 +178,93 @@ export const OrdersPage = () => {
     .filter(([key]) => Boolean(key))
     .sort((a, b) => a[1].localeCompare(b[1], 'vi'));
 
-  const filteredOrders = orders
-    .filter(o => activeTab === 'ALL' || o.status === activeTab)
-    .filter(o => {
-      return selectedWard === 'ALL' || normalizeWardName(o.ward || '') === selectedWard;
-    })
-    .filter(o => {
-      if (!searchQuery) return true;
-      const q = searchQuery.toLowerCase();
-      const phoneNoSpace = o.receiver_phone.replace(/\s/g, '');
-      const qNoSpace = q.replace(/\s/g, '');
-      return o.order_code.toLowerCase().includes(q) ||
-             o.customer.toLowerCase().includes(q) ||
-             phoneNoSpace.includes(qNoSpace);
-    })
-    .sort((a, b) => {
-      const tA = new Date(a.created_at).getTime();
-      const tB = new Date(b.created_at).getTime();
-      if (['PENDING', 'CONFIRMED', 'DELIVERING'].includes(activeTab)) {
-        return tA - tB;
-      }
-      return tB - tA;
-    });
-
-  const handleCancelOrder = (code: string) => {
-    if (window.confirm(`Hủy đơn ${code}? Khách hàng sẽ nhận thông báo.`)) {
-      cancelOrder(code);
-      setSelectedOrderCode(null);
-    }
-  };
-
-  const handleConfirmOrder = (pkgCode: string, isNew: boolean) => {
-    if (!confirmingOrderCode) return;
-    const err = confirmOrder(confirmingOrderCode, pkgCode, isNew);
-    if (err) {
-      setConfirmError(err);
-      return;
-    }
-    setConfirmError('');
-    setConfirmingOrderCode(null);
-    setSelectedOrderCode(null);
-  };
-
-  const selectedOrder = orders.find(o => o.order_code === selectedOrderCode);
-  const openPackages = packages.filter(p => p.status === 'PENDING');
-
   return (
     <>
       <div className="card" style={{ background: 'transparent', boxShadow: 'none', marginBottom: '24px' }}>
         <h1 style={{ fontSize: '1.5rem', marginBottom: '8px' }}>Xử lý đơn hàng</h1>
-        <p className="muted">{pendingCount} đơn đang chờ xác nhận. Xác nhận, in phiếu bếp hoặc hủy đơn trước khi xếp gói giao hàng.</p>
+        <p className="muted">
+          Duyệt đơn, gán vào gói giao hàng hoặc hủy đơn khi cần. Tất cả dữ liệu đồng bộ trực tiếp với hệ thống máy chủ.
+        </p>
       </div>
 
+      {notification && (
+        <div
+          className="card card-p"
+          style={{
+            marginBottom: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            background: notification.type === 'success' ? '#F6FFED' : '#FFF1F0',
+            border: `1px solid ${notification.type === 'success' ? '#B7EB8F' : '#FFCCC7'}`,
+            color: notification.type === 'success' ? '#389E0D' : '#CF1322',
+            padding: '12px 16px',
+          }}
+        >
+          {notification.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
+          <span style={{ fontSize: '14px', fontWeight: 500 }}>{notification.message}</span>
+        </div>
+      )}
+
       <div className="card panel-t">
+        {/* Status Tabs */}
         <div className="seg" role="tablist">
-          {['ALL', 'PENDING', 'CONFIRMED', 'DELIVERING', 'DELIVERED', 'CANCELLED'].map(k => (
+          {['ALL', 'PENDING', 'CONFIRMED', 'DELIVERING', 'DELIVERED', 'CANCELLED'].map((k) => (
             <button
               key={k}
               className={`chip ${activeTab === k ? 'on' : ''}`}
               role="tab"
               aria-selected={activeTab === k}
-              onClick={() => setActiveTab(k)}
+              onClick={() => handleTabChange(k)}
             >
               {k === 'ALL' ? 'Tất cả' : STATUS_MAP[k]}
-              <span className="n">{counts(k)}</span>
+              {activeTab === k && typeof pagination?.totalElements === 'number' && (
+                <span className="n">{pagination.totalElements}</span>
+              )}
             </button>
           ))}
         </div>
 
+        {/* Filters */}
         <div className="filters-bar" style={{ padding: '16px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
           <div className="input-ic" style={{ flex: '1', minWidth: '250px' }}>
             <div className="ic-prefix"><Search size={18} /></div>
             <input
               className="input"
               type="search"
-              placeholder="Tìm mã đơn, tên khách, số điện thoại"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Tìm mã đơn, tên khách, số điện thoại..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
             />
           </div>
-          
-          <select 
-            className="input" 
+
+          <select
+            className="input"
             style={{ width: 'auto', minWidth: '220px', paddingRight: '32px' }}
             value={selectedWard}
-            onChange={(e) => setSelectedWard(e.target.value)}
+            onChange={(e) => handleWardChange(e.target.value)}
           >
             <option value="ALL">Tất cả Phường/Xã</option>
-            {wardOptions.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+            {wardOptions.map(([key, label]) => (
+              <option key={key} value={label}>{label}</option>
+            ))}
           </select>
-          <small className="muted" style={{ alignSelf: 'center' }}>
+
+          <small className="muted" style={{ alignSelf: 'center', marginLeft: 'auto' }}>
+            {isOrdersFetching && !isOrdersLoading && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginRight: '8px' }}>
+                <Loader2 size={12} className="animate-spin" /> Đang cập nhật...
+              </span>
+            )}
             {isWardsLoading
-              ? 'Đang tải khu vực giao hàng…'
+              ? 'Đang tải khu vực...'
               : isWardsError
-                ? 'Không tải được danh sách phường/xã từ máy chủ.'
-                : `${serviceWards.length} phường/xã đang phục vụ`}
+                ? 'Không tải được khu vực'
+                : `${serviceWards.length} phường/xã phục vụ`}
           </small>
         </div>
 
+        {/* Orders Table */}
         <div className="tbl-wrap">
           <table className="tbl">
             <thead>
@@ -171,29 +279,54 @@ export const OrdersPage = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredOrders.length > 0 ? (
-                filteredOrders.map(o => (
-                  <tr key={o.order_code} className="click" onClick={() => setSelectedOrderCode(o.order_code)}>
+              {isOrdersLoading ? (
+                <tr>
+                  <td colSpan={7}>
+                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '60px', gap: '10px' }}>
+                      <Loader2 size={24} className="animate-spin text-muted" />
+                      <span className="muted">Đang tải danh sách đơn hàng...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : isOrdersError ? (
+                <tr>
+                  <td colSpan={7}>
+                    <div className="empty" style={{ padding: '40px' }}>
+                      <AlertCircle size={32} style={{ color: 'var(--c-red)', marginBottom: '8px' }} />
+                      <h3>Lỗi khi tải đơn hàng</h3>
+                      <p className="muted">{(ordersError as any)?.message || 'Không thể kết nối đến máy chủ.'}</p>
+                      <button className="btn btn-soft btn-sm" style={{ marginTop: '12px' }} onClick={() => refetchOrders()}>
+                        Thử lại
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ) : orders.length > 0 ? (
+                orders.map((o: StaffOrderListItem) => (
+                  <tr key={o.id} className="click" onClick={() => setSelectedOrder(o)}>
                     <td className="td-main">
-                      <b>{o.order_code}</b>
-                      <small>{new Date(o.created_at).toLocaleString('vi-VN')}</small>
+                      <b>{o.orderCode}</b>
+                      <small>{new Date(o.createdAt).toLocaleString('vi-VN')}</small>
                     </td>
                     <td data-label="Khách hàng">
-                      {o.customer}
-                      <small>{o.receiver_phone}</small>
+                      {o.customerName || o.receiverName}
+                      <small>{o.receiverPhone}</small>
                     </td>
-                    <td data-label="Món">{o.items.reduce((acc: number, cur: { quantity: number }) => acc + cur.quantity, 0)} món</td>
-                    <td data-label="Tổng tiền"><b>{o.total_amount.toLocaleString('vi-VN')}đ</b></td>
+                    <td data-label="Món">{o.totalItems} món</td>
+                    <td data-label="Tổng tiền"><b>{o.totalAmount.toLocaleString('vi-VN')}đ</b></td>
                     <td data-label="Gói hàng">
-                      {o.package_code ? <span className="tag">{o.package_code}</span> : <span className="faint">—</span>}
+                      {o.packageCode ? <span className="tag">{o.packageCode}</span> : <span className="faint">—</span>}
                     </td>
                     <td data-label="Trạng thái">
-                      <span className={`pill s-${o.status}`}>{STATUS_MAP[o.status]}</span>
+                      <span className={`pill s-${o.status}`}>{STATUS_MAP[o.status] || o.status}</span>
                     </td>
                     <td className="td-act">
                       <button
                         className="btn btn-soft btn-sm"
-                        onClick={(e) => { e.stopPropagation(); setSelectedOrderCode(o.order_code); }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedOrder(o);
+                        }}
                       >
                         Chi tiết
                       </button>
@@ -204,7 +337,8 @@ export const OrdersPage = () => {
                 <tr>
                   <td colSpan={7}>
                     <div className="empty" style={{ padding: '40px' }}>
-                      <h3>Không có đơn hàng</h3>
+                      <h3>Không có đơn hàng nào</h3>
+                      <p className="muted">Không tìm thấy đơn hàng thỏa mãn điều kiện lọc.</p>
                     </div>
                   </td>
                 </tr>
@@ -212,31 +346,95 @@ export const OrdersPage = () => {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination bar */}
+        {pagination && pagination.totalPages > 1 && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '16px',
+              borderTop: '1px solid var(--line)',
+              flexWrap: 'wrap',
+              gap: '12px',
+            }}
+          >
+            <span className="muted" style={{ fontSize: '13px' }}>
+              Hiển thị {orders.length} / {totalCount} đơn hàng (Trang {pagination.page + 1} / {pagination.totalPages})
+            </span>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                className="btn btn-soft btn-sm"
+                disabled={!pagination.hasPrevious || isOrdersFetching}
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+              >
+                <ChevronLeft size={16} /> Trang trước
+              </button>
+              <button
+                className="btn btn-soft btn-sm"
+                disabled={!pagination.hasNext || isOrdersFetching}
+                onClick={() => setPage((p) => p + 1)}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+              >
+                Trang sau <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
-      {selectedOrder && !confirmingOrderCode && (
+      {/* Order detail drawer */}
+      {selectedOrder && !confirmingOrder && !cancellingOrder && (
         <OrderDrawer
-          order={selectedOrder}
-          onClose={() => setSelectedOrderCode(null)}
-          onCancel={() => handleCancelOrder(selectedOrder.order_code)}
+          orderId={selectedOrder.id}
+          initialOrder={selectedOrder}
+          onClose={() => setSelectedOrder(null)}
+          onCancel={() => {
+            setCancellingOrder(selectedOrder);
+          }}
           onConfirm={() => {
             setConfirmError('');
-            setConfirmingOrderCode(selectedOrder.order_code);
+            setConfirmingOrder(selectedOrder);
           }}
         />
       )}
 
-      {confirmingOrderCode && (
+      {/* Confirm order modal */}
+      {confirmingOrder && (
         <ConfirmOrderModal
-          orderCode={confirmingOrderCode}
+          orderCode={confirmingOrder.orderCode}
           openPackages={openPackages}
-          maxPerPackage={maxPerPackage}
+          maxPerPackage={7}
           externalError={confirmError}
+          isSubmitting={confirmMutation.isPending}
           onClose={() => {
             setConfirmError('');
-            setConfirmingOrderCode(null);
+            setConfirmingOrder(null);
           }}
-          onConfirm={handleConfirmOrder}
+          onConfirm={(packageName, isNew) => {
+            confirmMutation.mutate({
+              id: confirmingOrder.id,
+              packageName,
+              isNew,
+            });
+          }}
+        />
+      )}
+
+      {/* Cancel order modal */}
+      {cancellingOrder && (
+        <CancelOrderModal
+          orderCode={cancellingOrder.orderCode}
+          isSubmitting={cancelMutation.isPending}
+          onClose={() => setCancellingOrder(null)}
+          onConfirm={(reason: string) => {
+            cancelMutation.mutate({
+              id: cancellingOrder.id,
+              reason,
+            });
+          }}
         />
       )}
     </>
