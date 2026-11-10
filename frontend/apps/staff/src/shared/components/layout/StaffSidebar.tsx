@@ -1,5 +1,5 @@
 import { Link, NavLink } from 'react-router-dom';
-import { Zap, Receipt, Box, Truck, MessageSquare, LogOut } from 'lucide-react';
+import { Zap, Receipt, Box, Truck, MessageSquare, Bell, LogOut } from 'lucide-react';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { authApi } from '@/features/auth/api/auth';
 
@@ -47,6 +47,10 @@ export const StaffSidebar = () => {
       <NavLink to="/reviews" className={({ isActive }) => (isActive ? 'on' : '')}>
         <MessageSquare size={20} />
         <span>Phản hồi đánh giá</span>
+      </NavLink>
+      <NavLink to="/notifications" className={({ isActive }) => (isActive ? 'on' : '')}>
+        <Bell size={20} />
+        <span>Thông báo</span>
       </NavLink>
 
       <div className="side-user" style={{ marginTop: 'auto' }}>

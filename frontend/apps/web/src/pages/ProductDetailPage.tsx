@@ -1,22 +1,28 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ChevronRight, Star, Heart, ShoppingBag, Minus, Plus, Truck, Flame, Bolt, Image as ImageIcon, Loader2 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { ChevronRight, Star, Heart, ShoppingBag, Minus, Plus, Truck, Flame, Bolt, Loader2, MessageSquareText, AlertCircle } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { categoryApi } from '@/shared/api/categoryApi';
 import { productApi } from '@/shared/api/productApi';
-import { mockProducts, mockReviews } from '@/shared/api/mockData';
+import { reviewApi } from '@/shared/api/reviewApi';
+import { wishlistApi } from '@/shared/api/wishlistApi';
+import { mockProducts } from '@/shared/api/mockData';
 import { ProductCard } from '@/shared/components/ui/ProductCard';
 import { useAuthStore } from '@/app/store/authStore';
 import { useCartStore } from '@/shared/stores/cartStore';
 import { useToastStore } from '@/shared/stores/toastStore';
+import { useMyWishlist } from '@/shared/hooks/useMyWishlist';
 
 export function ProductDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
   const { addToCart } = useCartStore();
   const { showToast } = useToastStore();
+  const queryClient = useQueryClient();
   const [isAdding, setIsAdding] = useState(false);
+  const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
+  const [reviewPage, setReviewPage] = useState(0);
 
   // 1. Lấy danh mục
   const { data: categories = [] } = useQuery({
@@ -45,7 +51,13 @@ export function ProductDetailPage() {
 
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState<'desc' | 'rv'>('desc');
-  const [rating, setRating] = useState(0); // for the review form
+  const wishlistQuery = useMyWishlist();
+  const reviewsQuery = useQuery({
+    queryKey: ['product-reviews', apiProduct?.id, reviewPage],
+    queryFn: () => reviewApi.getProductReviews(apiProduct!.id, reviewPage, 10),
+    enabled: Boolean(apiProduct?.id),
+    staleTime: 60_000,
+  });
 
   // Lấy danh sách ảnh
   const imagesList = useMemo(() => {
@@ -66,6 +78,10 @@ export function ProductDetailPage() {
       setSelectedImage(imagesList[0]);
     }
   }, [imagesList]);
+
+  useEffect(() => {
+    setReviewPage(0);
+  }, [apiProduct?.id]);
 
   const resolvedCategoryId = apiProduct?.category?.id || mockProduct?.categoryId;
 
@@ -107,18 +123,12 @@ export function ProductDetailPage() {
         categoryName: categories.find((c) => c.id === p.categoryId)?.name,
       }));
 
-  const reviews = mockReviews.filter((r) => r.productId === product.id);
+  const reviews = reviewsQuery.data?.content ?? [];
 
-  const avgRating = apiProduct?.ratingAverage ?? mockProduct?.avgRating ?? 0;
-  const reviewCount = apiProduct?.reviewCount ?? mockProduct?.reviewCount ?? 0;
+  const avgRating = apiProduct?.ratingAverage ?? 0;
+  const reviewCount = reviewsQuery.data?.pagination.totalElements ?? apiProduct?.reviewCount ?? 0;
+  const isFavorite = wishlistQuery.data?.some((item) => item.productId === product.id) ?? apiProduct?.isFavorite ?? false;
   const soldCount = apiProduct?.soldCount ?? mockProduct?.soldCount ?? 0;
-
-  // Calculate review distribution based on average rating
-  const dist = avgRating >= 4.8
-    ? [0.82, 0.13, 0.03, 0.01, 0.01]
-    : avgRating >= 4.6
-      ? [0.68, 0.21, 0.07, 0.02, 0.02]
-      : [0.55, 0.25, 0.11, 0.05, 0.04];
 
   const isOut = apiProduct
     ? apiProduct.stockStatus?.code === 'OUT_OF_STOCK'
@@ -175,6 +185,28 @@ export function ProductDetailPage() {
       showToast(err?.message || 'Không thể đặt món lúc này', 'error');
     } finally {
       setIsAdding(false);
+    }
+  };
+
+  const handleToggleFavorite = async () => {
+    if (!isAuthenticated) {
+      showToast('Vui lòng đăng nhập để lưu món yêu thích', 'info');
+      navigate('/login');
+      return;
+    }
+
+    try {
+      setIsTogglingFavorite(true);
+      const result = await wishlistApi.toggle(product.id);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['my-wishlist', user?.id] }),
+        queryClient.invalidateQueries({ queryKey: ['product-detail', slug] }),
+      ]);
+      showToast(result.message, 'success');
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || err?.message || 'Không thể cập nhật món yêu thích', 'error');
+    } finally {
+      setIsTogglingFavorite(false);
     }
   };
 
@@ -300,8 +332,16 @@ export function ProductDetailPage() {
               >
                 Mua ngay
               </button>
-              <button className="ibtn heart-inline heart" style={{ position: 'static', border: '1.5px solid var(--line)', width: '54px', height: '54px' }} aria-label="Yêu thích">
-                <Heart size={22} className={apiProduct?.isFavorite ? "ic fill-[#e13636] text-[#e13636]" : "ic"} />
+              <button
+                type="button"
+                className="ibtn heart-inline heart"
+                style={{ position: 'static', border: '1.5px solid var(--line)', width: '54px', height: '54px' }}
+                aria-label={isFavorite ? 'Xóa khỏi món yêu thích' : 'Thêm vào món yêu thích'}
+                aria-pressed={isFavorite}
+                disabled={isTogglingFavorite}
+                onClick={handleToggleFavorite}
+              >
+                <Heart size={22} className={isFavorite ? "ic fill-[#e13636] text-[#e13636]" : "ic"} />
               </button>
             </div>
 
@@ -355,7 +395,7 @@ export function ProductDetailPage() {
             </div>
           ) : (
             <>
-              <div className="card rate-sum">
+              <div className="card rate-sum" style={{ justifyContent: 'center' }}>
                 <div className="rate-big">
                   <b>{avgRating.toFixed(1)}</b>
                   <div className="stars" style={{ margin: '8px 0 4px', justifyContent: 'center' }}>
@@ -365,25 +405,26 @@ export function ProductDetailPage() {
                   </div>
                   <span className="muted">{reviewCount} đánh giá</span>
                 </div>
-                <div className="bars">
-                  {dist.map((v, i) => (
-                    <div className="bar-row" key={i}>
-                      <span>{5 - i} sao</span>
-                      <div className="bar"><i style={{ width: `${Math.round(v * 100)}%` }}></i></div>
-                      <span>{Math.round(v * 100)}%</span>
-                    </div>
-                  ))}
-                </div>
               </div>
 
               <div className="grid2" style={{ alignItems: 'start', gap: '32px' }}>
                 <div>
-                  {reviews.length ? reviews.map(r => (
+                  {reviewsQuery.isLoading ? (
+                    <div className="card card-p muted" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Loader2 size={18} className="animate-spin" /> Đang tải đánh giá…
+                    </div>
+                  ) : reviewsQuery.isError ? (
+                    <div className="card card-p" role="alert" style={{ color: 'var(--c-red)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <AlertCircle size={18} /> Không thể tải đánh giá lúc này.
+                    </div>
+                  ) : reviews.length ? reviews.map(r => (
                     <article className="review" key={r.id}>
                       <div className="row" style={{ gap: '12px' }}>
-                        <span className="avatar sm">{r.userName.split(' ').pop()?.charAt(0) || r.userName.charAt(0)}</span>
+                        <span className="avatar sm overflow-hidden">
+                          {r.userAvatar ? <img src={r.userAvatar} alt={r.userName} className="w-full h-full object-cover" /> : r.userName?.split(' ').pop()?.charAt(0) || 'K'}
+                        </span>
                         <div className="grow">
-                          <b>{r.userName}</b>
+                          <b>{r.userName || 'Khách hàng'}</b>
                           <div className="faint" style={{ fontSize: '13px' }}>{new Date(r.createdAt).toLocaleDateString('vi-VN')}</div>
                         </div>
                         <span className="stars" style={{ gap: '1px' }}>
@@ -392,7 +433,7 @@ export function ProductDetailPage() {
                           ))}
                         </span>
                       </div>
-                      <p style={{ marginTop: '10px' }}>{r.comment}</p>
+                      {r.comment && <p style={{ marginTop: '10px' }}>{r.comment}</p>}
                       {r.imageUrl && (
                         <div className="prev" style={{ marginTop: '10px', width: '96px', height: '96px' }}>
                           <div className="tile xs" style={{ background: 'var(--surface)' }}>
@@ -400,57 +441,36 @@ export function ProductDetailPage() {
                           </div>
                         </div>
                       )}
-                      {r.adminReply && (
+                      {r.staffReply && (
                         <div className="reply">
                           <b><Bolt size={15} className="ic" style={{ color: 'var(--volt)' }} /> ThunderFood phản hồi</b>
-                          {r.adminReply}
+                          {r.staffReply}
                         </div>
                       )}
                     </article>
                   )) : (
                     <div className="empty">
                       <h3>Chưa có đánh giá</h3>
-                      <p>Hãy là người đầu tiên chia sẻ cảm nhận về món này.</p>
+                      <p>Đánh giá từ khách đã nhận món sẽ xuất hiện tại đây.</p>
+                    </div>
+                  )}
+                  {reviewsQuery.data && reviewsQuery.data.pagination.totalPages > 1 && (
+                    <div className="row between" style={{ marginTop: '18px' }}>
+                      <button className="btn btn-ghost btn-sm" disabled={!reviewsQuery.data.pagination.hasPrevious} onClick={() => setReviewPage((current) => Math.max(0, current - 1))}>Trang trước</button>
+                      <span className="muted" style={{ fontSize: '13px' }}>Trang {reviewsQuery.data.pagination.page + 1}/{reviewsQuery.data.pagination.totalPages}</span>
+                      <button className="btn btn-ghost btn-sm" disabled={!reviewsQuery.data.pagination.hasNext} onClick={() => setReviewPage((current) => current + 1)}>Trang sau</button>
                     </div>
                   )}
                 </div>
                 <div className="card card-p">
-                  <h3 style={{ marginBottom: '14px' }}>Viết đánh giá</h3>
-                  <form className="form-grid">
-                    <div>
-                      <span className="lbl">Bạn chấm mấy sao?</span>
-                      <div className="star-pick" role="radiogroup" aria-label="Số sao">
-                        {[1, 2, 3, 4, 5].map(i => (
-                          <button
-                            type="button"
-                            key={i}
-                            role="radio"
-                            aria-checked={rating >= i}
-                            className={rating >= i ? 'on' : ''}
-                            onClick={() => setRating(i)}
-                            aria-label={`${i} sao`}
-                          >
-                            <Star size={26} className="ic" />
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <label className="field">
-                      <span>Nhận xét</span>
-                      <textarea className="textarea" placeholder="Món ăn thế nào, giao hàng ra sao…" required></textarea>
-                    </label>
-                    <div>
-                      <span className="lbl">Ảnh món ăn (không bắt buộc)</span>
-                      <div className="uploader">
-                        <label className="btn btn-ghost btn-sm" style={{ cursor: 'pointer' }}>
-                          <ImageIcon size={18} className="ic" /> Chọn ảnh
-                          <input type="file" accept="image/*" style={{ display: 'none' }} />
-                        </label>
-                        <span className="faint" style={{ fontSize: '13px' }}>Chưa chọn ảnh</span>
-                      </div>
-                    </div>
-                    <button type="button" className="btn btn-primary w-full">Gửi đánh giá</button>
-                  </form>
+                  <MessageSquareText size={22} style={{ color: 'var(--c-amber)', marginBottom: '10px' }} />
+                  <h3 style={{ marginBottom: '8px' }}>Đánh giá sau khi nhận món</h3>
+                  <p className="muted" style={{ fontSize: '14px', marginBottom: '14px' }}>
+                    Bạn có thể đánh giá từng món trong đơn sau khi đơn hàng được giao thành công.
+                  </p>
+                  <Link to={isAuthenticated ? '/account/orders' : '/login'} className="btn btn-primary btn-sm">
+                    Xem đơn hàng
+                  </Link>
                 </div>
               </div>
             </>

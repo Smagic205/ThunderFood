@@ -11,7 +11,9 @@ import {
   Phone, 
   User, 
   MapPin, 
-  Calendar
+  Calendar,
+  Star,
+  CheckCircle2
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { 
@@ -20,14 +22,26 @@ import {
   type OrderTrackingResponse 
 } from '@/shared/api/orderApi';
 import { useToastStore } from '@/shared/stores/toastStore';
+import { useAuthStore } from '@/app/store/authStore';
+import { ReviewOrderModal } from './ReviewOrderModal';
+import { isOrderMarkedReviewed } from './reviewProgress';
 
 type OrderTab = 'ALL' | 'PENDING' | 'CONFIRMED' | 'SHIPPING' | 'DELIVERED' | 'CANCELLED';
+
+const formatItemPrice = (value?: number | string | null) => {
+  if (value === null || value === undefined || value === '') return '—';
+  const amount = Number(value);
+  return Number.isFinite(amount) ? amount.toLocaleString('vi-VN') : '—';
+};
 
 export const OrdersPage: React.FC = () => {
   const queryClient = useQueryClient();
   const { showToast } = useToastStore();
+  const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState<OrderTab>('ALL');
   const [page, setPage] = useState(0);
+  const [reviewOrder, setReviewOrder] = useState<{ id: number; code: string } | null>(null);
+  const [reviewedOrderIds, setReviewedOrderIds] = useState<number[]>([]);
 
   // Modal chi tiết & tracking
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
@@ -215,8 +229,8 @@ export const OrdersPage: React.FC = () => {
                   {order.previewItems?.map((item, idx) => (
                     <div key={idx} className="flex items-center gap-3">
                       <div className="w-12 h-12 rounded-lg bg-[var(--surface-2)] overflow-hidden shrink-0 border border-[var(--line)]">
-                        {item.thumbnailUrl ? (
-                          <img src={item.thumbnailUrl} alt={item.productName} className="w-full h-full object-cover" />
+                        {(item.imageUrl || item.thumbnailUrl) ? (
+                          <img src={item.imageUrl || item.thumbnailUrl || ''} alt={item.productName} className="w-full h-full object-cover" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-xs font-bold text-[var(--ink-3)]">
                             TF
@@ -226,11 +240,11 @@ export const OrdersPage: React.FC = () => {
                       <div className="flex-1 min-w-0">
                         <h4 className="text-sm font-bold text-[var(--ink)] truncate">{item.productName}</h4>
                         <p className="text-xs text-[var(--ink-3)]">
-                          Số lượng: {item.quantity} • Đơn giá: {Number(item.unitPrice).toLocaleString('vi-VN')}đ
+                          Số lượng: {item.quantity} • Đơn giá: {formatItemPrice(item.productPrice ?? item.unitPrice)}đ
                         </p>
                       </div>
                       <span className="text-sm font-semibold text-[var(--ink)] shrink-0">
-                        {Number(item.lineTotal).toLocaleString('vi-VN')}đ
+                        {formatItemPrice(item.lineTotal)}đ
                       </span>
                     </div>
                   ))}
@@ -252,6 +266,21 @@ export const OrdersPage: React.FC = () => {
                   </div>
 
                   <div className="flex items-center gap-2">
+                    {order.status === 'DELIVERED' && (
+                      reviewedOrderIds.includes(order.id) || (user?.id !== undefined && isOrderMarkedReviewed(user.id, order.id)) ? (
+                        <span className="pill p-COMPLETED flex items-center gap-1" aria-label="Đã đánh giá tất cả món trong đơn">
+                          <CheckCircle2 size={14} /> Đã đánh giá
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setReviewOrder({ id: order.id, code: order.orderCode })}
+                          className="btn btn-sm btn-soft text-xs px-3"
+                        >
+                          <Star size={15} /> Đánh giá
+                        </button>
+                      )
+                    )}
                     {isPending && (
                       <button
                         type="button"
@@ -427,8 +456,8 @@ export const OrdersPage: React.FC = () => {
                       {detailData.items.map((item, idx) => (
                         <div key={idx} className="p-3 flex items-center gap-3">
                           <div className="w-12 h-12 rounded-lg bg-[var(--surface-2)] overflow-hidden shrink-0 border border-[var(--line)]">
-                            {item.thumbnailUrl ? (
-                              <img src={item.thumbnailUrl} alt={item.productName} className="w-full h-full object-cover" />
+                            {(item.imageUrl || item.thumbnailUrl) ? (
+                              <img src={item.imageUrl || item.thumbnailUrl || ''} alt={item.productName} className="w-full h-full object-cover" />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center text-xs font-bold text-[var(--ink-3)]">
                                 TF
@@ -438,11 +467,11 @@ export const OrdersPage: React.FC = () => {
                           <div className="flex-1 min-w-0">
                             <h5 className="font-bold text-sm text-[var(--ink)] truncate">{item.productName}</h5>
                             <span className="text-xs text-[var(--ink-3)]">
-                              {Number(item.unitPrice).toLocaleString('vi-VN')}đ × {item.quantity}
+                              {formatItemPrice(item.productPrice ?? item.unitPrice)}đ × {item.quantity}
                             </span>
                           </div>
                           <span className="font-bold text-sm text-[var(--ink)]">
-                            {Number(item.lineTotal).toLocaleString('vi-VN')}đ
+                            {formatItemPrice(item.lineTotal)}đ
                           </span>
                         </div>
                       ))}
@@ -574,6 +603,18 @@ export const OrdersPage: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {reviewOrder && user?.id !== undefined && (
+        <ReviewOrderModal
+          orderId={reviewOrder.id}
+          orderCode={reviewOrder.code}
+          userId={user.id}
+          onClose={() => setReviewOrder(null)}
+          onOrderReviewed={(orderId) => {
+            setReviewedOrderIds((current) => current.includes(orderId) ? current : [...current, orderId]);
+          }}
+        />
       )}
     </div>
   );

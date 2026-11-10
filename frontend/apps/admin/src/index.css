@@ -418,6 +418,35 @@ body {
    ADMIN DASHBOARD & LAYOUT (from ThunderFood.html)
    ======================================== */
 
+.voucher-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.voucher-filter-search {
+  flex: 1 1 260px;
+  max-width: 380px;
+}
+
+.voucher-filter-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: center;
+  gap: 10px;
+  flex: 1 1 490px;
+  width: min(100%, 490px);
+  max-width: 490px;
+}
+
+.voucher-filter-controls .select {
+  min-width: 0;
+  height: 40px;
+  font-size: 13px;
+}
+
 :root {
   --bg: #0A0F2E;
   --surface: #121942;
@@ -1476,6 +1505,21 @@ body {
   .ah {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .voucher-filter-bar {
+    align-items: stretch;
+  }
+
+  .voucher-filter-search,
+  .voucher-filter-controls {
+    flex-basis: 100%;
+    width: 100%;
+    max-width: none;
+  }
+
+  .voucher-filter-controls {
+    grid-template-columns: 1fr;
   }
 }
 

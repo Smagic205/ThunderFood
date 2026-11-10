@@ -35,13 +35,17 @@ export interface PlaceOrderRequest {
 }
 
 export interface OrderItemResponse {
+  id?: number;
   productId: number;
   productName: string;
   productSlug: string;
-  thumbnailUrl: string | null;
+  imageUrl: string | null;
   quantity: number;
-  unitPrice: number;
+  productPrice: number;
   lineTotal: number;
+  /** Optional compatibility aliases used by older API responses. */
+  thumbnailUrl?: string | null;
+  unitPrice?: number;
 }
 
 export interface OrderResponse {
