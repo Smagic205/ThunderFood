@@ -168,7 +168,7 @@ export const CreateStaffModal: React.FC<CreateStaffModalProps> = ({
             {/* Password */}
             <label className="field" style={{ marginBottom: '6px' }}>
               <span style={{ fontWeight: 600 }}>Mật khẩu khởi tạo (*)</span>
-              <div className="input-ic" style={{ position: 'relative' }}>
+              <div className="input-ic">
                 <div className="ic-prefix"><Lock size={16} /></div>
                 <input
                   className="input"
@@ -178,27 +178,20 @@ export const CreateStaffModal: React.FC<CreateStaffModalProps> = ({
                   value={formData.password}
                   onChange={handleChange}
                   disabled={isSubmitting}
-                  style={{ paddingRight: '40px' }}
+                  style={{ paddingRight: '46px' }}
                 />
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  style={{
-                    position: 'absolute',
-                    right: '12px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    color: 'var(--ink-3)',
-                    padding: 0,
-                    display: 'flex',
-                    alignItems: 'center',
+                  className="input-ic-btn"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setShowPassword((prev) => !prev);
                   }}
+                  aria-label={showPassword ? 'Ẩn mật khẩu' : 'Xem mật khẩu'}
+                  title={showPassword ? 'Ẩn mật khẩu' : 'Xem mật khẩu'}
                   tabIndex={-1}
                 >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
               {errors.password ? (
