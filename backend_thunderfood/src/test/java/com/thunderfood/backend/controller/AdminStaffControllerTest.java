@@ -75,7 +75,7 @@ class AdminStaffControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.status", is("SUCCESS")))
+                .andExpect(jsonPath("$.success", is(true)))
                 .andExpect(jsonPath("$.data.email", is("shipper@thunderfood.vn")))
                 .andExpect(jsonPath("$.data.role", is("STAFF")));
     }
@@ -94,7 +94,7 @@ class AdminStaffControllerTest {
 
         mockMvc.perform(get("/api/v1/admin/staffs"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status", is("SUCCESS")))
+                .andExpect(jsonPath("$.success", is(true)))
                 .andExpect(jsonPath("$.data", hasSize(1)))
                 .andExpect(jsonPath("$.data[0].email", is("staff1@thunderfood.vn")));
     }
