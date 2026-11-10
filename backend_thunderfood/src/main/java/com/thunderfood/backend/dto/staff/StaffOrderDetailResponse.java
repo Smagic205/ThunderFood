@@ -32,7 +32,9 @@ public class StaffOrderDetailResponse {
     private String receiverName;
     private String receiverPhone;
     private String shippingAddress;
+    private String detailAddress;
     private String wardName;
+    private String districtName;
 
     private BigDecimal subtotalAmount;
     private BigDecimal discountAmount;
@@ -64,8 +66,14 @@ public class StaffOrderDetailResponse {
         }
 
         String wardName = null;
-        if (order.getAddress() != null && order.getAddress().getWard() != null) {
-            wardName = order.getAddress().getWard().getWardName();
+        String districtName = null;
+        String detailAddress = null;
+        if (order.getAddress() != null) {
+            detailAddress = order.getAddress().getDetailAddress();
+            if (order.getAddress().getWard() != null) {
+                wardName = order.getAddress().getWard().getWardName();
+                districtName = order.getAddress().getWard().getDistrict();
+            }
         }
 
         Long pkgId = null;
@@ -90,7 +98,9 @@ public class StaffOrderDetailResponse {
                 .receiverName(order.getReceiverName())
                 .receiverPhone(order.getReceiverPhone())
                 .shippingAddress(order.getShippingAddress())
+                .detailAddress(detailAddress)
                 .wardName(wardName)
+                .districtName(districtName)
                 .subtotalAmount(order.getSubtotalAmount())
                 .discountAmount(order.getDiscountAmount())
                 .originalShippingFee(order.getOriginalShippingFee())

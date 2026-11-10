@@ -27,6 +27,13 @@ public class ServiceWard {
     private String wardName;
 
     /**
+     * Quận/Huyện trực thuộc (ví dụ: Đống Đa, Ba Đình, Cầu Giấy, Hoàn Kiếm...).
+     * Dùng để gom cụm và lọc đa cấp Quận -> Phường.
+     */
+    @Column(name = "district", length = 100)
+    private String district;
+
+    /**
      * Loại đơn vị hành chính:
      *   PHUONG – Phường (khu vực đô thị)
      *   XA     – Xã    (khu vực ngoại thành)

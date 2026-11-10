@@ -39,4 +39,15 @@ public interface ServiceWardRepository extends JpaRepository<ServiceWard, Intege
      * Tìm phường/xã đầu tiên theo tên
      */
     Optional<ServiceWard> findFirstByWardNameIgnoreCase(String wardName);
+
+    /**
+     * Lấy danh sách các Quận/Huyện duy nhất đang hoạt động
+     */
+    @Query("SELECT DISTINCT w.district FROM ServiceWard w WHERE w.isActive = true AND w.district IS NOT NULL ORDER BY w.district ASC")
+    List<String> findDistinctDistricts();
+
+    /**
+     * Lấy danh sách phường/xã theo Quận/Huyện
+     */
+    List<ServiceWard> findByDistrictIgnoreCaseAndIsActiveTrueOrderByWardNameAsc(String district);
 }
