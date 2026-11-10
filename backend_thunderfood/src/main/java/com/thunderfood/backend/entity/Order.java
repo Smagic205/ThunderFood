@@ -145,6 +145,13 @@ public class Order {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    /**
+     * Khóa lạc quan (Optimistic Lock) chống xung đột khi nhiều nhân viên thao tác cùng lúc
+     */
+    @Version
+    @Column(name = "version")
+    private Long version;
+
     @Builder.Default
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderItem> items = new ArrayList<>();
