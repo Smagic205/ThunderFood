@@ -110,7 +110,7 @@ export interface StaffOrderDetail {
 export interface DeliveryPackage {
   id: number;
   packageName: string;
-  status: string;
+  status: 'PENDING' | 'DELIVERING' | 'COMPLETED';
   maxOrders: number;
   currentOrdersCount: number;
   shippedByStaffId: number | null;
@@ -184,6 +184,57 @@ export const staffOrderApi = {
     const res = await axiosClient.get<ApiResponse<DeliveryPackage[]>>('/v1/staff/orders/packages/open');
     if (!res.data.success) {
       throw new Error(res.data.message || 'Không thể tải danh sách gói hàng đang mở');
+    }
+    return res.data.data;
+  },
+
+  claimPackage: async (packageId: number): Promise<DeliveryPackage> => {
+    const res = await axiosClient.post<ApiResponse<DeliveryPackage>>(
+      `/v1/staff/orders/packages/${packageId}/claim`,
+    );
+    if (!res.data.success) {
+      throw new Error(res.data.message || 'Không thể nhận gói hàng');
+    }
+    return res.data.data;
+  },
+
+  getMyHeldPackage: async (): Promise<DeliveryPackage | null> => {
+    const res = await axiosClient.get<ApiResponse<DeliveryPackage | null>>(
+      '/v1/staff/orders/packages/my-held',
+    );
+    if (!res.data.success) {
+      throw new Error(res.data.message || 'Không thể tải gói hàng đang giao');
+    }
+    return res.data.data;
+  },
+
+  getPackageOrders: async (packageId: number): Promise<StaffOrderListItem[]> => {
+    const res = await axiosClient.get<ApiResponse<StaffOrderListItem[]>>(
+      `/v1/staff/orders/packages/${packageId}/orders`,
+    );
+    if (!res.data.success) {
+      throw new Error(res.data.message || 'Không thể tải danh sách đơn trong gói');
+    }
+    return res.data.data;
+  },
+
+  deliverOrder: async (orderId: number): Promise<StaffOrderDetail> => {
+    const res = await axiosClient.post<ApiResponse<StaffOrderDetail>>(
+      `/v1/staff/orders/${orderId}/deliver`,
+    );
+    if (!res.data.success) {
+      throw new Error(res.data.message || 'Không thể xác nhận giao đơn hàng');
+    }
+    return res.data.data;
+  },
+
+  failDelivery: async (orderId: number, reason: string): Promise<StaffOrderDetail> => {
+    const res = await axiosClient.post<ApiResponse<StaffOrderDetail>>(
+      `/v1/staff/orders/${orderId}/fail`,
+      { reason },
+    );
+    if (!res.data.success) {
+      throw new Error(res.data.message || 'Không thể ghi nhận giao hàng thất bại');
     }
     return res.data.data;
   },

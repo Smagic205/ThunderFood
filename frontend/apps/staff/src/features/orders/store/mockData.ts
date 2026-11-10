@@ -82,7 +82,6 @@ export const MOCK_ORDERS = [
     payment_method: "MOMO",
     payment_status: "PAID",
     status: "CONFIRMED",
-    package_code: "GOI-A",
     subtotal_amount: 200000,
     shipping_fee: 0,
     total_amount: 200000,
@@ -93,7 +92,7 @@ export const MOCK_ORDERS = [
     ],
     history: [
       { status: "PENDING", created_at: new Date(Date.now() - 3700000).toISOString(), note: "Khách đặt hàng qua Momo" },
-      { status: "CONFIRMED", created_at: new Date(Date.now() - 3600000).toISOString(), note: "Nhân viên NV01 xác nhận vào GOI-A" }
+      { status: "CONFIRMED", created_at: new Date(Date.now() - 3600000).toISOString(), note: "Nhân viên NV01 xác nhận đơn hàng" }
     ]
   },
   {
@@ -108,7 +107,6 @@ export const MOCK_ORDERS = [
     payment_method: "VNPAY",
     payment_status: "PAID",
     status: "DELIVERING",
-    package_code: "GOI-B",
     subtotal_amount: 80000,
     shipping_fee: 15000,
     total_amount: 95000,
@@ -122,12 +120,6 @@ export const MOCK_ORDERS = [
       { status: "DELIVERING", created_at: new Date(Date.now() - 7200000).toISOString(), note: "Shipper đang giao" }
     ]
   }
-];
-
-export const MOCK_PACKAGES = [
-  { id: 1, code: "GOI-A", status: "PENDING", order_codes: ["DH002"] },
-  // staff_id 999 khớp demo login (LoginPage handleDemo)
-  { id: 2, code: "GOI-B", status: "DELIVERING", staff_id: 999, order_codes: ["DH003"] }
 ];
 
 export const MOCK_REVIEWS = [
