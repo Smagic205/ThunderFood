@@ -21,6 +21,21 @@ const STATUS_MAP: Record<string, string> = {
   CANCELLED: 'Đã hủy',
 };
 
+const formatMoney = (amount?: number | null | string): string => {
+  if (amount === undefined || amount === null) return '0';
+  const num = typeof amount === 'number' ? amount : Number(amount);
+  return isNaN(num) ? '0' : num.toLocaleString('vi-VN');
+};
+
+const formatDate = (dateStr?: string | null): string => {
+  if (!dateStr) return '—';
+  try {
+    return new Date(dateStr).toLocaleString('vi-VN');
+  } catch {
+    return String(dateStr);
+  }
+};
+
 const normalizeWardName = (value: string) => value
   .replace(/^(phường|xã)\s+/i, '')
   .trim()
@@ -306,14 +321,14 @@ export const OrdersPage = () => {
                   <tr key={o.id} className="click" onClick={() => setSelectedOrder(o)}>
                     <td className="td-main">
                       <b>{o.orderCode}</b>
-                      <small>{new Date(o.createdAt).toLocaleString('vi-VN')}</small>
+                      <small>{formatDate(o.createdAt)}</small>
                     </td>
                     <td data-label="Khách hàng">
                       {o.customerName || o.receiverName}
                       <small>{o.receiverPhone}</small>
                     </td>
                     <td data-label="Món">{o.totalItems} món</td>
-                    <td data-label="Tổng tiền"><b>{o.totalAmount.toLocaleString('vi-VN')}đ</b></td>
+                    <td data-label="Tổng tiền"><b>{formatMoney(o.totalAmount)}đ</b></td>
                     <td data-label="Gói hàng">
                       {o.packageCode ? <span className="tag">{o.packageCode}</span> : <span className="faint">—</span>}
                     </td>

@@ -41,11 +41,15 @@ export interface OrderItemDetail {
   id?: number;
   productId: number;
   productName: string;
+  productSlug?: string;
   productCode?: string;
+  imageUrl?: string;
   productThumbnail?: string;
-  price: number;
+  productPrice?: number;
+  price?: number;
   quantity: number;
-  totalPrice: number;
+  lineTotal?: number;
+  totalPrice?: number;
 }
 
 export interface OrderStatusHistoryItem {
@@ -53,6 +57,7 @@ export interface OrderStatusHistoryItem {
   status: string;
   note?: string;
   createdAt: string;
+  changedBy?: string;
   createdBy?: string;
 }
 

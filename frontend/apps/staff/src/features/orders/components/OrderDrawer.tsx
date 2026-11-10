@@ -23,6 +23,21 @@ const PAYSTAT_MAP: Record<string, string> = {
   REFUNDED: 'Đã hoàn tiền',
 };
 
+const formatMoney = (amount?: number | null | string): string => {
+  if (amount === undefined || amount === null) return '0';
+  const num = typeof amount === 'number' ? amount : Number(amount);
+  return isNaN(num) ? '0' : num.toLocaleString('vi-VN');
+};
+
+const formatDate = (dateStr?: string | null): string => {
+  if (!dateStr) return '—';
+  try {
+    return new Date(dateStr).toLocaleString('vi-VN');
+  } catch {
+    return String(dateStr);
+  }
+};
+
 interface OrderDrawerProps {
   orderId: number | null;
   initialOrder?: StaffOrderListItem | null;
@@ -74,7 +89,7 @@ export const OrderDrawer: React.FC<OrderDrawerProps> = ({
             <span className={`pill s-${order.status}`}>{STATUS_MAP[order.status] || order.status}</span>
             <span className={`pill p-${order.paymentStatus}`}>{PAYSTAT_MAP[order.paymentStatus] || order.paymentStatus}</span>
             <span className="faint" style={{ fontSize: '13px', marginLeft: 'auto' }}>
-              {new Date(order.createdAt).toLocaleString('vi-VN')}
+              {formatDate(order.createdAt)}
             </span>
           </div>
 
@@ -129,24 +144,30 @@ export const OrderDrawer: React.FC<OrderDrawerProps> = ({
                 <Loader2 size={24} className="animate-spin text-muted" />
               </div>
             ) : items.length > 0 ? (
-              items.map((item: OrderItemDetail, idx: number) => (
-                <div className="mini-item" key={idx}>
-                  {item.productThumbnail ? (
-                    <img
-                      src={item.productThumbnail}
-                      alt={item.productName}
-                      style={{ width: '36px', height: '36px', borderRadius: '6px', objectFit: 'cover' }}
-                    />
-                  ) : (
-                    <div className="tile xs" style={{ background: 'var(--volt-soft)', color: 'var(--volt)' }}>M</div>
-                  )}
-                  <div className="grow">
-                    <b style={{ fontWeight: 600 }}>{item.productName}</b>
-                    <div className="faint">{item.price.toLocaleString('vi-VN')}đ × {item.quantity}</div>
+              items.map((item: OrderItemDetail, idx: number) => {
+                const itemPrice = item.productPrice ?? item.price ?? 0;
+                const itemTotal = item.lineTotal ?? item.totalPrice ?? (itemPrice * item.quantity);
+                const itemImage = item.imageUrl || item.productThumbnail;
+
+                return (
+                  <div className="mini-item" key={item.id ?? idx}>
+                    {itemImage ? (
+                      <img
+                        src={itemImage}
+                        alt={item.productName}
+                        style={{ width: '36px', height: '36px', borderRadius: '6px', objectFit: 'cover' }}
+                      />
+                    ) : (
+                      <div className="tile xs" style={{ background: 'var(--volt-soft)', color: 'var(--volt)' }}>M</div>
+                    )}
+                    <div className="grow">
+                      <b style={{ fontWeight: 600 }}>{item.productName}</b>
+                      <div className="faint">{formatMoney(itemPrice)}đ × {item.quantity}</div>
+                    </div>
+                    <b>{formatMoney(itemTotal)}đ</b>
                   </div>
-                  <b>{item.totalPrice.toLocaleString('vi-VN')}đ</b>
-                </div>
-              ))
+                );
+              })
             ) : (
               <p className="muted" style={{ fontSize: '13px', margin: '8px 0' }}>
                 Tổng {initialOrder?.totalItems ?? items.length} món
@@ -159,7 +180,7 @@ export const OrderDrawer: React.FC<OrderDrawerProps> = ({
               <>
                 <div className="sum-line">
                   <span>Tạm tính</span>
-                  <span>{detailData.subtotalAmount.toLocaleString('vi-VN')}đ</span>
+                  <span>{formatMoney(detailData.subtotalAmount)}đ</span>
                 </div>
 
                 {detailData.discountAmount > 0 && (
@@ -168,7 +189,7 @@ export const OrderDrawer: React.FC<OrderDrawerProps> = ({
                       <Tag size={14} /> Giảm giá món
                       {detailData.productVoucher && ` (${detailData.productVoucher.code})`}
                     </span>
-                    <span>-{detailData.discountAmount.toLocaleString('vi-VN')}đ</span>
+                    <span>-{formatMoney(detailData.discountAmount)}đ</span>
                   </div>
                 )}
 
@@ -177,10 +198,10 @@ export const OrderDrawer: React.FC<OrderDrawerProps> = ({
                   <span>
                     {detailData.originalShippingFee && detailData.originalShippingFee > detailData.shippingFee && (
                       <span className="muted" style={{ textDecoration: 'line-through', marginRight: '6px' }}>
-                        {detailData.originalShippingFee.toLocaleString('vi-VN')}đ
+                        {formatMoney(detailData.originalShippingFee)}đ
                       </span>
                     )}
-                    {detailData.shippingFee === 0 ? 'Miễn phí' : `${detailData.shippingFee.toLocaleString('vi-VN')}đ`}
+                    {detailData.shippingFee === 0 ? 'Miễn phí' : `${formatMoney(detailData.shippingFee)}đ`}
                     {detailData.shippingVoucher && ` (${detailData.shippingVoucher.code})`}
                   </span>
                 </div>
@@ -189,7 +210,7 @@ export const OrderDrawer: React.FC<OrderDrawerProps> = ({
 
             <div className="sum-line total">
               <span>Tổng cộng</span>
-              <b>{order.totalAmount.toLocaleString('vi-VN')}đ</b>
+              <b>{formatMoney(order.totalAmount)}đ</b>
             </div>
           </div>
 
@@ -201,7 +222,7 @@ export const OrderDrawer: React.FC<OrderDrawerProps> = ({
             {history.length > 0 ? (
               <div className="tl">
                 {history.map((h: OrderStatusHistoryItem, idx: number) => (
-                  <div className={`tl-i ${h.status === 'CANCELLED' ? 'bad' : 'done'}`} key={idx}>
+                  <div className={`tl-i ${h.status === 'CANCELLED' ? 'bad' : 'done'}`} key={h.id ?? idx}>
                     <span
                       className="tl-dot"
                       style={h.status === 'CANCELLED' ? { background: 'var(--c-red)', borderColor: 'var(--c-red)', color: '#fff' } : {}}
@@ -211,9 +232,9 @@ export const OrderDrawer: React.FC<OrderDrawerProps> = ({
                     <div>
                       <b>{STATUS_MAP[h.status] || h.status}</b>
                       <small>
-                        {new Date(h.createdAt).toLocaleString('vi-VN')}
+                        {formatDate(h.createdAt)}
                         {h.note ? ` · ${h.note}` : ''}
-                        {h.createdBy ? ` (bởi ${h.createdBy})` : ''}
+                        {h.changedBy || h.createdBy ? ` (bởi ${h.changedBy || h.createdBy})` : ''}
                       </small>
                     </div>
                   </div>
