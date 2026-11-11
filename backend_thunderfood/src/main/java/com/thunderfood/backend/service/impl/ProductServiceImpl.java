@@ -604,6 +604,56 @@ public class ProductServiceImpl implements ProductService {
         productImageRepository.saveAll(imageEntities);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<ProductAdminResponse> getAllProductsForAdmin(
+            String keyword,
+            Integer categoryId,
+            Boolean isAvailable,
+            org.springframework.data.domain.Pageable pageable
+    ) {
+        Specification<Product> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            if (keyword != null && !keyword.trim().isEmpty()) {
+                String pattern = "%" + keyword.trim().toLowerCase() + "%";
+                predicates.add(cb.or(
+                        cb.like(cb.lower(root.get("name")), pattern),
+                        cb.like(cb.lower(root.get("slug")), pattern)
+                ));
+            }
+
+            if (categoryId != null) {
+                predicates.add(cb.equal(root.get("category").get("id"), categoryId));
+            }
+
+            if (isAvailable != null) {
+                predicates.add(cb.equal(root.get("isAvailable"), isAvailable));
+            }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        Page<Product> page = productRepository.findAll(spec, pageable);
+        List<ProductAdminResponse> items = page.getContent().stream()
+                .map(this::mapToAdminResponse)
+                .toList();
+
+        com.thunderfood.backend.dto.common.PaginationInfo pagination = com.thunderfood.backend.dto.common.PaginationInfo.builder()
+                .page(page.getNumber())
+                .size(page.getSize())
+                .totalElements(page.getTotalElements())
+                .totalPages(page.getTotalPages())
+                .hasNext(page.hasNext())
+                .hasPrevious(page.hasPrevious())
+                .build();
+
+        return PageResponse.<ProductAdminResponse>builder()
+                .content(items)
+                .pagination(pagination)
+                .build();
+    }
+
     private ProductAdminResponse mapToAdminResponse(Product product) {
         CategoryBriefDto categoryDto = null;
         if (product.getCategory() != null) {

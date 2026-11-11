@@ -35,6 +35,13 @@ public interface ProductService {
 
     ProductAdminResponse getProductDetailForAdmin(Long id);
 
+    PageResponse<ProductAdminResponse> getAllProductsForAdmin(
+            String keyword,
+            Integer categoryId,
+            Boolean isAvailable,
+            org.springframework.data.domain.Pageable pageable
+    );
+
     ProductAdminResponse createProduct(ProductCreateRequest request);
 
     ProductAdminResponse updateProduct(Long id, ProductUpdateRequest request);

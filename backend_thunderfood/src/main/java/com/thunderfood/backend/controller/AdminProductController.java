@@ -18,6 +18,25 @@ public class AdminProductController {
 
     private final ProductService productService;
 
+    @GetMapping
+    public ResponseEntity<ApiResponse<com.thunderfood.backend.dto.common.PageResponse<ProductAdminResponse>>> getAllProducts(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Integer categoryId,
+            @RequestParam(required = false) Boolean isAvailable,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "id") String sortBy,
+            @RequestParam(defaultValue = "desc") String direction
+    ) {
+        org.springframework.data.domain.Sort sort = "asc".equalsIgnoreCase(direction)
+                ? org.springframework.data.domain.Sort.by(sortBy).ascending()
+                : org.springframework.data.domain.Sort.by(sortBy).descending();
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, sort);
+        com.thunderfood.backend.dto.common.PageResponse<ProductAdminResponse> response =
+                productService.getAllProductsForAdmin(keyword, categoryId, isAvailable, pageable);
+        return ResponseEntity.ok(ApiResponse.success("Lấy danh sách món ăn cho quản trị viên thành công", response));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<ProductAdminResponse>> getProductById(@PathVariable Long id) {
         ProductAdminResponse response = productService.getProductDetailForAdmin(id);

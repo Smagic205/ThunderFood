@@ -11,6 +11,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -38,4 +40,19 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
     List<Order> findByDeliveryPackageIdOrderByCreatedAtAsc(Long packageId);
 
     long countByDeliveryPackageId(Long packageId);
+
+    // ── Queries phục vụ Dashboard & Báo cáo ──────────────────────────────────
+
+    @Query("SELECT COALESCE(SUM(o.totalAmount), 0) FROM Order o WHERE o.status = 'DELIVERED' AND o.createdAt >= :start AND o.createdAt <= :end")
+    BigDecimal calculateTotalRevenue(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
+    @Query("SELECT o.status, COUNT(o) FROM Order o WHERE o.createdAt >= :start AND o.createdAt <= :end GROUP BY o.status")
+    List<Object[]> countOrdersByStatus(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
+    @Query("SELECT COUNT(o) FROM Order o WHERE o.createdAt >= :start AND o.createdAt <= :end")
+    long countTotalOrders(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
+    List<Order> findByStatusAndCreatedAtBetweenOrderByCreatedAtAsc(String status, LocalDateTime start, LocalDateTime end);
+
+    List<Order> findByCreatedAtBetweenOrderByCreatedAtDesc(LocalDateTime start, LocalDateTime end);
 }

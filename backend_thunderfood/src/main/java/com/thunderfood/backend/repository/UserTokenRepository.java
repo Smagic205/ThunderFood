@@ -21,6 +21,7 @@ public interface UserTokenRepository extends JpaRepository<UserToken, Long> {
     List<UserToken> findByUserIdAndTypeOrderByCreatedAtAsc(Long userId, String type);
     void deleteByToken(String token);
     void deleteByUserIdAndType(Long userId, String type);
+    void deleteAllByUserId(Long userId);
 
     @Modifying
     @Transactional

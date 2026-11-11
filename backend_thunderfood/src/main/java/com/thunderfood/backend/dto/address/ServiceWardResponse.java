@@ -34,6 +34,9 @@ public class ServiceWardResponse {
     @Schema(description = "Trạng thái phục vụ (true = đang giao hàng)", example = "true")
     private Boolean isActive;
 
+    @Schema(description = "Quận/Huyện trực thuộc", example = "Đống Đa")
+    private String district;
+
     public static ServiceWardResponse fromEntity(ServiceWard ward) {
         if (ward == null) {
             return null;
@@ -42,6 +45,7 @@ public class ServiceWardResponse {
         return ServiceWardResponse.builder()
                 .id(ward.getId())
                 .wardName(ward.getWardName())
+                .district(ward.getDistrict())
                 .type(ward.getType())
                 .displayName(prefix + ward.getWardName())
                 .shippingFee(ward.getShippingFee())
