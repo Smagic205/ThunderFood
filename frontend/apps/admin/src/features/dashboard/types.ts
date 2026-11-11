@@ -47,6 +47,19 @@ export interface RecentOrderItem {
   createdAt: string;
 }
 
+export interface ShipperPerformanceItem {
+  staffId: number;
+  staffName: string;
+  email: string;
+  phone: string;
+  totalPackages: number;
+  totalOrders: number;
+  deliveredOrders: number;
+  failedOrders: number;
+  successRate: number;
+  avgDeliveryMinutes: number;
+}
+
 export interface DashboardData {
   kpis: {
     revenueToday: KpiMetric;
@@ -58,4 +71,5 @@ export interface DashboardData {
   orderStatusCounts: StatusCountItem[];
   topProducts: TopProductItem[];
   recentOrders: RecentOrderItem[];
+  shipperPerformance?: ShipperPerformanceItem[];
 }
