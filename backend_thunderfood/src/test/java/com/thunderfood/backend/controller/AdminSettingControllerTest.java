@@ -91,3 +91,4 @@ class AdminSettingControllerTest {
                 .andExpect(jsonPath("$.data[0].value", is("350000")));
     }
 }
+

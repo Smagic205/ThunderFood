@@ -171,3 +171,4 @@ class AdminUserControllerTest {
                 .andExpect(jsonPath("$.data.role", is("STAFF")));
     }
 }
+

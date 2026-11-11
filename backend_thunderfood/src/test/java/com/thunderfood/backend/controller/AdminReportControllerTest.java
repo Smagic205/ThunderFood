@@ -64,3 +64,4 @@ class AdminReportControllerTest {
                 .andExpect(content().contentType("application/pdf"));
     }
 }
+

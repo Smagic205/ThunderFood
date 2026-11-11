@@ -118,3 +118,4 @@ class AdminServiceWardControllerTest {
                 .andExpect(jsonPath("$.data.isActive", is(false)));
     }
 }
+
