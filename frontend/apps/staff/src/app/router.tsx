@@ -6,6 +6,7 @@ import { OrdersPage } from '@/features/orders/pages/OrdersPage';
 import { PackagesPage } from '@/features/packages/pages/PackagesPage';
 import { MyPackagePage } from '@/features/packages/pages/MyPackagePage';
 import { ReviewsPage } from '@/features/reviews/pages/ReviewsPage';
+import { NotificationsPage } from '@/features/notifications/pages/NotificationsPage';
 
 // Fallback component until we implement real pages
 
@@ -41,6 +42,10 @@ export const router = createBrowserRouter([
       {
         path: 'reviews',
         element: <ReviewsPage />,
+      },
+      {
+        path: 'notifications',
+        element: <NotificationsPage />,
       },
     ],
   },

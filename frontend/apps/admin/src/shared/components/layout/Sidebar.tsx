@@ -12,6 +12,7 @@ import {
   Percent,
   Image as ImageIcon,
   Sliders,
+  Bell,
   LogOut,
 } from 'lucide-react';
 import { useAuthStore } from '@/app/store/authStore';
@@ -64,7 +65,6 @@ export const Sidebar = () => {
       <NavLink to="/admin/orders" className={({ isActive }) => (isActive ? 'on' : '')}>
         <Receipt size={20} />
         <span>Theo dõi đơn hàng</span>
-        <span className="cnt">3</span>
       </NavLink>
       <NavLink to="/admin/packages" className={({ isActive }) => (isActive ? 'on' : '')}>
         <Package size={20} />
@@ -91,7 +91,6 @@ export const Sidebar = () => {
       <NavLink to="/admin/reviews" className={({ isActive }) => (isActive ? 'on' : '')}>
         <Star size={20} />
         <span>Đánh giá</span>
-        <span className="cnt">5</span>
       </NavLink>
       <NavLink to="/admin/vouchers" className={({ isActive }) => (isActive ? 'on' : '')}>
         <Percent size={20} />
@@ -99,6 +98,10 @@ export const Sidebar = () => {
       </NavLink>
 
       <div className="grp">Hệ thống</div>
+      <NavLink to="/admin/notifications" className={({ isActive }) => (isActive ? 'on' : '')}>
+        <Bell size={20} />
+        <span>Thông báo</span>
+      </NavLink>
       <NavLink to="/admin/banners" className={({ isActive }) => (isActive ? 'on' : '')}>
         <ImageIcon size={20} />
         <span>Banner</span>

@@ -9,6 +9,9 @@ import { PackagesPage } from '@/features/packages/pages/PackagesPage';
 import { ProductsPage } from '@/features/catalog/pages/ProductsPage';
 import { CategoriesPage } from '@/features/catalog/pages/CategoriesPage';
 import { VouchersPage } from '@/features/vouchers/pages/VouchersPage';
+import { StaffsPage } from '@/features/staffs/pages/StaffsPage';
+import { ReviewsPage } from '@/features/reviews/pages/ReviewsPage';
+import { NotificationsPage } from '@/features/notifications/pages/NotificationsPage';
 
 export const router = createBrowserRouter([
   {
@@ -57,21 +60,15 @@ export const router = createBrowserRouter([
           },
           {
             path: 'admin/staffs',
-            element: (
-              <div className="card card-p">
-                <h3>Nhân viên</h3>
-                <p className="muted" style={{ marginTop: '8px' }}>Trang quản lý nhân viên đang được xây dựng.</p>
-              </div>
-            ),
+            element: <StaffsPage />,
           },
           {
             path: 'admin/reviews',
-            element: (
-              <div className="card card-p">
-                <h3>Đánh giá</h3>
-                <p className="muted" style={{ marginTop: '8px' }}>Trang quản lý đánh giá đang được xây dựng.</p>
-              </div>
-            ),
+            element: <ReviewsPage />,
+          },
+          {
+            path: 'admin/notifications',
+            element: <NotificationsPage />,
           },
           {
             path: 'admin/vouchers',

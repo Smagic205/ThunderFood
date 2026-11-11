@@ -418,6 +418,35 @@ body {
    ADMIN DASHBOARD & LAYOUT (from ThunderFood.html)
    ======================================== */
 
+.voucher-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.voucher-filter-search {
+  flex: 1 1 260px;
+  max-width: 380px;
+}
+
+.voucher-filter-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: center;
+  gap: 10px;
+  flex: 1 1 490px;
+  width: min(100%, 490px);
+  max-width: 490px;
+}
+
+.voucher-filter-controls .select {
+  min-width: 0;
+  height: 40px;
+  font-size: 13px;
+}
+
 :root {
   --bg: #0A0F2E;
   --surface: #121942;
@@ -819,11 +848,42 @@ body {
   align-items: center;
 }
 
-.input-ic svg {
+.input-ic > svg,
+.input-ic > .ic-prefix svg {
   position: absolute;
   left: 14px;
   color: var(--ink-3);
   pointer-events: none;
+}
+
+.input-ic-btn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--ink-3);
+  padding: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: color 0.15s, background-color 0.15s;
+  z-index: 2;
+}
+
+.input-ic-btn:hover {
+  color: var(--ink);
+  background: var(--surface-2);
+}
+
+.input-ic-btn svg {
+  position: static !important;
+  left: auto !important;
+  color: inherit !important;
+  pointer-events: auto !important;
 }
 
 .input-ic .input {
@@ -1445,6 +1505,21 @@ body {
   .ah {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .voucher-filter-bar {
+    align-items: stretch;
+  }
+
+  .voucher-filter-search,
+  .voucher-filter-controls {
+    flex-basis: 100%;
+    width: 100%;
+    max-width: none;
+  }
+
+  .voucher-filter-controls {
+    grid-template-columns: 1fr;
   }
 }
 

@@ -1,18 +1,24 @@
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Heart, ShoppingBag, Star, Loader2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/app/store/authStore';
 import { useCartStore } from '@/shared/stores/cartStore';
 import { useToastStore } from '@/shared/stores/toastStore';
+import { wishlistApi } from '@/shared/api/wishlistApi';
+import { useMyWishlist } from '@/shared/hooks/useMyWishlist';
 
 import type { Product } from '@/shared/types';
 
 export function ProductCard({ product: p }: { product: Product }) {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
   const { addToCart } = useCartStore();
   const { showToast } = useToastStore();
+  const queryClient = useQueryClient();
+  const wishlistQuery = useMyWishlist();
   const [isAdding, setIsAdding] = useState(false);
+  const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
 
   const handleAction = async (e: React.MouseEvent, actionName: string) => {
     e.preventDefault();
@@ -36,6 +42,29 @@ export function ProductCard({ product: p }: { product: Product }) {
       return;
     }
   };
+
+  const handleFavorite = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isAuthenticated) {
+      showToast('Vui lòng đăng nhập để lưu món yêu thích', 'info');
+      navigate('/login');
+      return;
+    }
+
+    try {
+      setIsTogglingFavorite(true);
+      const result = await wishlistApi.toggle(p.id);
+      await queryClient.invalidateQueries({ queryKey: ['my-wishlist', user?.id] });
+      showToast(result.message, 'success');
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || err?.message || 'Không thể cập nhật món yêu thích', 'error');
+    } finally {
+      setIsTogglingFavorite(false);
+    }
+  };
+
+  const isFavorite = wishlistQuery.data?.some((item) => item.productId === p.id) ?? p.isFavorite ?? false;
 
   const imageSrc = p.thumbnailUrl || p.imageUrl || 'https://cdn-icons-png.flaticon.com/512/3075/3075977.png';
 
@@ -80,9 +109,13 @@ export function ProductCard({ product: p }: { product: Product }) {
       {/* Favorite Button */}
       <button 
         className="absolute right-3 top-3 w-[36px] h-[36px] rounded-full bg-white/80 backdrop-blur-md border border-[var(--line)] text-[var(--ink-2)] hover:text-[#e13636] hover:bg-white flex items-center justify-center shadow-sm transition-all z-10"
-        onClick={(e) => handleAction(e, 'favorite')}
+        type="button"
+        aria-label={isFavorite ? `Xóa ${p.name} khỏi món yêu thích` : `Thêm ${p.name} vào món yêu thích`}
+        aria-pressed={isFavorite}
+        disabled={isTogglingFavorite}
+        onClick={handleFavorite}
       >
-        <Heart size={18} className={p.isFavorite ? 'fill-[#e13636] text-[#e13636]' : ''} />
+        <Heart size={18} className={isFavorite ? 'fill-[#e13636] text-[#e13636]' : ''} />
       </button>
 
       {/* Info */}

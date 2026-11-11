@@ -271,9 +271,9 @@ export const VouchersPage: React.FC = () => {
       </div>
 
       {/* Filter toolbar */}
-      <div className="card card-p" style={{ padding: '16px 20px', display: 'flex', flexWrap: 'wrap', gap: '14px', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div className="card card-p voucher-filter-bar" style={{ padding: '16px 20px' }}>
         {/* Search */}
-        <div style={{ position: 'relative', flex: '1 1 260px', maxWidth: '380px' }}>
+        <div className="voucher-filter-search" style={{ position: 'relative' }}>
           <Search size={17} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-3)' }} />
           <input
             type="text"
@@ -286,7 +286,7 @@ export const VouchersPage: React.FC = () => {
         </div>
 
         {/* Filter controls */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center' }}>
+        <div className="voucher-filter-controls">
           {/* Filter loại */}
           <select
             className="select"
@@ -295,7 +295,7 @@ export const VouchersPage: React.FC = () => {
               setSelectedType(e.target.value);
               setPage(0);
             }}
-            style={{ height: '40px', fontSize: '13px', minWidth: '150px' }}
+            style={{ height: '40px', fontSize: '13px', minWidth: 0 }}
           >
             <option value="ALL">Tất cả loại voucher</option>
             <option value="PRODUCT">Món ăn (PRODUCT)</option>
@@ -310,7 +310,7 @@ export const VouchersPage: React.FC = () => {
               setSelectedStatus(e.target.value);
               setPage(0);
             }}
-            style={{ height: '40px', fontSize: '13px', minWidth: '160px' }}
+            style={{ height: '40px', fontSize: '13px', minWidth: 0 }}
           >
             <option value="ALL">Tất cả trạng thái</option>
             <option value="ACTIVE">Đang áp dụng</option>

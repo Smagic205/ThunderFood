@@ -4,6 +4,8 @@ import { useThemeStore } from '@/shared/stores/themeStore';
 import { useAuthStore } from '@/app/store/authStore';
 import { useCartStore } from '@/shared/stores/cartStore';
 import { authApi } from '@/shared/api/authApi';
+import { notificationApi } from '@/shared/api/notificationApi';
+import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState, useRef } from 'react';
 
 export const Header = () => {
@@ -13,6 +15,13 @@ export const Header = () => {
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLSpanElement>(null);
   const navigate = useNavigate();
+  const unreadNotificationsQuery = useQuery({
+    queryKey: ['notification-unread-count', user?.id],
+    queryFn: notificationApi.getUnreadCount,
+    enabled: isAuthenticated && Boolean(user?.id),
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
 
   useEffect(() => {
     initTheme();
@@ -90,7 +99,11 @@ export const Header = () => {
             </button>
             <Link className="ibtn" to="/account/notifications" aria-label="Thông báo">
               <Bell size={22} />
-              <i className="dot" data-notif-dot style={{ display: 'none' }}></i>
+              {(unreadNotificationsQuery.data ?? 0) > 0 && (
+                <span className="badge" aria-label={`${unreadNotificationsQuery.data} thông báo chưa đọc`}>
+                  {(unreadNotificationsQuery.data ?? 0) > 99 ? '99+' : unreadNotificationsQuery.data}
+                </span>
+              )}
             </Link>
             <Link className="ibtn" to="/account/wishlist" aria-label="Món yêu thích">
               <Heart size={22} />

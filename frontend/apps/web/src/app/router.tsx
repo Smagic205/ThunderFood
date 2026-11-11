@@ -17,11 +17,9 @@ import { AccountLayout } from '../pages/account/AccountLayout';
 import { AddressesPage } from '../pages/account/AddressesPage';
 import { ProfilePage } from '../pages/account/ProfilePage';
 import { OrdersPage } from '../pages/account/OrdersPage';
-import { 
-  PaymentsPage, 
-  WishlistPage, 
-  NotificationsPage 
-} from '../pages/account/Placeholders';
+import { PaymentsPage } from '../pages/account/Placeholders';
+import { WishlistPage } from '../pages/account/WishlistPage';
+import { NotificationsPage } from '../pages/account/NotificationsPage';
 import { Navigate } from 'react-router-dom';
 
 export const router = createBrowserRouter([

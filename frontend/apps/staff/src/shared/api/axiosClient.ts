@@ -3,8 +3,16 @@ import { useAuthStore } from '../../features/auth/store/authStore';
 import { authApi, type ApiResponse, type StaffAuthResponse } from '../../features/auth/api/auth';
 import { useForbiddenNoticeStore } from '../stores/forbiddenNoticeStore';
 
+const getBaseApiUrl = () => {
+  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL.replace(/\/v1\/?$/, '');
+  }
+  return 'http://localhost:8080/api';
+};
+
 export const axiosClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8080/api',
+  baseURL: getBaseApiUrl(),
   headers: {
     'Content-Type': 'application/json',
   },

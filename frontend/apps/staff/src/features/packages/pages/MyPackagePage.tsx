@@ -1,125 +1,230 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Truck, Check, X } from 'lucide-react';
-import { useOrderStore } from '@/features/orders/store/orderStore';
-import { useAuthStore } from '@/features/auth/store/authStore';
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import { AlertCircle, Check, Loader2, MapPin, Phone, Truck, X } from 'lucide-react';
+import { staffOrderApi, type StaffOrderListItem } from '@/features/orders/api/staffOrderApi';
+import { ReportDeliveryFailureModal } from '../components/ReportDeliveryFailureModal';
 
-const PAYSTAT_MAP: Record<string, string> = {
+const PAYMENT_LABELS: Record<string, string> = {
   UNPAID: 'Chưa thanh toán',
   PAID: 'Đã thanh toán',
-  REFUNDED: 'Đã hoàn tiền'
+  REFUNDED: 'Đã hoàn tiền',
 };
 
-const STATUS_MAP: Record<string, string> = {
+const STATUS_LABELS: Record<string, string> = {
   PENDING: 'Chờ xác nhận',
   CONFIRMED: 'Đã xác nhận',
   DELIVERING: 'Đang giao',
   DELIVERED: 'Đã giao',
-  CANCELLED: 'Đã hủy'
+  CANCELLED: 'Giao thất bại',
 };
+
+const errorMessage = (error: unknown) =>
+  error instanceof Error ? error.message : 'Đã xảy ra lỗi, vui lòng thử lại.';
 
 export const MyPackagePage = () => {
   const navigate = useNavigate();
-  const { user } = useAuthStore();
-  const packages = useOrderStore(s => s.packages);
-  const orders = useOrderStore(s => s.orders);
-  const updateOrderStatus = useOrderStore(s => s.updateOrderStatus);
+  const queryClient = useQueryClient();
+  const [failureOrder, setFailureOrder] = useState<StaffOrderListItem | null>(null);
+  const [actionMessage, setActionMessage] = useState('');
 
-  const heldPackage = packages.find(p => p.staff_id === user?.id && p.status === 'DELIVERING');
+  const heldPackageQuery = useQuery({
+    queryKey: ['my-held-package'],
+    queryFn: staffOrderApi.getMyHeldPackage,
+    staleTime: 10_000,
+  });
+  const heldPackage = heldPackageQuery.data;
+
+  const packageOrdersQuery = useQuery({
+    queryKey: ['package-orders', heldPackage?.id],
+    queryFn: () => staffOrderApi.getPackageOrders(heldPackage!.id),
+    enabled: heldPackage !== null && heldPackage !== undefined,
+    staleTime: 10_000,
+  });
+  const orders = packageOrdersQuery.data ?? [];
+  const orderDetails = useQueries({
+    queries: orders.map((order) => ({
+      queryKey: ['staff-order-detail', order.id],
+      queryFn: () => staffOrderApi.getOrderDetail(order.id),
+      staleTime: 30_000,
+    })),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ orderId, reason }: { orderId: number; reason?: string }) =>
+      reason === undefined
+        ? staffOrderApi.deliverOrder(orderId)
+        : staffOrderApi.failDelivery(orderId, reason),
+    onSuccess: async (data, variables) => {
+      setFailureOrder(null);
+      setActionMessage(variables.reason === undefined
+        ? `Đã xác nhận giao thành công đơn ${data.orderCode}.`
+        : `Đã ghi nhận giao thất bại đơn ${data.orderCode}.`);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['my-held-package'] }),
+        queryClient.invalidateQueries({ queryKey: ['package-orders'] }),
+        queryClient.invalidateQueries({ queryKey: ['staff-order-detail', variables.orderId] }),
+        queryClient.invalidateQueries({ queryKey: ['staff-orders'] }),
+      ]);
+    },
+  });
+
+  const handleDeliver = (order: StaffOrderListItem) => {
+    if (!window.confirm(`Xác nhận đã giao đơn ${order.orderCode}?`)) return;
+    setActionMessage('');
+    updateMutation.mutate({ orderId: order.id });
+  };
+
+  if (heldPackageQuery.isLoading) {
+    return (
+      <>
+        <div className="ah"><div><h2>Gói đơn của tôi</h2></div></div>
+        <div className="empty card" style={{ padding: '40px', textAlign: 'center' }}>
+          <Loader2 size={22} className="animate-spin" />
+          <p className="muted">Đang tải gói giao hàng…</p>
+        </div>
+      </>
+    );
+  }
+
+  if (heldPackageQuery.isError) {
+    return (
+      <>
+        <div className="ah"><div><h2>Gói đơn của tôi</h2></div></div>
+        <div className="empty card" role="alert" style={{ padding: '40px', textAlign: 'center' }}>
+          <AlertCircle size={24} style={{ color: 'var(--c-red)' }} />
+          <h3>Không tải được gói đang giao</h3>
+          <p className="muted">{errorMessage(heldPackageQuery.error)}</p>
+          <button className="btn btn-soft btn-sm" onClick={() => heldPackageQuery.refetch()}>Thử lại</button>
+        </div>
+      </>
+    );
+  }
 
   if (!heldPackage) {
     return (
       <>
-        <div className="ah">
-          <div>
-            <h2>Gói đơn của tôi</h2>
-          </div>
-        </div>
+        <div className="ah"><div><h2>Gói đơn của tôi</h2></div></div>
+        {actionMessage && <div className="card card-p" role="status" style={{ marginBottom: '16px' }}>{actionMessage}</div>}
         <div className="empty card" style={{ padding: '60px', textAlign: 'center' }}>
           <div className="art-wrap" style={{ color: 'var(--c-blue)', marginBottom: '16px', display: 'flex', justifyContent: 'center' }}>
             <Truck size={48} />
           </div>
           <h3>Bạn chưa nhận gói nào</h3>
-          <p className="muted" style={{ marginBottom: '20px' }}>Vào mục Nhận gói hàng để nhận một gói đang chờ giao.</p>
+          <p className="muted" style={{ marginBottom: '20px' }}>Nhận một gói đang chờ để bắt đầu giao hàng.</p>
           <button className="btn btn-primary" onClick={() => navigate('/packages')}>Xem gói hàng</button>
         </div>
       </>
     );
   }
 
-  const pkgOrders = orders.filter(o => heldPackage.order_codes.includes(o.order_code));
-
-  const handleUpdateStatus = (orderCode: string, newStatus: string) => {
-    const label = newStatus === 'DELIVERED' ? 'đã giao' : 'hủy';
-    if (!window.confirm(`Xác nhận ${label} đơn ${orderCode}?`)) return;
-
-    updateOrderStatus(orderCode, newStatus);
-
-    const remaining = pkgOrders
-      .map(o => (o.order_code === orderCode ? { ...o, status: newStatus } : o))
-      .every(o => o.status === 'DELIVERED' || o.status === 'CANCELLED');
-
-    if (remaining) {
-      setTimeout(() => {
-        alert(`Tất cả đơn trong gói ${heldPackage.code} đã hoàn tất. Bạn có thể nhận gói mới.`);
-      }, 100);
-    }
-  };
-
   return (
     <>
       <div className="ah">
         <div>
           <h2>Gói đơn của tôi</h2>
-          <p>Gói {heldPackage.code} — {pkgOrders.length} đơn. Đánh dấu từng đơn khi giao xong hoặc khi khách không nhận hàng.</p>
+          <p>Gói {heldPackage.packageName} · chuyến #{heldPackage.id} — {orders.length} đơn.</p>
         </div>
       </div>
 
-      <div className="stack" style={{ display: 'grid', gap: '14px' }}>
-        {pkgOrders.map(o => (
-          <article key={o.order_code} className="card card-p">
-            <div className="row between wrap" style={{ gap: '8px' }}>
-              <div>
-                <b style={{ fontFamily: 'var(--f-display)', fontSize: '1.1rem' }}>{o.order_code}</b>
-                <div className="faint" style={{ fontSize: '13px' }}>
-                  {o.receiver_name} · <a className="tlink" href={`tel:${o.receiver_phone}`}>{o.receiver_phone}</a>
+      {actionMessage && <div className="card card-p" role="status" style={{ marginBottom: '16px' }}>{actionMessage}</div>}
+      {updateMutation.isError && (
+        <div className="card card-p" role="alert" style={{ marginBottom: '16px', color: 'var(--c-red)', display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <AlertCircle size={18} /> {errorMessage(updateMutation.error)}
+        </div>
+      )}
+
+      {packageOrdersQuery.isLoading ? (
+        <div className="empty card" style={{ padding: '40px', textAlign: 'center' }}>
+          <Loader2 size={22} className="animate-spin" />
+          <p className="muted">Đang tải đơn trong gói…</p>
+        </div>
+      ) : packageOrdersQuery.isError ? (
+        <div className="empty card" role="alert" style={{ padding: '40px', textAlign: 'center' }}>
+          <AlertCircle size={24} style={{ color: 'var(--c-red)' }} />
+          <h3>Không tải được đơn trong gói</h3>
+          <p className="muted">{errorMessage(packageOrdersQuery.error)}</p>
+          <button className="btn btn-soft btn-sm" onClick={() => packageOrdersQuery.refetch()}>Thử lại</button>
+        </div>
+      ) : (
+        <div className="stack" style={{ display: 'grid', gap: '14px' }}>
+          {orders.map((order, index) => {
+            const detail = orderDetails[index]?.data;
+            const isUpdating = updateMutation.isPending && updateMutation.variables?.orderId === order.id;
+            return (
+              <article key={order.id} className="card card-p">
+                <div className="row between wrap" style={{ gap: '8px' }}>
+                  <div>
+                    <b style={{ fontFamily: 'var(--f-display)', fontSize: '1.1rem' }}>{order.orderCode}</b>
+                    <div className="faint" style={{ fontSize: '13px' }}>
+                      {order.receiverName} · <a className="tlink" href={`tel:${order.receiverPhone}`}><Phone size={12} style={{ display: 'inline', verticalAlign: '-1px' }} /> {order.receiverPhone}</a>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <span className={`pill p-${order.paymentStatus}`}>{PAYMENT_LABELS[order.paymentStatus] || order.paymentStatus}</span>
+                    <span className={`pill s-${order.status}`}>{STATUS_LABELS[order.status] || order.status}</span>
+                  </div>
                 </div>
-              </div>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <span className={`pill p-${o.payment_status}`}>{PAYSTAT_MAP[o.payment_status]}</span>
-                <span className={`pill s-${o.status}`}>{STATUS_MAP[o.status]}</span>
-              </div>
-            </div>
 
-            <div className="muted" style={{ margin: '10px 0' }}>{o.shipping_address}</div>
+                <div className="muted" style={{ margin: '10px 0' }}><MapPin size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> {order.shippingAddress}</div>
 
-            <div className="row wrap" style={{ gap: '8px' }}>
-              {o.items.map((i: { quantity: number; product_name: string }, idx: number) => (
-                <span key={idx} className="tag">{i.quantity}× {i.product_name}</span>
-              ))}
-            </div>
+                {detail?.items?.length ? (
+                  <div className="row wrap" style={{ gap: '8px' }}>
+                    {detail.items.map((item, itemIndex) => (
+                      <span className="tag" key={item.id ?? `${item.productId}-${itemIndex}`}>
+                        {item.quantity}× {item.productName}
+                      </span>
+                    ))}
+                  </div>
+                ) : orderDetails[index]?.isLoading ? (
+                  <span className="muted" style={{ fontSize: '13px' }}>Đang tải món…</span>
+                ) : null}
 
-            <div className="row between wrap" style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--line)' }}>
-              <div>
-                <span className="muted" style={{ fontSize: '13px' }}>Tổng thu tiền mặt (nếu chưa thanh toán)</span>
-                <div style={{ fontFamily: 'var(--f-display)', fontSize: '1.25rem', fontWeight: 800 }}>
-                  {o.payment_status === 'UNPAID' ? `${o.total_amount.toLocaleString('vi-VN')}đ` : '0đ'}
+                <div className="row between wrap" style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--line)' }}>
+                  <div>
+                    <span className="muted" style={{ fontSize: '13px' }}>Tiền COD cần thu</span>
+                    <div style={{ fontFamily: 'var(--f-display)', fontSize: '1.25rem', fontWeight: 800 }}>
+                      {order.paymentMethod === 'COD' && order.paymentStatus === 'UNPAID'
+                        ? `${Number(order.totalAmount || 0).toLocaleString('vi-VN')}đ`
+                        : '0đ'}
+                    </div>
+                  </div>
+
+                  {order.status === 'DELIVERING' && (
+                    <div className="row wrap" style={{ gap: '8px' }}>
+                      <button
+                        className="btn btn-ghost btn-sm"
+                        style={{ color: 'var(--c-red)' }}
+                        disabled={updateMutation.isPending}
+                        onClick={() => setFailureOrder(order)}
+                      >
+                        <X size={16} /> Báo giao thất bại
+                      </button>
+                      <button className="btn btn-primary btn-sm" disabled={updateMutation.isPending} onClick={() => handleDeliver(order)}>
+                        {isUpdating ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                        Đã giao
+                      </button>
+                    </div>
+                  )}
                 </div>
-              </div>
+              </article>
+            );
+          })}
+          {orders.length === 0 && <div className="empty card" style={{ padding: '36px', textAlign: 'center' }}>Gói hiện không còn đơn cần giao.</div>}
+        </div>
+      )}
 
-              {o.status === 'DELIVERING' && (
-                <div className="row" style={{ gap: '8px' }}>
-                  <button className="btn btn-ghost btn-sm" style={{ color: 'var(--c-red)' }} onClick={() => handleUpdateStatus(o.order_code, 'CANCELLED')}>
-                    <X size={16} /> Báo Hủy
-                  </button>
-                  <button className="btn btn-primary btn-sm" onClick={() => handleUpdateStatus(o.order_code, 'DELIVERED')}>
-                    <Check size={16} /> Đã Giao
-                  </button>
-                </div>
-              )}
-            </div>
-          </article>
-        ))}
-      </div>
+      {failureOrder && (
+        <ReportDeliveryFailureModal
+          orderCode={failureOrder.orderCode}
+          isSubmitting={updateMutation.isPending}
+          onClose={() => setFailureOrder(null)}
+          onSubmit={(reason) => {
+            setActionMessage('');
+            updateMutation.mutate({ orderId: failureOrder.id, reason });
+          }}
+        />
+      )}
     </>
   );
 };
