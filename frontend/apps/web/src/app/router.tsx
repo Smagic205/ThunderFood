@@ -9,6 +9,7 @@ import { ProductDetailPage } from '../pages/ProductDetailPage';
 import { CartPage } from '../pages/CartPage';
 import { CheckoutPage } from '../pages/CheckoutPage';
 import { VouchersPage } from '../pages/VouchersPage';
+import { SupportPage } from '../pages/SupportPage';
 import { LoginPage } from '../pages/auth/LoginPage';
 import { RegisterPage } from '../pages/auth/RegisterPage';
 import { ForgotPage } from '../pages/auth/ForgotPage';
@@ -45,7 +46,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'support',
-        element: <div className="container mx-auto p-12 text-center text-xl font-bold text-[#12183A]">Trang Hỗ trợ (Đang phát triển)</div>,
+        element: <SupportPage />,
       },
       {
         element: <RoleRoute allowedRoles={['CUSTOMER']} />,

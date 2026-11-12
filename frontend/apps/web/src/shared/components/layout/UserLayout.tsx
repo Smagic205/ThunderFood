@@ -3,7 +3,6 @@ import { Outlet, ScrollRestoration } from 'react-router-dom';
 import { Header } from './Header';
 import { Footer } from './Footer';
 import { BottomNav } from './BottomNav';
-import { FloatingChat } from '@/shared/components/ui/FloatingChat';
 import { ScrollToTop } from './ScrollToTop';
 import { ToastContainer } from '@/shared/components/ui/ToastContainer';
 
@@ -24,7 +23,6 @@ export const UserLayout = () => {
         <Outlet />
       </main>
       <Footer />
-      <FloatingChat />
       <BottomNav />
       <ToastContainer />
     </>
