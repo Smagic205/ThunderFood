@@ -12,6 +12,9 @@ import { VouchersPage } from '@/features/vouchers/pages/VouchersPage';
 import { StaffsPage } from '@/features/staffs/pages/StaffsPage';
 import { ReviewsPage } from '@/features/reviews/pages/ReviewsPage';
 import { NotificationsPage } from '@/features/notifications/pages/NotificationsPage';
+import { CustomersPage } from '@/features/customers/pages/CustomersPage';
+import { BannersPage } from '@/features/banners/pages/BannersPage';
+import { SettingsPage } from '@/features/settings/pages/SettingsPage';
 
 export const router = createBrowserRouter([
   {
@@ -51,12 +54,7 @@ export const router = createBrowserRouter([
           },
           {
             path: 'admin/customers',
-            element: (
-              <div className="card card-p">
-                <h3>Khách hàng</h3>
-                <p className="muted" style={{ marginTop: '8px' }}>Trang quản lý khách hàng đang được xây dựng.</p>
-              </div>
-            ),
+            element: <CustomersPage />,
           },
           {
             path: 'admin/staffs',
@@ -76,21 +74,11 @@ export const router = createBrowserRouter([
           },
           {
             path: 'admin/banners',
-            element: (
-              <div className="card card-p">
-                <h3>Banner</h3>
-                <p className="muted" style={{ marginTop: '8px' }}>Trang quản lý banner đang được xây dựng.</p>
-              </div>
-            ),
+            element: <BannersPage />,
           },
           {
             path: 'admin/settings',
-            element: (
-              <div className="card card-p">
-                <h3>Cấu hình hệ thống</h3>
-                <p className="muted" style={{ marginTop: '8px' }}>Trang cấu hình hệ thống đang được xây dựng.</p>
-              </div>
-            ),
+            element: <SettingsPage />,
           },
         ],
       },

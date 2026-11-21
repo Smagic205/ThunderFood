@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { FileSpreadsheet, Download, RefreshCw } from 'lucide-react';
+import { FileSpreadsheet, Download, RefreshCw, Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/app/store/authStore';
 import { dashboardApi } from '../api/dashboardApi';
 import type { TimeRange } from '../types';
@@ -9,11 +9,14 @@ import { RevenueChart } from '../components/RevenueChart';
 import { OrderStatusDonut } from '../components/OrderStatusDonut';
 import { TopProductsCard } from '../components/TopProductsCard';
 import { RecentOrdersCard } from '../components/RecentOrdersCard';
+import { ShipperPerformanceCard } from '../components/ShipperPerformanceCard';
 
 export const DashboardPage = () => {
   const user = useAuthStore((state) => state.user);
   const [selectedRange, setSelectedRange] = useState<TimeRange>('day');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isExportingExcel, setIsExportingExcel] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['admin-dashboard'],
@@ -25,7 +28,33 @@ export const DashboardPage = () => {
     setToastMessage(msg);
     setTimeout(() => {
       setToastMessage(null);
-    }, 3000);
+    }, 3500);
+  };
+
+  const handleExportExcel = async () => {
+    try {
+      setIsExportingExcel(true);
+      showToast('Đang tạo báo cáo Excel... Tệp sẽ sẵn sàng tải xuống ngay.');
+      await dashboardApi.exportOrdersExcel();
+      showToast('Đã tải xuống báo cáo Excel thành công!');
+    } catch {
+      showToast('Không thể xuất báo cáo Excel từ máy chủ.');
+    } finally {
+      setIsExportingExcel(false);
+    }
+  };
+
+  const handleExportPdf = async () => {
+    try {
+      setIsExportingPdf(true);
+      showToast('Đang kết xuất báo cáo tài chính PDF...');
+      await dashboardApi.exportRevenuePdf();
+      showToast('Đã tải xuống báo cáo PDF thành công!');
+    } catch {
+      showToast('Không thể xuất báo cáo PDF từ máy chủ.');
+    } finally {
+      setIsExportingPdf(false);
+    }
   };
 
   // Định dạng ngày tiếng Việt: ví dụ "Thứ Bảy, 11/10/2026"
@@ -51,7 +80,7 @@ export const DashboardPage = () => {
   }
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {/* Toast Notification */}
       {toastMessage && (
         <div
@@ -96,16 +125,20 @@ export const DashboardPage = () => {
           </button>
           <button
             className="btn btn-ghost"
-            onClick={() => showToast('Đang tạo báo cáo Excel... Tệp sẽ sẵn sàng tải xuống.')}
+            onClick={handleExportExcel}
+            disabled={isExportingExcel}
+            title="Xuất danh sách đơn hàng sang file Excel (.xlsx)"
           >
-            <FileSpreadsheet size={16} />
+            {isExportingExcel ? <Loader2 className="spin" size={16} /> : <FileSpreadsheet size={16} />}
             Xuất Excel
           </button>
           <button
             className="btn btn-dark"
-            onClick={() => showToast('Đang tạo bản in PDF tổng quan...')}
+            onClick={handleExportPdf}
+            disabled={isExportingPdf}
+            title="Xuất báo cáo tài chính tổng hợp sang file PDF"
           >
-            <Download size={16} />
+            {isExportingPdf ? <Loader2 className="spin" size={16} /> : <Download size={16} />}
             Xuất PDF
           </button>
         </div>
@@ -134,6 +167,11 @@ export const DashboardPage = () => {
         <TopProductsCard products={data.topProducts} />
         <RecentOrdersCard orders={data.recentOrders} />
       </div>
+
+      {/* Hiệu suất giao hàng của nhân viên / Shipper */}
+      {data.shipperPerformance && data.shipperPerformance.length > 0 && (
+        <ShipperPerformanceCard shippers={data.shipperPerformance} />
+      )}
     </div>
   );
 };

@@ -84,5 +84,28 @@ export const staffsApi = {
       return newStaff;
     }
   },
-};
 
+  updateStaffStatus: async (id: number, status: 'ACTIVE' | 'LOCKED'): Promise<void> => {
+    try {
+      await axiosClient.patch(`/admin/users/${id}/status`, { status });
+    } catch {
+      // Memory fallback for demo
+      const staff = memoryStaffs.find((s) => s.id === id);
+      if (staff) {
+        staff.status = status;
+      }
+    }
+  },
+
+  updateStaffRole: async (id: number, role: 'STAFF' | 'ADMIN'): Promise<void> => {
+    try {
+      await axiosClient.patch(`/admin/users/${id}/role`, { role });
+    } catch {
+      // Memory fallback for demo
+      const staff = memoryStaffs.find((s) => s.id === id);
+      if (staff) {
+        staff.role = role;
+      }
+    }
+  },
+};
