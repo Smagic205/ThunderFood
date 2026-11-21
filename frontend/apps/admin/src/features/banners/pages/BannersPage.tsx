@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   Loader2,
+  Clock,
 } from 'lucide-react';
 import { bannersApi } from '../api/bannersApi';
 import { BannerFormModal } from '../components/BannerFormModal';
@@ -274,13 +275,20 @@ export const BannersPage: React.FC = () => {
               </div>
 
               {/* Banner Info */}
-              <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', flex: 1 }}>
+              <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px', flex: 1 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--muted, #94a3b8)' }}>
                   <ExternalLink size={14} />
                   <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {banner.linkUrl ? banner.linkUrl : 'Không có liên kết'}
                   </span>
                 </div>
+
+                {banner.createdAt && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--muted, #64748b)' }}>
+                    <Clock size={13} />
+                    <span>Tạo lúc: {new Date(banner.createdAt).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
+                  </div>
+                )}
 
                 {/* Bottom Actions */}
                 <div

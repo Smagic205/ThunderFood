@@ -8,6 +8,7 @@ import { mockBanners, mockVouchers, mockProducts } from '@/shared/api/mockData';
 import { categoryApi } from '@/shared/api/categoryApi';
 import { productApi } from '@/shared/api/productApi';
 import { voucherApi } from '@/shared/api/voucherApi';
+import { bannerApi } from '@/shared/api/bannerApi';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 
@@ -35,7 +36,15 @@ export function HomePage() {
     queryFn: () => voucherApi.getAvailableVouchers(),
   });
 
+  const {
+    data: activeBanners = [],
+  } = useQuery({
+    queryKey: ['active-banners-home'],
+    queryFn: bannerApi.getActiveBanners,
+  });
+
   // Sử dụng dữ liệu thật từ backend; nếu db chưa có thì fallback mock
+  const bannersToDisplay = activeBanners.length > 0 ? activeBanners : mockBanners;
   const vouchersToDisplay = availableVouchers.length > 0 ? availableVouchers : mockVouchers;
 
   const bestSellers = bestSellersPage?.content && bestSellersPage.content.length > 0
@@ -54,7 +63,7 @@ export function HomePage() {
 
       {/* 1. Banners Section */}
       <section className="container mx-auto px-4 mt-12 mb-12">
-        <BannerSlider banners={mockBanners} />
+        <BannerSlider banners={bannersToDisplay} />
       </section>
 
       {/* 2. Vouchers Section */}

@@ -8,6 +8,8 @@ export const MOCK_BANNERS: BannerItem[] = [
     linkUrl: '/products',
     sortOrder: 1,
     isActive: true,
+    createdAt: '2026-11-01T10:00:00',
+    updatedAt: '2026-11-01T10:00:00',
   },
   {
     id: 2,
@@ -15,6 +17,8 @@ export const MOCK_BANNERS: BannerItem[] = [
     linkUrl: '/vouchers',
     sortOrder: 2,
     isActive: true,
+    createdAt: '2026-11-05T14:30:00',
+    updatedAt: '2026-11-05T14:30:00',
   },
   {
     id: 3,
@@ -22,6 +26,8 @@ export const MOCK_BANNERS: BannerItem[] = [
     linkUrl: '/categories/burger',
     sortOrder: 3,
     isActive: false,
+    createdAt: '2026-11-10T09:15:00',
+    updatedAt: '2026-11-10T09:15:00',
   },
 ];
 

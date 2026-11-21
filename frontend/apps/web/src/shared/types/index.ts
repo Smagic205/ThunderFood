@@ -5,6 +5,8 @@ export interface Banner {
   sortOrder: number;
   isActive: boolean;
   style?: string; // e.g. for custom gradient styles
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Voucher {
