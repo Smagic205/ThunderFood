@@ -30,12 +30,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository_owner }}/thunderfood-backend
-
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
@@ -43,12 +37,10 @@ jobs:
           file: ./backend_thunderfood/Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/thunderfood-backend:latest
-            ghcr.io/${{ github.repository_owner }}/thunderfood-backend:${{ github.sha }}
+            ghcr.io/smagic205/thunderfood-backend:latest
+            ghcr.io/smagic205/thunderfood-backend:${{ github.sha }}
 
-      - name: Trigger Render Deploy Hook (Nếu đã cấu hình secret)
-        if: env.RENDER_DEPLOY_HOOK != ''
-        env:
-          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+      - name: Trigger Render Deploy Hook
+        if: ${{ secrets.RENDER_DEPLOY_HOOK != '' }}
         run: |
-          curl -X POST "$RENDER_DEPLOY_HOOK"
+          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
