@@ -3,17 +3,9 @@ import { Mail, Eye, EyeOff, Lock } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
 import { useAuthStore } from '@/app/store/authStore';
 import { authApi } from '@/shared/api/authApi';
-
-const loginSchema = z.object({
-  email: z.string().min(1, 'Vui lòng nhập email').email('Email chưa đúng định dạng'),
-  password: z.string().min(1, 'Vui lòng nhập mật khẩu'),
-  remember: z.boolean(),
-});
-
-type LoginFormValues = z.infer<typeof loginSchema>;
+import { loginSchema, type LoginFormValues } from './authSchemas';
 
 export const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
