@@ -1,0 +1,54 @@
+name: Build and Push Backend to GHCR
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend_thunderfood/**'
+      - '.github/workflows/deploy.yml'
+
+jobs:
+  build-and-push:
+    name: Build & Push Image to GitHub Packages
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/thunderfood-backend
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend_thunderfood
+          file: ./backend_thunderfood/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/thunderfood-backend:latest
+            ghcr.io/${{ github.repository_owner }}/thunderfood-backend:${{ github.sha }}
+
+      - name: Trigger Render Deploy Hook (Nếu đã cấu hình secret)
+        if: env.RENDER_DEPLOY_HOOK != ''
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: |
+          curl -X POST "$RENDER_DEPLOY_HOOK"
