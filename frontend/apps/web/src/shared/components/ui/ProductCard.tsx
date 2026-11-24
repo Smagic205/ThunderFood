@@ -6,6 +6,8 @@ import { useAuthStore } from '@/app/store/authStore';
 import { useCartStore } from '@/shared/stores/cartStore';
 import { useToastStore } from '@/shared/stores/toastStore';
 import { wishlistApi } from '@/shared/api/wishlistApi';
+import { productApi } from '@/shared/api/productApi';
+import { CACHE_TIME } from '@/shared/config/queryClient';
 import { useMyWishlist } from '@/shared/hooks/useMyWishlist';
 
 import type { Product } from '@/shared/types';
@@ -86,8 +88,21 @@ export function ProductCard({ product: p }: { product: Product }) {
   const rating = Number(p.ratingAverage ?? p.avgRating ?? 0).toFixed(1);
   const soldDisplay = p.soldCountDisplay || (p.soldCount ? `Đã bán ${p.soldCount}` : null);
 
+  const handlePrefetch = () => {
+    if (p.slug) {
+      queryClient.prefetchQuery({
+        queryKey: ['product-detail', p.slug],
+        queryFn: () => productApi.getProductBySlug(p.slug),
+        staleTime: CACHE_TIME.PRODUCTS,
+      });
+    }
+  };
+
   return (
-    <article className="group relative flex flex-col bg-[var(--surface)] border border-[var(--line)] rounded-[24px] overflow-hidden shadow-[var(--sh-1)] hover:shadow-[var(--sh-2)] hover:-translate-y-1 transition-all duration-250">
+    <article
+      onMouseEnter={handlePrefetch}
+      className="group relative flex flex-col bg-[var(--surface)] border border-[var(--line)] rounded-[24px] overflow-hidden shadow-[var(--sh-1)] hover:shadow-[var(--sh-2)] hover:-translate-y-1 transition-all duration-250"
+    >
       
       {/* Image Tile */}
       <Link to={`/product/${p.slug || p.id}`} className="block relative pt-[100%] rounded-t-[24px] overflow-hidden bg-gray-50/50">
@@ -102,7 +117,7 @@ export function ProductCard({ product: p }: { product: Product }) {
           </div>
         )}
         <div className="absolute inset-0 flex items-center justify-center p-6 group-hover:scale-106 group-hover:-rotate-2 transition-transform duration-250">
-          <img src={imageSrc} alt={p.name} className="w-full h-full object-contain drop-shadow-md" />
+          <img src={imageSrc} alt={p.name} loading="lazy" className="w-full h-full object-contain drop-shadow-md" />
         </div>
       </Link>
 

@@ -58,7 +58,7 @@ export function ReviewSection() {
           <article key={r.id} className="min-w-[85%] md:min-w-0 snap-start flex flex-col bg-[var(--surface)] border border-[var(--line)] p-5 rounded-3xl shadow-sm">
             <div className="flex gap-3 mb-3">
               <div className="w-10 h-10 rounded-full bg-[var(--volt-soft)] text-[var(--volt)] flex items-center justify-center font-bold text-sm shrink-0">
-                {r.avatar ? <img src={r.avatar} alt={r.user} className="w-full h-full rounded-full object-cover" /> : r.user.charAt(0)}
+                {r.avatar ? <img src={r.avatar} alt={r.user} loading="lazy" decoding="async" className="w-full h-full rounded-full object-cover" /> : r.user.charAt(0)}
               </div>
               <div className="flex-1">
                 <b className="block text-[var(--ink)] leading-tight">{r.user}</b>

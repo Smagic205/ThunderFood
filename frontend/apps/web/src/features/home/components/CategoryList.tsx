@@ -73,7 +73,7 @@ export function CategoryList({ categories }: CategoryListProps) {
         >
           <div className="w-16 h-16 rounded-full bg-[var(--surface-2)] group-hover:bg-[var(--volt-soft)] flex items-center justify-center mb-3 transition-colors text-[var(--volt)]">
             {cat.imageUrl ? (
-              <img src={cat.imageUrl} alt={cat.name} className="w-10 h-10 object-contain" />
+              <img src={cat.imageUrl} alt={cat.name} loading="lazy" decoding="async" className="w-10 h-10 object-contain" />
             ) : (
               getCategoryIcon(cat, "w-8 h-8 opacity-80")
             )}

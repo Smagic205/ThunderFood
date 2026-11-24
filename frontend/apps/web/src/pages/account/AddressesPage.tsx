@@ -2,6 +2,7 @@ import { useMemo, useState, type FormEvent } from 'react';
 import { MapPin, Plus, Star, Trash2, Pencil, X, Loader2 } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { addressApi, type AddressPayload, type CustomerAddress } from '@/shared/api/addressApi';
+import { CACHE_TIME } from '@/shared/config/queryClient';
 import { useAuthStore } from '@/app/store/authStore';
 import { useToastStore } from '@/shared/stores/toastStore';
 
@@ -45,7 +46,7 @@ export const AddressesPage = () => {
   const wardsQuery = useQuery({
     queryKey: ['service-wards'],
     queryFn: addressApi.getServiceWards,
-    staleTime: 5 * 60 * 1000,
+    staleTime: CACHE_TIME.REGIONS,
   });
 
   const addresses = addressesQuery.data ?? [];

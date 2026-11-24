@@ -1,4 +1,6 @@
+import { Suspense } from 'react';
 import { NavLink, Outlet, useNavigate, Link } from 'react-router-dom';
+import { PageLoader } from '@/shared/components/ui/PageLoader';
 import { 
   User, 
   MapPin, 
@@ -131,7 +133,9 @@ export const AccountLayout = () => {
 
         {/* Nội dung trang con */}
         <section className="min-w-0">
-          <Outlet />
+          <Suspense fallback={<PageLoader message="Đang tải dữ liệu tài khoản..." />}>
+            <Outlet />
+          </Suspense>
         </section>
       </div>
     </div>

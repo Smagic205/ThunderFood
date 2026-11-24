@@ -1,6 +1,9 @@
+import { Suspense } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Zap, ArrowLeft } from 'lucide-react';
 import { ScrollToTop } from './ScrollToTop';
+import { PageLoader } from '@/shared/components/ui/PageLoader';
+import { ErrorBoundary } from '@/shared/components/ui/ErrorBoundary';
 import logoUrl from '@/assets/logo.png';
 
 const SIDE_CONTENT: Record<string, { h: string; p: string }> = {
@@ -62,7 +65,11 @@ export const AuthLayout = () => {
           <button className="link only-sm" onClick={() => navigate('/')} style={{ marginBottom: 24, display: 'inline-flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', color: 'inherit' }}>
             <ArrowLeft size={16} />Về trang chủ
           </button>
-          <Outlet />
+          <ErrorBoundary>
+            <Suspense fallback={<PageLoader message="Đang tải biểu mẫu..." />}>
+              <Outlet />
+            </Suspense>
+          </ErrorBoundary>
         </div>
       </div>
     </div>

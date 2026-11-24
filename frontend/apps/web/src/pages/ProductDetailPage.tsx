@@ -248,7 +248,7 @@ export function ProductDetailPage() {
                   aria-label={`Xem ảnh ${i + 1}`}
                 >
                   <div className="tile xs" style={{ background: 'var(--surface)' }}>
-                    <img src={img} alt="" className="photo object-contain p-2" />
+                    <img src={img} alt="" loading="lazy" decoding="async" className="photo object-contain p-2" />
                   </div>
                 </button>
               ))}
@@ -421,7 +421,7 @@ export function ProductDetailPage() {
                     <article className="review" key={r.id}>
                       <div className="row" style={{ gap: '12px' }}>
                         <span className="avatar sm overflow-hidden">
-                          {r.userAvatar ? <img src={r.userAvatar} alt={r.userName} className="w-full h-full object-cover" /> : r.userName?.split(' ').pop()?.charAt(0) || 'K'}
+                          {r.userAvatar ? <img src={r.userAvatar} alt={r.userName} loading="lazy" decoding="async" className="w-full h-full object-cover" /> : r.userName?.split(' ').pop()?.charAt(0) || 'K'}
                         </span>
                         <div className="grow">
                           <b>{r.userName || 'Khách hàng'}</b>
@@ -437,7 +437,7 @@ export function ProductDetailPage() {
                       {r.imageUrl && (
                         <div className="prev" style={{ marginTop: '10px', width: '96px', height: '96px' }}>
                           <div className="tile xs" style={{ background: 'var(--surface)' }}>
-                            <img src={r.imageUrl} alt="" className="photo object-cover" />
+                            <img src={r.imageUrl} alt="" loading="lazy" decoding="async" className="photo object-cover" />
                           </div>
                         </div>
                       )}

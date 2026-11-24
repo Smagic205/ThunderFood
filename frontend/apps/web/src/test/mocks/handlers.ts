@@ -71,6 +71,26 @@ export const handlers = [
     })
   }),
 
+  // 3.1. Mock API lấy chi tiết món ăn theo slug (phục vụ prefetch & detail page): GET /v1/products/slug/:slug
+  http.get('*/v1/products/slug/:slug', ({ params }) => {
+    return HttpResponse.json({
+      success: true,
+      message: 'Thành công',
+      data: {
+        id: 101,
+        name: 'Trà Sữa Trân Châu MSW',
+        slug: String(params.slug),
+        price: 35000,
+        originalPrice: 40000,
+        categoryName: 'Trà sữa',
+        isAvailable: true,
+        ratingAverage: 4.9,
+        soldCount: 99,
+        description: 'Mô tả trà sữa chuẩn vị thơm ngon',
+      },
+    })
+  }),
+
   // 4. Mock API đăng nhập: POST /v1/auth/login
   http.post('*/v1/auth/login', async ({ request }) => {
     const body = (await request.json()) as { email?: string; password?: string }

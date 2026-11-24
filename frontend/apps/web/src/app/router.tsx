@@ -1,27 +1,29 @@
+import { lazy } from 'react';
 import { UserLayout } from '@/shared/components/layout/UserLayout';
 import { AuthLayout } from '@/shared/components/layout/AuthLayout';
 import { RoleRoute } from '@/shared/components/layout/RoleRoute';
-import { createBrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, Navigate } from 'react-router-dom';
 
-import { HomePage } from '../pages/HomePage';
-import { MenuPage } from '../pages/MenuPage';
-import { ProductDetailPage } from '../pages/ProductDetailPage';
-import { CartPage } from '../pages/CartPage';
-import { CheckoutPage } from '../pages/CheckoutPage';
-import { VouchersPage } from '../pages/VouchersPage';
-import { SupportPage } from '../pages/SupportPage';
-import { LoginPage } from '../pages/auth/LoginPage';
-import { RegisterPage } from '../pages/auth/RegisterPage';
-import { ForgotPage } from '../pages/auth/ForgotPage';
+// Nạp động các trang chính (Code-splitting & Lazy loading cho Cloudflare CDN)
+const HomePage = lazy(() => import('../pages/HomePage').then((m) => ({ default: m.HomePage })));
+const MenuPage = lazy(() => import('../pages/MenuPage').then((m) => ({ default: m.MenuPage })));
+const ProductDetailPage = lazy(() => import('../pages/ProductDetailPage').then((m) => ({ default: m.ProductDetailPage })));
+const CartPage = lazy(() => import('../pages/CartPage').then((m) => ({ default: m.CartPage })));
+const CheckoutPage = lazy(() => import('../pages/CheckoutPage').then((m) => ({ default: m.CheckoutPage })));
+const VouchersPage = lazy(() => import('../pages/VouchersPage').then((m) => ({ default: m.VouchersPage })));
+const SupportPage = lazy(() => import('../pages/SupportPage').then((m) => ({ default: m.SupportPage })));
+const LoginPage = lazy(() => import('../pages/auth/LoginPage').then((m) => ({ default: m.LoginPage })));
+const RegisterPage = lazy(() => import('../pages/auth/RegisterPage').then((m) => ({ default: m.RegisterPage })));
+const ForgotPage = lazy(() => import('../pages/auth/ForgotPage').then((m) => ({ default: m.ForgotPage })));
 
-import { AccountLayout } from '../pages/account/AccountLayout';
-import { AddressesPage } from '../pages/account/AddressesPage';
-import { ProfilePage } from '../pages/account/ProfilePage';
-import { OrdersPage } from '../pages/account/OrdersPage';
-import { PaymentsPage } from '../pages/account/Placeholders';
-import { WishlistPage } from '../pages/account/WishlistPage';
-import { NotificationsPage } from '../pages/account/NotificationsPage';
-import { Navigate } from 'react-router-dom';
+// Nạp động các trang tài khoản người dùng
+const AccountLayout = lazy(() => import('../pages/account/AccountLayout').then((m) => ({ default: m.AccountLayout })));
+const AddressesPage = lazy(() => import('../pages/account/AddressesPage').then((m) => ({ default: m.AddressesPage })));
+const ProfilePage = lazy(() => import('../pages/account/ProfilePage').then((m) => ({ default: m.ProfilePage })));
+const OrdersPage = lazy(() => import('../pages/account/OrdersPage').then((m) => ({ default: m.OrdersPage })));
+const PaymentsPage = lazy(() => import('../pages/account/Placeholders').then((m) => ({ default: m.PaymentsPage })));
+const WishlistPage = lazy(() => import('../pages/account/WishlistPage').then((m) => ({ default: m.WishlistPage })));
+const NotificationsPage = lazy(() => import('../pages/account/NotificationsPage').then((m) => ({ default: m.NotificationsPage })));
 
 export const router = createBrowserRouter([
   {

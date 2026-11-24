@@ -39,6 +39,8 @@ export function BannerSlider({ banners }: BannerSliderProps) {
               <img 
                 src={banner.imageUrl} 
                 alt="Promo Banner" 
+                loading="lazy"
+                decoding="async"
                 className="w-full h-full object-cover"
               />
             </a>

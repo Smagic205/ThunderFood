@@ -9,6 +9,7 @@ import { categoryApi } from '@/shared/api/categoryApi';
 import { productApi } from '@/shared/api/productApi';
 import { voucherApi } from '@/shared/api/voucherApi';
 import { bannerApi } from '@/shared/api/bannerApi';
+import { CACHE_TIME } from '@/shared/config/queryClient';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 
@@ -20,6 +21,7 @@ export function HomePage() {
   } = useQuery({
     queryKey: ['active-categories'],
     queryFn: categoryApi.getActiveCategories,
+    staleTime: CACHE_TIME.CATEGORIES,
   });
 
   const {
@@ -27,6 +29,7 @@ export function HomePage() {
   } = useQuery({
     queryKey: ['best-selling-products'],
     queryFn: () => productApi.getProducts({ sort: 'bestSelling', size: 8 }),
+    staleTime: CACHE_TIME.PRODUCTS,
   });
 
   const {
@@ -34,6 +37,7 @@ export function HomePage() {
   } = useQuery({
     queryKey: ['available-vouchers-home'],
     queryFn: () => voucherApi.getAvailableVouchers(),
+    staleTime: CACHE_TIME.VOUCHERS,
   });
 
   const {
@@ -41,6 +45,7 @@ export function HomePage() {
   } = useQuery({
     queryKey: ['active-banners-home'],
     queryFn: bannerApi.getActiveBanners,
+    staleTime: CACHE_TIME.BANNERS,
   });
 
   // Sử dụng dữ liệu thật từ backend; nếu db chưa có thì fallback mock

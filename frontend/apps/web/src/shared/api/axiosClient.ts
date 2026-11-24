@@ -80,6 +80,25 @@ axiosClient.interceptors.response.use(
       useToastStore.getState().showToast(message, 'error');
     }
 
+    // Xử lý mã lỗi Rate Limit (HTTP 429 Too Many Requests)
+    if (error.response?.status === 429) {
+      const retryAfter =
+        error.response.headers?.['retry-after'] ||
+        error.response.headers?.['Retry-After'];
+
+      let message = error.response.data?.message;
+      if (!message) {
+        if (retryAfter) {
+          message = `Bạn thao tác quá nhanh. Vui lòng thử lại sau ${retryAfter} giây.`;
+        } else {
+          message = 'Bạn thao tác quá nhanh, vui lòng thử lại sau ít giây.';
+        }
+      }
+
+      error.message = message;
+      useToastStore.getState().showToast(message, 'error');
+    }
+
     return Promise.reject(error);
   }
 );

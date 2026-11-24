@@ -5,6 +5,7 @@ import { categoryApi } from '@/shared/api/categoryApi';
 import { productApi, type GetProductsParams } from '@/shared/api/productApi';
 import { ProductCard } from '@/shared/components/ui/ProductCard';
 import { Pagination } from '@/shared/components/ui/Pagination';
+import { CACHE_TIME } from '@/shared/config/queryClient';
 import { useQuery } from '@tanstack/react-query';
 
 const PAGE_SIZE = 12;
@@ -79,6 +80,7 @@ export const MenuPage = () => {
   } = useQuery({
     queryKey: ['active-categories'],
     queryFn: categoryApi.getActiveCategories,
+    staleTime: CACHE_TIME.CATEGORIES,
   });
 
   /* ─── Parse filter state from URL ─── */
@@ -159,6 +161,7 @@ export const MenuPage = () => {
   } = useQuery({
     queryKey: ['products-menu', apiParams],
     queryFn: () => productApi.getProducts(apiParams),
+    staleTime: CACHE_TIME.PRODUCTS,
   });
 
   const products = productsPage?.content ?? [];
