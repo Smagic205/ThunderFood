@@ -513,6 +513,26 @@ class AuthServiceTest {
     }
 
     @Test
+    @DisplayName("Đăng nhập với Google ném lỗi nếu tài khoản đã bị LOCKED")
+    void testLoginWithGoogle_LockedUser() {
+        GoogleAuthRequest request = new GoogleAuthRequest("google-id-token-abc");
+        GoogleUserInfo googleInfo = GoogleUserInfo.builder()
+                .sub("google-123456")
+                .email("user@gmail.com")
+                .name("Nguyễn Văn A")
+                .picture("https://lh3.google.com/photo.jpg")
+                .emailVerified(true)
+                .build();
+
+        mockUser.setStatus("LOCKED");
+
+        when(googleAuthService.verifyToken("google-id-token-abc")).thenReturn(googleInfo);
+        when(userRepository.findByEmail("user@gmail.com")).thenReturn(Optional.of(mockUser));
+
+        assertThrows(AccessDeniedException.class, () -> authService.loginWithGoogle(request));
+    }
+
+    @Test
     @DisplayName("Kích hoạt tài khoản bằng token thành công")
     void testVerifyEmail_Success() {
         User unverifiedUser = User.builder()
