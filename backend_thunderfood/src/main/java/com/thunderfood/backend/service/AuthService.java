@@ -1,6 +1,7 @@
 package com.thunderfood.backend.service;
 
 import com.thunderfood.backend.dto.auth.AuthResponse;
+import com.thunderfood.backend.dto.auth.GoogleAuthRequest;
 import com.thunderfood.backend.dto.auth.LoginRequest;
 import com.thunderfood.backend.dto.auth.RegisterRequest;
 import com.thunderfood.backend.dto.auth.ResetPasswordRequest;
@@ -10,6 +11,12 @@ public interface AuthService {
     AuthResponse register(RegisterRequest request);
 
     AuthResponse login(LoginRequest request);
+
+    AuthResponse loginWithGoogle(GoogleAuthRequest request);
+
+    AuthResponse verifyEmail(String token);
+
+    void resendActivationEmail(String email);
 
     void forgotPassword(String email);
 

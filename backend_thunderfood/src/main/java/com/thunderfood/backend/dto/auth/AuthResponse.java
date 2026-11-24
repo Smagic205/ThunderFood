@@ -16,6 +16,8 @@ public class AuthResponse {
     private String token;
     private String refreshToken;
     private UserDto user;
+    private String message;
+    private Boolean requiresVerification;
 
     @Data
     @Builder

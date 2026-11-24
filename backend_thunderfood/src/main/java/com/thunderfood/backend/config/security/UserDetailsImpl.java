@@ -26,7 +26,7 @@ public class UserDetailsImpl implements UserDetails {
 
     @Override
     public String getPassword() {
-        return user.getPasswordHash();
+        return user != null && user.getPasswordHash() != null ? user.getPasswordHash() : "";
     }
 
     @Override

@@ -15,6 +15,7 @@ const SupportPage = lazy(() => import('../pages/SupportPage').then((m) => ({ def
 const LoginPage = lazy(() => import('../pages/auth/LoginPage').then((m) => ({ default: m.LoginPage })));
 const RegisterPage = lazy(() => import('../pages/auth/RegisterPage').then((m) => ({ default: m.RegisterPage })));
 const ForgotPage = lazy(() => import('../pages/auth/ForgotPage').then((m) => ({ default: m.ForgotPage })));
+const VerifyEmailPage = lazy(() => import('../pages/auth/VerifyEmailPage').then((m) => ({ default: m.VerifyEmailPage })));
 
 // Nạp động các trang tài khoản người dùng
 const AccountLayout = lazy(() => import('../pages/account/AccountLayout').then((m) => ({ default: m.AccountLayout })));
@@ -113,6 +114,10 @@ export const router = createBrowserRouter([
       {
         path: '/forgot',
         element: <ForgotPage />,
+      },
+      {
+        path: '/verify-email',
+        element: <VerifyEmailPage />,
       }
     ]
   }

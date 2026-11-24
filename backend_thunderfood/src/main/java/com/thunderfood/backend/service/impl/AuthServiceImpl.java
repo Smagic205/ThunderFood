@@ -3,6 +3,8 @@ package com.thunderfood.backend.service.impl;
 import com.thunderfood.backend.config.security.UserDetailsImpl;
 import com.thunderfood.backend.dto.address.AddressResponse;
 import com.thunderfood.backend.dto.auth.AuthResponse;
+import com.thunderfood.backend.dto.auth.GoogleAuthRequest;
+import com.thunderfood.backend.dto.auth.GoogleUserInfo;
 import com.thunderfood.backend.dto.auth.LoginRequest;
 import com.thunderfood.backend.dto.auth.RegisterRequest;
 import com.thunderfood.backend.dto.auth.ResetPasswordRequest;
@@ -18,6 +20,7 @@ import com.thunderfood.backend.repository.UserRepository;
 import com.thunderfood.backend.repository.UserTokenRepository;
 import com.thunderfood.backend.service.AuthService;
 import com.thunderfood.backend.service.EmailService;
+import com.thunderfood.backend.service.GoogleAuthService;
 import com.thunderfood.backend.service.JwtService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -33,6 +36,8 @@ import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -52,6 +57,10 @@ public class AuthServiceImpl implements AuthService {
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
     private final EmailService emailService;
+    private final GoogleAuthService googleAuthService;
+
+    @Value("${app.frontend-url:http://localhost:5173}")
+    private String frontendUrl = "http://localhost:5173";
 
     private static final java.util.Set<String> DISPOSABLE_EMAIL_DOMAINS = java.util.Set.of(
             "tempmail.com", "10minutemail.com", "guerrillamail.com", "mailinator.com",
@@ -72,10 +81,6 @@ public class AuthServiceImpl implements AuthService {
             throw new ConflictException("Hệ thống không chấp nhận địa chỉ email tạm thời / rác. Vui lòng sử dụng email thực.");
         }
 
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new ConflictException("Email đã được sử dụng");
-        }
-
         if (request.getPhone() != null && !request.getPhone().isBlank()) {
             String cleanPhone = request.getPhone().trim();
             if (userRepository.existsByPhoneAndStatus(cleanPhone, "LOCKED")) {
@@ -86,39 +91,222 @@ public class AuthServiceImpl implements AuthService {
             }
         }
 
+        Optional<User> existingUserOpt = userRepository.findByEmail(request.getEmail().trim());
+        if (existingUserOpt.isPresent()) {
+            User existingUser = existingUserOpt.get();
+            if ("UNVERIFIED".equalsIgnoreCase(existingUser.getStatus())) {
+                existingUser.setFullName(request.getFullName().trim());
+                existingUser.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+                if (request.getPhone() != null && !request.getPhone().isBlank()) {
+                    existingUser.setPhone(request.getPhone().trim());
+                }
+                userRepository.save(existingUser);
+
+                userTokenRepository.deleteByUserIdAndType(existingUser.getId(), "ACTIVATION");
+
+                String activationToken = UUID.randomUUID().toString();
+                UserToken userToken = UserToken.builder()
+                        .user(existingUser)
+                        .token(activationToken)
+                        .type("ACTIVATION")
+                        .expiresAt(LocalDateTime.now().plusHours(24))
+                        .failedAttempts(0)
+                        .build();
+                userTokenRepository.save(userToken);
+
+                String activationLink = frontendUrl + "/verify-email?token=" + activationToken;
+                emailService.sendAccountActivationEmail(existingUser.getEmail(), existingUser.getFullName(), activationLink);
+
+                return AuthResponse.builder()
+                        .user(AuthResponse.UserDto.builder()
+                                .id(existingUser.getId())
+                                .email(existingUser.getEmail())
+                                .fullName(existingUser.getFullName())
+                                .phone(existingUser.getPhone())
+                                .role(existingUser.getRole() != null ? existingUser.getRole().getName() : "CUSTOMER")
+                                .build())
+                        .message("Tài khoản chưa được kích hoạt trước đó. Chúng tôi đã gửi lại email kích hoạt mới đến hòm thư của bạn.")
+                        .requiresVerification(true)
+                        .build();
+            } else {
+                throw new ConflictException("Email đã được sử dụng");
+            }
+        }
+
         Role userRole = roleRepository.findByName("CUSTOMER")
                 .orElseThrow(() -> new RuntimeException("Role CUSTOMER không tồn tại trong hệ thống"));
 
         User user = User.builder()
-                .fullName(request.getFullName())
-                .email(request.getEmail())
+                .fullName(request.getFullName().trim())
+                .email(request.getEmail().trim())
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
-                .phone(request.getPhone())
+                .phone(request.getPhone() != null ? request.getPhone().trim() : null)
                 .role(userRole)
                 .authProvider("LOCAL")
-                .status("ACTIVE")
+                .status("UNVERIFIED")
                 .build();
 
-        userRepository.save(user);
+        User savedUser = userRepository.save(user);
 
-        return generateAuthResponse(user);
+        // Sinh mã token kích hoạt tài khoản gửi qua email
+        String activationToken = UUID.randomUUID().toString();
+        UserToken userToken = UserToken.builder()
+                .user(savedUser)
+                .token(activationToken)
+                .type("ACTIVATION")
+                .expiresAt(LocalDateTime.now().plusHours(24))
+                .failedAttempts(0)
+                .build();
+        userTokenRepository.save(userToken);
+
+        String activationLink = frontendUrl + "/verify-email?token=" + activationToken;
+        emailService.sendAccountActivationEmail(savedUser.getEmail(), savedUser.getFullName(), activationLink);
+
+        return AuthResponse.builder()
+                .user(AuthResponse.UserDto.builder()
+                        .id(savedUser.getId())
+                        .email(savedUser.getEmail())
+                        .fullName(savedUser.getFullName())
+                        .phone(savedUser.getPhone())
+                        .role(savedUser.getRole().getName())
+                        .build())
+                .message("Đăng ký thành công! Vui lòng kiểm tra email để kích hoạt tài khoản của bạn trước khi đăng nhập.")
+                .requiresVerification(true)
+                .build();
     }
 
     @Override
     @Transactional
     public AuthResponse login(LoginRequest request) {
         authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
+                new UsernamePasswordAuthenticationToken(request.getEmail().trim(), request.getPassword())
         );
 
-        User user = userRepository.findByEmail(request.getEmail())
+        User user = userRepository.findByEmail(request.getEmail().trim())
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
 
-        if ("LOCKED".equals(user.getStatus())) {
+        if ("LOCKED".equalsIgnoreCase(user.getStatus())) {
             throw new AccessDeniedException("Tài khoản đã bị khóa");
         }
 
+        if ("UNVERIFIED".equalsIgnoreCase(user.getStatus())) {
+            throw new AccessDeniedException("Tài khoản của bạn chưa được kích hoạt. Vui lòng kiểm tra email để kích hoạt tài khoản trước khi đăng nhập.");
+        }
+
         return generateAuthResponse(user);
+    }
+
+    @Override
+    @Transactional
+    public AuthResponse loginWithGoogle(GoogleAuthRequest request) {
+        GoogleUserInfo googleInfo = googleAuthService.verifyToken(request.getIdToken());
+        String email = googleInfo.getEmail().toLowerCase().trim();
+
+        User user = userRepository.findByEmail(email).orElse(null);
+
+        if (user != null) {
+            if ("LOCKED".equalsIgnoreCase(user.getStatus())) {
+                throw new AccessDeniedException("Tài khoản của bạn đã bị khóa bởi quản trị viên.");
+            }
+
+            // Nếu tài khoản trước đó là UNVERIFIED thì qua Google đã xác nhận email thật -> Kích hoạt luôn
+            if ("UNVERIFIED".equalsIgnoreCase(user.getStatus())) {
+                user.setStatus("ACTIVE");
+            }
+
+            if (user.getProviderId() == null && googleInfo.getSub() != null) {
+                user.setProviderId(googleInfo.getSub());
+            }
+
+            if ((user.getAvatarUrl() == null || user.getAvatarUrl().isBlank()) && googleInfo.getPicture() != null) {
+                user.setAvatarUrl(googleInfo.getPicture());
+            }
+
+            user = userRepository.save(user);
+        } else {
+            Role userRole = roleRepository.findByName("CUSTOMER")
+                    .orElseThrow(() -> new RuntimeException("Role CUSTOMER không tồn tại trong hệ thống"));
+
+            String displayName = (googleInfo.getName() != null && !googleInfo.getName().isBlank())
+                    ? googleInfo.getName()
+                    : email.split("@")[0];
+
+            user = User.builder()
+                    .fullName(displayName)
+                    .email(email)
+                    .role(userRole)
+                    .authProvider("GOOGLE")
+                    .providerId(googleInfo.getSub())
+                    .avatarUrl(googleInfo.getPicture())
+                    .status("ACTIVE")
+                    .passwordHash(null)
+                    .build();
+
+            user = userRepository.save(user);
+        }
+
+        return generateAuthResponse(user);
+    }
+
+    @Override
+    @Transactional
+    public AuthResponse verifyEmail(String token) {
+        if (token == null || token.isBlank()) {
+            throw new IllegalArgumentException("Mã kích hoạt không được để trống");
+        }
+
+        UserToken userToken = userTokenRepository.findByTokenAndType(token.trim(), "ACTIVATION")
+                .orElseThrow(() -> new ResourceNotFoundException("Liên kết kích hoạt không hợp lệ hoặc đã được sử dụng."));
+
+        if (userToken.getExpiresAt().isBefore(LocalDateTime.now())) {
+            userTokenRepository.delete(userToken);
+            throw new IllegalArgumentException("Liên kết kích hoạt đã hết hạn. Vui lòng yêu cầu gửi lại email kích hoạt mới.");
+        }
+
+        User user = userToken.getUser();
+        if ("LOCKED".equalsIgnoreCase(user.getStatus())) {
+            throw new AccessDeniedException("Tài khoản của bạn đã bị khóa bởi quản trị viên.");
+        }
+
+        user.setStatus("ACTIVE");
+        userRepository.save(user);
+        userTokenRepository.delete(userToken);
+
+        return generateAuthResponse(user);
+    }
+
+    @Override
+    @Transactional
+    public void resendActivationEmail(String email) {
+        if (email == null || email.isBlank()) {
+            throw new IllegalArgumentException("Email không được để trống");
+        }
+
+        User user = userRepository.findByEmail(email.trim().toLowerCase())
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản với email này"));
+
+        if ("ACTIVE".equalsIgnoreCase(user.getStatus())) {
+            throw new IllegalArgumentException("Tài khoản này đã được kích hoạt trước đó. Bạn có thể đăng nhập ngay.");
+        }
+
+        if ("LOCKED".equalsIgnoreCase(user.getStatus())) {
+            throw new AccessDeniedException("Tài khoản của bạn đã bị khóa bởi quản trị viên.");
+        }
+
+        userTokenRepository.deleteByUserIdAndType(user.getId(), "ACTIVATION");
+
+        String activationToken = UUID.randomUUID().toString();
+        UserToken userToken = UserToken.builder()
+                .user(user)
+                .token(activationToken)
+                .type("ACTIVATION")
+                .expiresAt(LocalDateTime.now().plusHours(24))
+                .failedAttempts(0)
+                .build();
+        userTokenRepository.save(userToken);
+
+        String activationLink = frontendUrl + "/verify-email?token=" + activationToken;
+        emailService.sendAccountActivationEmail(user.getEmail(), user.getFullName(), activationLink);
     }
 
     @Override

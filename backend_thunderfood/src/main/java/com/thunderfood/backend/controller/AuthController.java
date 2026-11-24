@@ -3,9 +3,11 @@ package com.thunderfood.backend.controller;
 import com.thunderfood.backend.dto.ApiResponse;
 import com.thunderfood.backend.dto.auth.AuthResponse;
 import com.thunderfood.backend.dto.auth.ForgotPasswordRequest;
+import com.thunderfood.backend.dto.auth.GoogleAuthRequest;
 import com.thunderfood.backend.dto.auth.LoginRequest;
 import com.thunderfood.backend.dto.auth.RefreshTokenRequest;
 import com.thunderfood.backend.dto.auth.RegisterRequest;
+import com.thunderfood.backend.dto.auth.ResendActivationRequest;
 import com.thunderfood.backend.dto.auth.ResetPasswordRequest;
 import com.thunderfood.backend.service.AuthService;
 import jakarta.validation.Valid;
@@ -32,6 +34,35 @@ public class AuthController {
             @Valid @RequestBody LoginRequest request
     ) {
         return ResponseEntity.ok(ApiResponse.success("Đăng nhập thành công", authService.login(request)));
+    }
+
+    @PostMapping("/google")
+    public ResponseEntity<ApiResponse<AuthResponse>> loginWithGoogle(
+            @Valid @RequestBody GoogleAuthRequest request
+    ) {
+        return ResponseEntity.ok(ApiResponse.success("Đăng nhập Google thành công", authService.loginWithGoogle(request)));
+    }
+
+    @PostMapping("/verify-email")
+    public ResponseEntity<ApiResponse<AuthResponse>> verifyEmail(
+            @RequestParam("token") String token
+    ) {
+        return ResponseEntity.ok(ApiResponse.success("Kích hoạt tài khoản thành công!", authService.verifyEmail(token)));
+    }
+
+    @GetMapping("/verify-email")
+    public ResponseEntity<ApiResponse<AuthResponse>> verifyEmailGet(
+            @RequestParam("token") String token
+    ) {
+        return ResponseEntity.ok(ApiResponse.success("Kích hoạt tài khoản thành công!", authService.verifyEmail(token)));
+    }
+
+    @PostMapping("/resend-activation")
+    public ResponseEntity<ApiResponse<String>> resendActivation(
+            @Valid @RequestBody ResendActivationRequest request
+    ) {
+        authService.resendActivationEmail(request.getEmail());
+        return ResponseEntity.ok(ApiResponse.success("Email kích hoạt mới đã được gửi. Vui lòng kiểm tra hòm thư của bạn.", null));
     }
 
     @PostMapping("/refresh-token")

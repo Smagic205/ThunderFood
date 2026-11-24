@@ -13,6 +13,8 @@ export interface AuthResponse {
   token: string;
   refreshToken: string;
   user: User;
+  message?: string;
+  requiresVerification?: boolean;
 }
 
 export interface ApiResponse<T> {
@@ -30,6 +32,21 @@ export const authApi = {
   register: async (data: any): Promise<AuthResponse> => {
     const response = await axiosClient.post<ApiResponse<AuthResponse>>('/v1/auth/register', data);
     return response.data.data;
+  },
+
+  googleLogin: async (idToken: string): Promise<AuthResponse> => {
+    const response = await axiosClient.post<ApiResponse<AuthResponse>>('/v1/auth/google', { idToken });
+    return response.data.data;
+  },
+
+  verifyEmail: async (token: string): Promise<AuthResponse> => {
+    const response = await axiosClient.post<ApiResponse<AuthResponse>>(`/v1/auth/verify-email?token=${encodeURIComponent(token)}`);
+    return response.data.data;
+  },
+
+  resendActivation: async (email: string): Promise<string> => {
+    const response = await axiosClient.post<ApiResponse<string>>('/v1/auth/resend-activation', { email });
+    return response.data.message;
   },
   
   forgotPassword: async (email: string): Promise<string> => {

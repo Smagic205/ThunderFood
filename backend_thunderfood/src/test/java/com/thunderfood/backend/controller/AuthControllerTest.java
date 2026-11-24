@@ -213,4 +213,47 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.success", is(true)))
                 .andExpect(jsonPath("$.message", is("Đặt lại mật khẩu thành công. Vui lòng đăng nhập lại.")));
     }
+
+    @Test
+    @DisplayName("POST /api/v1/auth/google thành công trả về 200 và AuthResponse")
+    void testGoogleLogin_Success() throws Exception {
+        GoogleAuthRequest request = new GoogleAuthRequest("google-id-token-xyz");
+
+        when(authService.loginWithGoogle(any(GoogleAuthRequest.class))).thenReturn(authResponse);
+
+        mockMvc.perform(post("/api/v1/auth/google")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success", is(true)))
+                .andExpect(jsonPath("$.message", is("Đăng nhập Google thành công")))
+                .andExpect(jsonPath("$.data.token", is("jwt-token-123")));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/auth/verify-email thành công trả về 200 và AuthResponse")
+    void testVerifyEmail_Success() throws Exception {
+        when(authService.verifyEmail("valid-token-123")).thenReturn(authResponse);
+
+        mockMvc.perform(post("/api/v1/auth/verify-email?token=valid-token-123"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success", is(true)))
+                .andExpect(jsonPath("$.message", is("Kích hoạt tài khoản thành công!")))
+                .andExpect(jsonPath("$.data.token", is("jwt-token-123")));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/auth/resend-activation thành công trả về 200")
+    void testResendActivation_Success() throws Exception {
+        ResendActivationRequest request = new ResendActivationRequest("user@gmail.com");
+
+        doNothing().when(authService).resendActivationEmail("user@gmail.com");
+
+        mockMvc.perform(post("/api/v1/auth/resend-activation")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success", is(true)))
+                .andExpect(jsonPath("$.message", is("Email kích hoạt mới đã được gửi. Vui lòng kiểm tra hòm thư của bạn.")));
+    }
 }

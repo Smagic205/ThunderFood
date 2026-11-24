@@ -47,5 +47,44 @@ public class EmailServiceImpl implements EmailService {
             throw new RuntimeException("Lỗi khi gửi email: " + e.getMessage());
         }
     }
+
+    @Override
+    public void sendAccountActivationEmail(String to, String fullName, String activationLink) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            helper.setFrom(fromEmail);
+            helper.setTo(to);
+            helper.setSubject("Xác nhận kích hoạt tài khoản - ThunderFood");
+
+            String displayName = (fullName != null && !fullName.isBlank()) ? fullName : "Quý khách";
+
+            String htmlContent = "<div style='font-family: Arial, Helvetica, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #eee; border-radius: 12px; background-color: #ffffff;'>"
+                    + "<div style='text-align: center; margin-bottom: 24px;'>"
+                    + "<h1 style='color: #ff5722; font-size: 26px; margin: 0;'>⚡ ThunderFood</h1>"
+                    + "<p style='color: #777; font-size: 14px; margin-top: 4px;'>Giao đồ ăn chớp nhoáng</p>"
+                    + "</div>"
+                    + "<h2 style='color: #222; font-size: 20px;'>Kích hoạt tài khoản của bạn</h2>"
+                    + "<p style='color: #444; font-size: 15px; line-height: 1.6;'>Xin chào <strong>" + displayName + "</strong>,</p>"
+                    + "<p style='color: #444; font-size: 15px; line-height: 1.6;'>Cảm ơn bạn đã đăng ký tài khoản tại <strong>ThunderFood</strong>. Để bắt đầu đặt món và nhận các ưu đãi hấp dẫn, vui lòng nhấn vào nút bên dưới để kích hoạt tài khoản của bạn:</p>"
+                    + "<div style='text-align: center; margin: 32px 0;'>"
+                    + "<a href='" + activationLink + "' style='display: inline-block; background-color: #ff5722; color: #ffffff; text-decoration: none; padding: 14px 32px; font-size: 16px; font-weight: bold; border-radius: 8px; box-shadow: 0 4px 10px rgba(255, 87, 34, 0.3);'>Kích hoạt tài khoản ngay</a>"
+                    + "</div>"
+                    + "<p style='color: #666; font-size: 13px; line-height: 1.5;'>Nếu nút bấm trên không hoạt động, bạn có thể sao chép và dán liên kết sau vào trình duyệt:<br>"
+                    + "<a href='" + activationLink + "' style='color: #ff5722; word-break: break-all;'>" + activationLink + "</a></p>"
+                    + "<div style='border-top: 1px solid #eee; margin-top: 32px; padding-top: 16px; font-size: 12px; color: #999;'>"
+                    + "<p style='margin: 0;'>* Liên kết này có hiệu lực trong vòng <strong>24 giờ</strong>.</p>"
+                    + "<p style='margin: 4px 0 0 0;'>Nếu bạn không thực hiện đăng ký tài khoản này, vui lòng bỏ qua email.</p>"
+                    + "<p style='margin: 12px 0 0 0;'>Trân trọng,<br><strong>Đội ngũ phát triển ThunderFood</strong></p>"
+                    + "</div>"
+                    + "</div>";
+
+            helper.setText(htmlContent, true);
+            mailSender.send(message);
+        } catch (MessagingException e) {
+            throw new RuntimeException("Lỗi khi gửi email kích hoạt tài khoản: " + e.getMessage());
+        }
+    }
 }
 

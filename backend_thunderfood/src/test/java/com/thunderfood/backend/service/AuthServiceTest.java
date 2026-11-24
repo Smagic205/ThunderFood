@@ -2,6 +2,8 @@ package com.thunderfood.backend.service;
 
 import com.thunderfood.backend.config.security.UserDetailsImpl;
 import com.thunderfood.backend.dto.auth.AuthResponse;
+import com.thunderfood.backend.dto.auth.GoogleAuthRequest;
+import com.thunderfood.backend.dto.auth.GoogleUserInfo;
 import com.thunderfood.backend.dto.auth.LoginRequest;
 import com.thunderfood.backend.dto.auth.RegisterRequest;
 import com.thunderfood.backend.dto.auth.ResetPasswordRequest;
@@ -66,6 +68,9 @@ class AuthServiceTest {
     @Mock
     private EmailService emailService;
 
+    @Mock
+    private GoogleAuthService googleAuthService;
+
     @InjectMocks
     private AuthServiceImpl authService;
 
@@ -97,7 +102,7 @@ class AuthServiceTest {
     }
 
     @Test
-    @DisplayName("Đăng ký thành công trả về AuthResponse")
+    @DisplayName("Đăng ký thành công trả về AuthResponse yêu cầu kích hoạt email")
     void testRegister_Success() {
         RegisterRequest request = new RegisterRequest();
         request.setFullName("Nguyễn Văn A");
@@ -105,19 +110,20 @@ class AuthServiceTest {
         request.setPassword("12345678");
         request.setPhone("0987654321");
 
-        when(userRepository.existsByEmail(request.getEmail())).thenReturn(false);
+        when(userRepository.findByEmail(request.getEmail())).thenReturn(Optional.empty());
         when(roleRepository.findByName("CUSTOMER")).thenReturn(Optional.of(customerRole));
         when(passwordEncoder.encode(request.getPassword())).thenReturn("encodedPassword");
         when(userRepository.save(any(User.class))).thenReturn(mockUser);
-        mockAuthResponseGeneration();
+        when(userTokenRepository.save(any(UserToken.class))).thenAnswer(i -> i.getArgument(0));
 
         AuthResponse response = authService.register(request);
 
         assertNotNull(response);
-        assertEquals("mock-access-token", response.getToken());
-        assertEquals("mock-refresh-token", response.getRefreshToken());
+        assertTrue(response.getRequiresVerification());
         assertEquals("user@gmail.com", response.getUser().getEmail());
+        verify(emailService).sendAccountActivationEmail(eq("user@gmail.com"), eq("Nguyễn Văn A"), anyString());
         verify(userRepository).save(any(User.class));
+        verify(userTokenRepository).save(any(UserToken.class));
     }
 
     @Test
@@ -126,7 +132,7 @@ class AuthServiceTest {
         RegisterRequest request = new RegisterRequest();
         request.setEmail("user@gmail.com");
 
-        when(userRepository.existsByEmail("user@gmail.com")).thenReturn(true);
+        when(userRepository.findByEmail("user@gmail.com")).thenReturn(Optional.of(mockUser));
 
         ConflictException ex = assertThrows(ConflictException.class, () -> authService.register(request));
         assertEquals("Email đã được sử dụng", ex.getMessage());
@@ -450,5 +456,151 @@ class AuthServiceTest {
 
         AccessDeniedException ex = assertThrows(AccessDeniedException.class, () -> authService.loginStaff(request));
         assertEquals("Tài khoản này không có quyền truy cập của nhân viên", ex.getMessage());
+    }
+
+    @Test
+    @DisplayName("Đăng nhập với Google tạo tài khoản mới nếu chưa tồn tại")
+    void testLoginWithGoogle_NewUser() {
+        GoogleAuthRequest request = new GoogleAuthRequest("google-id-token-abc");
+        GoogleUserInfo googleInfo = GoogleUserInfo.builder()
+                .sub("google-123456")
+                .email("googleuser@gmail.com")
+                .name("Google User")
+                .picture("https://lh3.google.com/photo.jpg")
+                .emailVerified(true)
+                .build();
+
+        when(googleAuthService.verifyToken("google-id-token-abc")).thenReturn(googleInfo);
+        when(userRepository.findByEmail("googleuser@gmail.com")).thenReturn(Optional.empty());
+        when(roleRepository.findByName("CUSTOMER")).thenReturn(Optional.of(customerRole));
+        when(userRepository.save(any(User.class))).thenAnswer(i -> {
+            User u = i.getArgument(0);
+            u.setId(99L);
+            return u;
+        });
+        mockAuthResponseGeneration();
+
+        AuthResponse response = authService.loginWithGoogle(request);
+
+        assertNotNull(response);
+        assertEquals("mock-access-token", response.getToken());
+        verify(userRepository).save(any(User.class));
+    }
+
+    @Test
+    @DisplayName("Đăng nhập với Google liên kết tài khoản đã tồn tại và kích hoạt nếu UNVERIFIED")
+    void testLoginWithGoogle_ExistingUser() {
+        GoogleAuthRequest request = new GoogleAuthRequest("google-id-token-abc");
+        GoogleUserInfo googleInfo = GoogleUserInfo.builder()
+                .sub("google-123456")
+                .email("user@gmail.com")
+                .name("Nguyễn Văn A")
+                .picture("https://lh3.google.com/photo.jpg")
+                .emailVerified(true)
+                .build();
+
+        mockUser.setStatus("UNVERIFIED");
+
+        when(googleAuthService.verifyToken("google-id-token-abc")).thenReturn(googleInfo);
+        when(userRepository.findByEmail("user@gmail.com")).thenReturn(Optional.of(mockUser));
+        when(userRepository.save(any(User.class))).thenReturn(mockUser);
+        mockAuthResponseGeneration();
+
+        AuthResponse response = authService.loginWithGoogle(request);
+
+        assertNotNull(response);
+        assertEquals("ACTIVE", mockUser.getStatus());
+        assertEquals("google-123456", mockUser.getProviderId());
+    }
+
+    @Test
+    @DisplayName("Kích hoạt tài khoản bằng token thành công")
+    void testVerifyEmail_Success() {
+        User unverifiedUser = User.builder()
+                .id(2L)
+                .email("unverified@gmail.com")
+                .fullName("Unverified User")
+                .status("UNVERIFIED")
+                .role(customerRole)
+                .build();
+
+        UserToken token = UserToken.builder()
+                .id(10L)
+                .user(unverifiedUser)
+                .token("valid-activation-token")
+                .type("ACTIVATION")
+                .expiresAt(LocalDateTime.now().plusHours(12))
+                .build();
+
+        when(userTokenRepository.findByTokenAndType("valid-activation-token", "ACTIVATION"))
+                .thenReturn(Optional.of(token));
+        when(userRepository.save(any(User.class))).thenReturn(unverifiedUser);
+        mockAuthResponseGeneration();
+
+        AuthResponse response = authService.verifyEmail("valid-activation-token");
+
+        assertNotNull(response);
+        assertEquals("ACTIVE", unverifiedUser.getStatus());
+        verify(userTokenRepository).delete(token);
+    }
+
+    @Test
+    @DisplayName("Kích hoạt tài khoản ném IllegalArgumentException khi token đã hết hạn")
+    void testVerifyEmail_ExpiredToken() {
+        User unverifiedUser = User.builder().id(2L).status("UNVERIFIED").build();
+        UserToken expiredToken = UserToken.builder()
+                .id(10L)
+                .user(unverifiedUser)
+                .token("expired-token")
+                .type("ACTIVATION")
+                .expiresAt(LocalDateTime.now().minusHours(1))
+                .build();
+
+        when(userTokenRepository.findByTokenAndType("expired-token", "ACTIVATION"))
+                .thenReturn(Optional.of(expiredToken));
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> authService.verifyEmail("expired-token"));
+        assertTrue(ex.getMessage().contains("đã hết hạn"));
+        verify(userTokenRepository).delete(expiredToken);
+    }
+
+    @Test
+    @DisplayName("Gửi lại email kích hoạt thành công")
+    void testResendActivationEmail_Success() {
+        User unverifiedUser = User.builder()
+                .id(2L)
+                .email("unverified@gmail.com")
+                .fullName("Unverified User")
+                .status("UNVERIFIED")
+                .build();
+
+        when(userRepository.findByEmail("unverified@gmail.com")).thenReturn(Optional.of(unverifiedUser));
+
+        authService.resendActivationEmail("unverified@gmail.com");
+
+        verify(userTokenRepository).deleteByUserIdAndType(2L, "ACTIVATION");
+        verify(userTokenRepository).save(any(UserToken.class));
+        verify(emailService).sendAccountActivationEmail(eq("unverified@gmail.com"), eq("Unverified User"), anyString());
+    }
+
+    @Test
+    @DisplayName("Đăng nhập ném AccessDeniedException khi tài khoản chưa được kích hoạt")
+    void testLogin_UnverifiedAccount() {
+        LoginRequest request = new LoginRequest();
+        request.setEmail("unverified@gmail.com");
+        request.setPassword("12345678");
+
+        User unverifiedUser = User.builder()
+                .id(2L)
+                .email("unverified@gmail.com")
+                .status("UNVERIFIED")
+                .role(customerRole)
+                .build();
+
+        when(userRepository.findByEmail("unverified@gmail.com")).thenReturn(Optional.of(unverifiedUser));
+
+        AccessDeniedException ex = assertThrows(AccessDeniedException.class, () -> authService.login(request));
+        assertTrue(ex.getMessage().contains("chưa được kích hoạt"));
     }
 }
