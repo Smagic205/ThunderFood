@@ -235,7 +235,8 @@ class AuthControllerTest {
     void testVerifyEmail_Success() throws Exception {
         when(authService.verifyEmail("valid-token-123")).thenReturn(authResponse);
 
-        mockMvc.perform(post("/api/v1/auth/verify-email?token=valid-token-123"))
+        mockMvc.perform(post("/api/v1/auth/verify-email")
+                        .param("token", "valid-token-123"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success", is(true)))
                 .andExpect(jsonPath("$.message", is("Kích hoạt tài khoản thành công!")))

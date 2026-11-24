@@ -598,6 +598,7 @@ class AuthServiceTest {
                 .role(customerRole)
                 .build();
 
+        when(authenticationManager.authenticate(any())).thenReturn(null);
         when(userRepository.findByEmail("unverified@gmail.com")).thenReturn(Optional.of(unverifiedUser));
 
         AccessDeniedException ex = assertThrows(AccessDeniedException.class, () -> authService.login(request));
