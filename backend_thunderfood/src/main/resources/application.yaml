@@ -9,14 +9,13 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
-    database-platform: com.thunderfood.backend.config.CustomTiDBDialect
     hibernate:
       ddl-auto: update   # Tự tạo bảng nếu chưa có, cập nhật nếu đã có
     show-sql: true
     properties:
       hibernate:
         format_sql: true
-        dialect: com.thunderfood.backend.config.CustomTiDBDialect
+        dialect: org.hibernate.dialect.MySQLDialect
     open-in-view: false
 
   flyway:
