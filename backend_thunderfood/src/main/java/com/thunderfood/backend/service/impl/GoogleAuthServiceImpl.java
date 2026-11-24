@@ -20,10 +20,9 @@ import java.time.Duration;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class GoogleAuthServiceImpl implements GoogleAuthService {
 
-    private final ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Value("${app.google.client-id:}")
     private String expectedClientId;

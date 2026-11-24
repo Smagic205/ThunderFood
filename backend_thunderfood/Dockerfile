@@ -5,6 +5,9 @@ FROM eclipse-temurin:21-jdk-alpine AS builder
 
 WORKDIR /app
 
+# Cài đặt curl và ca-certificates hỗ trợ tải package ổn định
+RUN apk add --no-cache curl ca-certificates
+
 # Copy Maven Wrapper và pom.xml trước để tận dụng Docker Cache layer
 COPY .mvn/ .mvn
 COPY mvnw pom.xml ./
