@@ -21,12 +21,10 @@ public interface DeliveryPackageRepository extends JpaRepository<DeliveryPackage
 
     List<DeliveryPackage> findByStatusOrderByCreatedAtDesc(String status);
 
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT p FROM DeliveryPackage p WHERE p.id = :id")
+    @Query(value = "SELECT * FROM delivery_packages WHERE id = :id FOR UPDATE", nativeQuery = true)
     Optional<DeliveryPackage> findByIdWithLock(@Param("id") Long id);
 
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT p FROM DeliveryPackage p WHERE p.packageName = :packageName")
+    @Query(value = "SELECT * FROM delivery_packages WHERE package_name = :packageName FOR UPDATE", nativeQuery = true)
     Optional<DeliveryPackage> findByPackageNameWithLock(@Param("packageName") String packageName);
 
     Optional<DeliveryPackage> findFirstByShippedByStaffIdAndStatus(Long staffId, String status);

@@ -23,10 +23,11 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
     boolean existsBySlugAndIdNot(String slug, Long id);
 
     /**
-     * Lấy sản phẩm kèm pessimistic write lock để tránh race condition
+     * Lấy sản phẩm kèm khóa FOR UPDATE để tránh race condition
      * khi nhiều đơn hàng cùng trừ tồn kho của sản phẩm đồng thời.
+     * Sử dụng nativeQuery để tương thích tuyệt đối với TiDB Cloud,
+     * tránh lỗi Hibernate tự sinh "FOR UPDATE OF <alias>".
      */
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT p FROM Product p WHERE p.id = :id")
+    @Query(value = "SELECT * FROM products WHERE id = :id FOR UPDATE", nativeQuery = true)
     Optional<Product> findByIdWithLock(@Param("id") Long id);
 }
