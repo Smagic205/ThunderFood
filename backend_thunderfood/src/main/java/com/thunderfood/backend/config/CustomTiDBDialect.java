@@ -11,6 +11,16 @@ import org.hibernate.dialect.MySQLDialect;
 public class CustomTiDBDialect extends MySQLDialect {
 
     @Override
+    public boolean supportsForUpdateOf() {
+        return false;
+    }
+
+    @Override
+    public boolean supportsOuterJoinForUpdate() {
+        return false;
+    }
+
+    @Override
     public String getForUpdateString() {
         return " for update";
     }
@@ -43,25 +53,5 @@ public class CustomTiDBDialect extends MySQLDialect {
     @Override
     public String getForUpdateSkipLockedString(String aliases) {
         return " for update skip locked";
-    }
-
-    @Override
-    public String getReadLockString(int timeout) {
-        return " lock in share mode";
-    }
-
-    @Override
-    public String getReadLockString(String aliases, int timeout) {
-        return " lock in share mode";
-    }
-
-    @Override
-    public String getWriteLockString(int timeout) {
-        return " for update";
-    }
-
-    @Override
-    public String getWriteLockString(String aliases, int timeout) {
-        return " for update";
     }
 }
