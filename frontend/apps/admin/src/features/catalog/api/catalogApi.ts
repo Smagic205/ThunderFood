@@ -178,8 +178,8 @@ export const catalogApi = {
   },
 
   toggleProductAvailability: async (id: number, isAvailable: boolean): Promise<boolean> => {
-    const current = await catalogApi.getProductById(id);
-    const updated = await catalogApi.saveProduct({ ...current, isAvailable });
+    const res = await axiosClient.patch<ApiResponse<any>>(`/admin/products/${id}/availability`, { isAvailable });
+    const updated = enrichProduct(requireData(res.data, 'Không thể cập nhật trạng thái hiển thị món ăn'));
     return updated.isAvailable === isAvailable;
   },
 

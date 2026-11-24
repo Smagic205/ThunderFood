@@ -46,5 +46,7 @@ public interface ProductService {
 
     ProductAdminResponse updateProduct(Long id, ProductUpdateRequest request);
 
+    ProductAdminResponse updateProductAvailability(Long id, Boolean isAvailable);
+
     void deleteProduct(Long id);
 }

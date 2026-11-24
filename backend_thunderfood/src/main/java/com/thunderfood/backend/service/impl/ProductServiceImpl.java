@@ -560,6 +560,19 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional
+    public ProductAdminResponse updateProductAvailability(Long id, Boolean isAvailable) {
+        if (isAvailable == null) {
+            throw new IllegalArgumentException("Trạng thái hiển thị không được để trống");
+        }
+
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy món ăn với ID: " + id));
+        product.setIsAvailable(isAvailable);
+        return mapToAdminResponse(productRepository.save(product));
+    }
+
+    @Override
+    @Transactional
     public void deleteProduct(Long id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy món ăn với ID: " + id));

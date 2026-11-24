@@ -436,6 +436,7 @@ export const ProductsPage: React.FC = () => {
                           <input
                             type="checkbox"
                             checked={p.isAvailable}
+                            disabled={toggleAvailabilityMutation.isPending}
                             onChange={(e) =>
                               toggleAvailabilityMutation.mutate({
                                 id: p.id,

@@ -4,6 +4,7 @@ import com.thunderfood.backend.dto.ApiResponse;
 import com.thunderfood.backend.dto.product.ProductAdminResponse;
 import com.thunderfood.backend.dto.product.ProductCreateRequest;
 import com.thunderfood.backend.dto.product.ProductUpdateRequest;
+import com.thunderfood.backend.dto.product.UpdateProductAvailabilityRequest;
 import com.thunderfood.backend.service.ProductService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -59,6 +60,15 @@ public class AdminProductController {
     ) {
         ProductAdminResponse response = productService.updateProduct(id, request);
         return ResponseEntity.ok(ApiResponse.success("Cập nhật món ăn thành công", response));
+    }
+
+    @PatchMapping("/{id}/availability")
+    public ResponseEntity<ApiResponse<ProductAdminResponse>> updateProductAvailability(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateProductAvailabilityRequest request
+    ) {
+        ProductAdminResponse response = productService.updateProductAvailability(id, request.getIsAvailable());
+        return ResponseEntity.ok(ApiResponse.success("Cập nhật trạng thái hiển thị món ăn thành công", response));
     }
 
     @DeleteMapping("/{id}")
