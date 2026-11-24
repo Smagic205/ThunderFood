@@ -2,8 +2,15 @@ import axios from 'axios';
 import { useAuthStore } from '@/app/store/authStore';
 import { useForbiddenNoticeStore } from '@/shared/stores/forbiddenNoticeStore';
 
+const getBaseUrl = (): string => {
+  const url = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL;
+  if (!url) return 'http://localhost:8080/api/v1';
+  const clean = url.replace(/\/+$/, '');
+  return clean.endsWith('/v1') ? clean : `${clean}/v1`;
+};
+
 export const axiosClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1',
+  baseURL: getBaseUrl(),
   headers: {
     'Content-Type': 'application/json',
   },
