@@ -1,0 +1,86 @@
+name: Build and Push Frontend to GHCR
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/deploy-frontend.yml'
+
+jobs:
+  build-and-push-frontend:
+    name: Build & Push Frontend Images to GitHub Packages
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Lowercase Repository Owner
+        id: repo_owner
+        run: echo "OWNER=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_OUTPUT
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # 1. Build & Push Web Khách hàng
+      - name: Build and push Web Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          build-args: |
+            APP_NAME=web
+          push: true
+          tags: |
+            ghcr.io/${{ steps.repo_owner.outputs.OWNER }}/thunderfood-web:latest
+            ghcr.io/${{ steps.repo_owner.outputs.OWNER }}/thunderfood-web:${{ github.sha }}
+
+      # 2. Build & Push Web Admin
+      - name: Build and push Admin Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          build-args: |
+            APP_NAME=admin
+          push: true
+          tags: |
+            ghcr.io/${{ steps.repo_owner.outputs.OWNER }}/thunderfood-admin:latest
+            ghcr.io/${{ steps.repo_owner.outputs.OWNER }}/thunderfood-admin:${{ github.sha }}
+
+      # 3. Build & Push Web Staff
+      - name: Build and push Staff Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          build-args: |
+            APP_NAME=staff
+          push: true
+          tags: |
+            ghcr.io/${{ steps.repo_owner.outputs.OWNER }}/thunderfood-staff:latest
+            ghcr.io/${{ steps.repo_owner.outputs.OWNER }}/thunderfood-staff:${{ github.sha }}
+
+      # 4. Trigger Webhook deploy nếu có cấu hình secret
+      - name: Trigger Frontend Deploy Hook
+        env:
+          RENDER_FRONTEND_DEPLOY_HOOK: ${{ secrets.RENDER_FRONTEND_DEPLOY_HOOK }}
+        run: |
+          if [ -n "$RENDER_FRONTEND_DEPLOY_HOOK" ]; then
+            echo "Triggering Frontend deployment..."
+            curl -s -X POST "$RENDER_FRONTEND_DEPLOY_HOOK"
+          else
+            echo "RENDER_FRONTEND_DEPLOY_HOOK is not set yet, skipping webhook."
+          fi

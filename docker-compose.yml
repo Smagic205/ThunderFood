@@ -4,7 +4,7 @@ services:
     build:
       context: ./backend_thunderfood
       dockerfile: Dockerfile
-    image: ghcr.io/smagic205/thunderfood-backend:latest
+    image: ghcr.io/${DOCKER_OWNER:-smagic205}/thunderfood-backend:latest
     container_name: thunderfood_backend
     restart: always
     ports:
@@ -19,3 +19,48 @@ services:
       CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-your_cloudinary_cloud_name}
       CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-your_cloudinary_api_key}
       CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-your_cloudinary_api_secret}
+
+  # Ứng dụng Web Khách hàng (React / Vite)
+  frontend-web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: web
+    image: ghcr.io/${DOCKER_OWNER:-smagic205}/thunderfood-web:latest
+    container_name: thunderfood_web
+    restart: always
+    ports:
+      - "${FRONTEND_PORT:-3008}:80"
+    depends_on:
+      - backend
+
+  # Ứng dụng Web Quản trị viên (Admin Portal)
+  frontend-admin:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: admin
+    image: ghcr.io/${DOCKER_OWNER:-smagic205}/thunderfood-admin:latest
+    container_name: thunderfood_admin
+    restart: always
+    ports:
+      - "${ADMIN_PORT:-3009}:80"
+    depends_on:
+      - backend
+
+  # Ứng dụng Web Nhân viên & Shipper (Staff Portal)
+  frontend-staff:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: staff
+    image: ghcr.io/${DOCKER_OWNER:-smagic205}/thunderfood-staff:latest
+    container_name: thunderfood_staff
+    restart: always
+    ports:
+      - "${STAFF_PORT:-3010}:80"
+    depends_on:
+      - backend
