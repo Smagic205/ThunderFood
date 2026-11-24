@@ -45,13 +45,13 @@ export const AuthLayout = () => {
           alt="ThunderFood"
           className="select-none"
           style={{
-            width: 'min(70%, 280px)',
+            width: 'min(85%, 392px)',
             height: 'auto',
-            maxHeight: '280px',
+            maxHeight: '392px',
             alignSelf: 'center',
             objectFit: 'contain',
             filter: 'drop-shadow(0 20px 35px rgba(0,0,0,0.4))',
-            margin: '20px 0',
+            margin: '16px 0',
             zIndex: 1
           }}
         />
