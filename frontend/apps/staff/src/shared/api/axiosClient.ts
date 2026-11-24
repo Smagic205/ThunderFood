@@ -41,11 +41,6 @@ axiosClient.interceptors.response.use(
       originalRequest._retry = true;
       const store = useAuthStore.getState();
 
-      // Demo sessions do not have backend-issued refresh tokens.
-      if (store.token === 'mock_token') {
-        return Promise.reject(error);
-      }
-
       const currentRefreshToken = store.refreshToken;
       if (!currentRefreshToken) {
         store.logout();

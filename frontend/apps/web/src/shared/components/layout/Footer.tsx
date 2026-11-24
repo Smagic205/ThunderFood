@@ -14,7 +14,7 @@ export const Footer = () => {
               <span>ThunderFood</span>
             </Link>
             <p style={{ marginTop: '16px', maxWidth: '32ch', color: '#B9C0EA' }}>
-              Gà rán, burger và đồ uống nấu tươi mỗi ngày, giao nhanh trong nội thành Hà Nội.
+              Chọn món từ thực đơn và theo dõi đơn hàng trong tài khoản của bạn.
             </p>
           </div>
           <div>
@@ -36,17 +36,16 @@ export const Footer = () => {
             </ul>
           </div>
           <div>
-            <h4>Cửa hàng</h4>
-            <ul style={{ color: '#B9C0EA' }}>
-              <li>86 Hàng Bài, Hoàn Kiếm, Hà Nội</li>
-              <li>Hotline 1900 1000</li>
-              <li>Mở cửa 08:00 đến 22:00 hằng ngày</li>
+            <h4>Tài khoản</h4>
+            <ul>
+              <li><Link to="/account/orders">Đơn mua</Link></li>
+              <li><Link to="/account/profile">Thông tin cá nhân</Link></li>
+              <li><Link to="/account/addresses">Địa chỉ giao hàng</Link></li>
             </ul>
           </div>
         </div>
         <div className="foot-b">
           <span>© 2026 ThunderFood. Bảo lưu mọi quyền.</span>
-          <span>Thiết kế bản mẫu, ảnh món là minh họa.</span>
         </div>
       </div>
     </footer>

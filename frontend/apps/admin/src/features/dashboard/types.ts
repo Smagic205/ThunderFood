@@ -3,9 +3,7 @@ export type OrderStatus = 'PENDING' | 'CONFIRMED' | 'DELIVERING' | 'DELIVERED' |
 export interface KpiMetric {
   label: string;
   value: string | number;
-  deltaText: string;
-  isPositive: boolean;
-  sparkline: number[];
+  detail: string;
   icon: 'wallet' | 'receipt' | 'clock' | 'users';
 }
 
@@ -13,7 +11,7 @@ export type TimeRange = 'day' | 'week' | 'month';
 
 export interface RevenueChartData {
   labels: string[];
-  values: number[]; // Số triệu VNĐ
+  values: number[];
   periodTotalText: string;
   unit: string;
 }
@@ -28,12 +26,8 @@ export interface StatusCountItem {
 export interface TopProductItem {
   id: number;
   name: string;
-  categoryName: string;
+  categoryName?: string;
   soldCount: number;
-  price: number;
-  discountPrice?: number;
-  tint?: string;
-  emoji?: string;
 }
 
 export interface RecentOrderItem {
@@ -67,9 +61,8 @@ export interface DashboardData {
     processingOrders: KpiMetric;
     newCustomersWeek: KpiMetric;
   };
-  revenueStats: Record<TimeRange, RevenueChartData>;
+  revenueStats: RevenueChartData;
   orderStatusCounts: StatusCountItem[];
   topProducts: TopProductItem[];
-  recentOrders: RecentOrderItem[];
-  shipperPerformance?: ShipperPerformanceItem[];
+  shipperPerformance: ShipperPerformanceItem[];
 }

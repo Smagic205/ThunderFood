@@ -421,7 +421,7 @@ export const CartPage: React.FC = () => {
             }}
           >
             <ShieldCheck size={16} />
-            <span>Thanh toán an toàn & bảo mật 100%</span>
+            <span>Kiểm tra chi tiết đơn hàng trước khi xác nhận</span>
           </div>
         </aside>
       </div>

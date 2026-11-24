@@ -325,19 +325,6 @@ button {
   margin-bottom: 8px;
 }
 
-.demo-box {
-  margin-top: 26px;
-  padding: 16px;
-  border-radius: 18px;
-  background: var(--surface-2);
-  font-size: 13.5px;
-  border: 1px dashed var(--line);
-}
-
-.demo-box .row {
-  margin-top: 10px;
-}
-
 /* Cards & Containers */
 .card {
   background: var(--surface);

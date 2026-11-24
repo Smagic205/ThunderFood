@@ -27,8 +27,7 @@ export const CategoriesPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
 
-  // Query categories (has productCount computed)
-  const { data: categories = [], isLoading } = useQuery({
+  const { data: categories = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['admin-categories'],
     queryFn: catalogApi.getCategories,
   });
@@ -89,13 +88,6 @@ export const CategoriesPage: React.FC = () => {
   };
 
   const handleDeleteClick = (c: Category) => {
-    if ((c.productCount || 0) > 0) {
-      showToast(
-        `Danh mục “${c.name}” còn ${c.productCount} món, hãy chuyển các món sang danh mục khác trước`,
-        true
-      );
-      return;
-    }
     setDeletingCategory(c);
   };
 
@@ -236,6 +228,11 @@ export const CategoriesPage: React.FC = () => {
         <div className="card card-p" style={{ textAlign: 'center', padding: '40px' }}>
           <p className="muted">Đang tải danh mục…</p>
         </div>
+      ) : isError ? (
+        <div className="card card-p" role="alert" style={{ textAlign: 'center', padding: '40px' }}>
+          <p className="muted">Không thể tải danh sách danh mục.</p>
+          <button className="btn btn-primary btn-sm" onClick={() => refetch()}>Thử lại</button>
+        </div>
       ) : filteredCategories.length > 0 ? (
         <div
           style={{
@@ -360,18 +357,6 @@ export const CategoriesPage: React.FC = () => {
                     borderTop: '1px solid var(--line, rgba(255, 255, 255, 0.06))',
                   }}
                 >
-                  <span
-                    className="tag"
-                    style={{
-                      fontSize: '12.5px',
-                      fontWeight: 600,
-                      backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                      padding: '3px 10px',
-                    }}
-                  >
-                    {c.productCount || 0} món
-                  </span>
-
                   <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                     <button
                       className="ibtn"

@@ -8,7 +8,6 @@ import { KpiCards } from '../components/KpiCards';
 import { RevenueChart } from '../components/RevenueChart';
 import { OrderStatusDonut } from '../components/OrderStatusDonut';
 import { TopProductsCard } from '../components/TopProductsCard';
-import { RecentOrdersCard } from '../components/RecentOrdersCard';
 import { ShipperPerformanceCard } from '../components/ShipperPerformanceCard';
 
 export const DashboardPage = () => {
@@ -18,9 +17,9 @@ export const DashboardPage = () => {
   const [isExportingExcel, setIsExportingExcel] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
 
-  const { data, isLoading, refetch, isRefetching } = useQuery({
-    queryKey: ['admin-dashboard'],
-    queryFn: () => dashboardApi.getDashboardData(),
+  const { data, isLoading, isError, refetch, isRefetching } = useQuery({
+    queryKey: ['admin-dashboard', selectedRange],
+    queryFn: () => dashboardApi.getDashboardData(selectedRange),
     staleTime: 60 * 1000,
   });
 
@@ -70,6 +69,15 @@ export const DashboardPage = () => {
 
   const adminName = user?.fullName || 'Quản trị viên';
 
+  if (isError) {
+    return (
+      <div className="card card-p" role="alert" style={{ textAlign: 'center', padding: '40px' }}>
+        <p>Không thể tải dữ liệu tổng quan từ máy chủ.</p>
+        <button className="btn btn-primary" onClick={() => refetch()}>Thử lại</button>
+      </div>
+    );
+  }
+
   if (isLoading || !data) {
     return (
       <div style={{ padding: '40px', textAlign: 'center', color: 'var(--ink-3)' }}>
@@ -110,7 +118,7 @@ export const DashboardPage = () => {
         <div>
           <h2>Xin chào, {adminName}</h2>
           <p>
-            {getFormattedDate()}. Đây là tình hình hoạt động kinh doanh hôm nay.
+            {getFormattedDate()}. Dữ liệu được tổng hợp theo khoảng thời gian đã chọn.
           </p>
         </div>
         <div className="row wrap" style={{ gap: '10px' }}>
@@ -162,10 +170,9 @@ export const DashboardPage = () => {
         <OrderStatusDonut items={data.orderStatusCounts} />
       </div>
 
-      {/* Grid 2 cột: Món bán chạy & Đơn hàng gần đây */}
+      {/* Món bán chạy */}
       <div className="dash-grid two">
         <TopProductsCard products={data.topProducts} />
-        <RecentOrdersCard orders={data.recentOrders} />
       </div>
 
       {/* Hiệu suất giao hàng của nhân viên / Shipper */}

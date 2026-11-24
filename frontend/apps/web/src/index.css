@@ -546,8 +546,6 @@ s{color:var(--ink-3)}
 .social{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .or{display:flex;align-items:center;gap:14px;color:var(--ink-3);font-size:13px;margin:22px 0}
 .or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
-.demo-box{margin-top:26px;padding:16px;border-radius:18px;background:var(--surface-2);font-size:13.5px}
-.demo-box .row{margin-top:10px}
 .strength{display:flex;gap:6px;margin-top:8px}
 .strength i{flex:1;height:5px;border-radius:9px;background:var(--line);transition:background .2s}
 .strength[data-s="1"] i:nth-child(-n+1){background:var(--c-red)}

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Heart, ShoppingBag, Star, Loader2 } from 'lucide-react';
+import { Heart, ShoppingBag, Star, Loader2, Utensils } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/app/store/authStore';
 import { useCartStore } from '@/shared/stores/cartStore';
@@ -79,9 +79,9 @@ export function ProductCard({ product: p }: { product: Product }) {
 
   const isFavorite = wishlistQuery.data?.some((item) => item.productId === p.id) ?? p.isFavorite ?? false;
 
-  const imageSrc = p.thumbnailUrl || p.imageUrl || 'https://cdn-icons-png.flaticon.com/512/3075/3075977.png';
+  const imageSrc = p.thumbnailUrl || p.imageUrl;
 
-  // Tính toán giá bán và giảm giá linh hoạt (tương thích cả backend và mock)
+  // Tính toán giá bán và giảm giá theo dữ liệu từ backend.
   let sellingPrice = p.price;
   let originalPrice: number | null = null;
   let discountPercent = 0;
@@ -128,7 +128,13 @@ export function ProductCard({ product: p }: { product: Product }) {
           </div>
         )}
         <div className="absolute inset-0 flex items-center justify-center p-6 group-hover:scale-106 group-hover:-rotate-2 transition-transform duration-250">
-          <img src={imageSrc} alt={p.name} loading="lazy" className="w-full h-full object-contain drop-shadow-md" />
+          {imageSrc ? (
+            <img src={imageSrc} alt={p.name} loading="lazy" className="w-full h-full object-contain drop-shadow-md" />
+          ) : (
+            <div className="w-full h-full grid place-items-center text-[var(--ink-3)]" aria-label={`Chưa có ảnh cho ${p.name}`}>
+              <Utensils size={56} strokeWidth={1.3} />
+            </div>
+          )}
         </div>
       </Link>
 

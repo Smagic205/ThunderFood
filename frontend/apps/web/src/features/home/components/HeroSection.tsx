@@ -1,8 +1,13 @@
-import { Clock, Truck, Shield, Zap } from 'lucide-react';
+import { Truck, Shield, Zap, Utensils } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
+import type { ProductListItem } from '@/shared/types';
 
-export function HeroSection() {
+interface HeroSectionProps {
+  featuredProduct?: ProductListItem;
+}
+
+export function HeroSection({ featuredProduct }: HeroSectionProps) {
   const [play, setPlay] = useState(false);
 
   useEffect(() => {
@@ -28,51 +33,57 @@ export function HeroSection() {
               Cảm xúc thăng hoa<br />Nâng tầm vị giác.
             </h1>
             <p className="mt-5 text-[clamp(1rem,1.5vw,1.15rem)] text-[#C7CEF2] max-w-[46ch]">
-              Gà rán, burger, cơm và đồ uống nấu tới mỗi ngày. Giao trong nội thành Hà Nội, miễn phí giao hàng từ 200.000đ.
+              Khám phá thực đơn, chọn món yêu thích và theo dõi đơn hàng ngay trên ThunderFood.
             </p>
             <div className="flex gap-3 flex-wrap mt-8">
               <Link to="/menu" className="btn btn-primary btn-lg">
                 Đặt món ngay
               </Link>
-              <Link to="/menu?cat=1" className="btn btn-onpanel btn-lg">
-                Xem combo
+              <Link to="/menu?sort=bestSelling" className="btn btn-onpanel btn-lg">
+                Món bán chạy
               </Link>
             </div>
 
             <div className="flex gap-x-6 gap-y-3 flex-wrap mt-9 text-[#B9C0EA] text-sm">
               <span className="flex items-center gap-2">
-                <Clock size={18} className="text-[var(--volt)]" />
-                Mở cửa 09:00 đến 22:00
-              </span>
-              <span className="flex items-center gap-2">
                 <Truck size={18} className="text-[var(--volt)]" />
-                Khoảng 30 phút nội thành
+                Theo dõi trạng thái đơn hàng
               </span>
               <span className="flex items-center gap-2">
                 <Shield size={18} className="text-[var(--volt)]" />
-                COD, VNPay, MoMo
+                Nhiều phương thức thanh toán
               </span>
             </div>
           </div>
 
           <div className="relative flex flex-col items-center justify-center min-h-[340px] md:min-h-[420px] mt-8 md:mt-0 pb-14 md:pb-18">
-            {/* Ảnh minh họa combo */}
-            <img
-              src="https://res.cloudinary.com/pmbasb2y/image/upload/c_crop,x_745,y_175,w_915,h_985/v1793527306/LogoThunderFood-Photoroom.png"
-              alt="Combo Sấm Sét"
-              className="w-[min(85%,300px)] sm:w-[340px] md:w-[380px] lg:w-[420px] h-auto object-contain drop-shadow-[0_20px_35px_rgba(0,0,0,0.45)] transition-transform duration-300 hover:scale-105 select-none"
-            />
+            {featuredProduct?.thumbnailUrl || featuredProduct?.imageUrl ? (
+              <img
+                src={featuredProduct.thumbnailUrl || featuredProduct.imageUrl}
+                alt={featuredProduct.name}
+                className="w-[min(85%,300px)] sm:w-[340px] md:w-[380px] lg:w-[420px] h-[340px] md:h-[420px] object-contain drop-shadow-[0_20px_35px_rgba(0,0,0,0.45)] transition-transform duration-300 hover:scale-105 select-none"
+              />
+            ) : (
+              <div className="w-[min(85%,300px)] sm:w-[340px] md:w-[380px] lg:w-[420px] h-[340px] md:h-[420px] grid place-items-center text-white/50">
+                <Utensils size={88} strokeWidth={1.1} aria-hidden="true" />
+              </div>
+            )}
 
             <Link
-              to="/product/combo-sam-set"
+              to={featuredProduct ? `/product/${featuredProduct.slug}` : '/menu'}
               className="absolute bottom-[-10px] md:bottom-[0px] left-1/2 -translate-x-1/2 w-[max-content] max-w-[95%] flex items-center gap-4 sm:gap-5 p-4 sm:p-5 pr-6 sm:pr-8 rounded-[24px] sm:rounded-[28px] bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20 transition-all duration-300 shadow-2xl hover:scale-[1.02]"
             >
               <span className="w-14 h-14 sm:w-16 sm:h-16 rounded-[18px] sm:rounded-[20px] bg-[var(--volt)] text-[var(--on-volt)] flex items-center justify-center shrink-0">
                 <Zap size={28} className="sm:w-8 sm:h-8" />
               </span>
-              <span className="flex flex-col">
-                <small className="block text-[#B9C0EA] text-sm sm:text-base font-medium tracking-wide">Bán chạy nhất</small>
-                <b className="text-[18px] sm:text-[20px] text-white">Combo Sấm Sét <span className="text-[var(--volt)] ml-1.5 font-extrabold text-[20px] sm:text-[22px]">189.000đ</span></b>
+              <span className="flex flex-col min-w-0">
+                <small className="block text-[#B9C0EA] text-sm sm:text-base font-medium tracking-wide">
+                  {featuredProduct ? 'Bán chạy nhất' : 'Thực đơn ThunderFood'}
+                </small>
+                <b className="text-[18px] sm:text-[20px] text-white truncate">
+                  {featuredProduct ? featuredProduct.name : 'Khám phá các món ăn'}
+                  {featuredProduct && <span className="text-[var(--volt)] ml-2 font-extrabold">{featuredProduct.price.toLocaleString('vi-VN')}đ</span>}
+                </b>
               </span>
             </Link>
           </div>

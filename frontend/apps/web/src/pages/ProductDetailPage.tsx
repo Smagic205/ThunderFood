@@ -1,12 +1,11 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ChevronRight, Star, Heart, ShoppingBag, Minus, Plus, Truck, Flame, Bolt, Loader2, MessageSquareText, AlertCircle } from 'lucide-react';
+import { ChevronRight, Star, Heart, ShoppingBag, Minus, Plus, Truck, Flame, Bolt, Loader2, MessageSquareText, AlertCircle, Utensils } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { categoryApi } from '@/shared/api/categoryApi';
 import { productApi } from '@/shared/api/productApi';
 import { reviewApi } from '@/shared/api/reviewApi';
 import { wishlistApi } from '@/shared/api/wishlistApi';
-import { mockProducts } from '@/shared/api/mockData';
 import { ProductCard } from '@/shared/components/ui/ProductCard';
 import { useAuthStore } from '@/app/store/authStore';
 import { useCartStore } from '@/shared/stores/cartStore';
@@ -34,6 +33,8 @@ export function ProductDetailPage() {
   const {
     data: apiProduct,
     isPending: isProductPending,
+    isError: isProductError,
+    refetch: refetchProduct,
   } = useQuery({
     queryKey: ['product-detail', slug],
     queryFn: () => productApi.getProductBySlug(slug!),
@@ -41,13 +42,7 @@ export function ProductDetailPage() {
     retry: 1,
   });
 
-  // Fallback sang mockProduct nếu database chưa có món này
-  const mockProduct = useMemo(() => {
-    if (!slug) return undefined;
-    return mockProducts.find((p) => p.slug === slug || String(p.id) === slug);
-  }, [slug]);
-
-  const product = apiProduct || mockProduct;
+  const product = apiProduct;
 
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState<'desc' | 'rv'>('desc');
@@ -61,29 +56,21 @@ export function ProductDetailPage() {
 
   // Lấy danh sách ảnh
   const imagesList = useMemo(() => {
-    if (apiProduct?.images && apiProduct.images.length > 0) {
-      return apiProduct.images.map((img) => img.url);
-    }
-    if (mockProduct?.images && mockProduct.images.length > 0) {
-      return mockProduct.images;
-    }
-    return [mockProduct?.imageUrl || 'https://cdn-icons-png.flaticon.com/512/3075/3075977.png'];
-  }, [apiProduct, mockProduct]);
+    return apiProduct?.images?.map((img) => img.url).filter(Boolean) ?? [];
+  }, [apiProduct]);
 
   const [selectedImage, setSelectedImage] = useState<string>(imagesList[0] || '');
 
   // Cập nhật selected image khi món thay đổi
   useEffect(() => {
-    if (imagesList.length > 0) {
-      setSelectedImage(imagesList[0]);
-    }
+    setSelectedImage(imagesList[0] ?? '');
   }, [imagesList]);
 
   useEffect(() => {
     setReviewPage(0);
   }, [apiProduct?.id]);
 
-  const resolvedCategoryId = apiProduct?.category?.id || mockProduct?.categoryId;
+  const resolvedCategoryId = apiProduct?.category?.id;
 
   // 3. Lấy sản phẩm liên quan từ API
   const { data: relatedProductsPage } = useQuery({
@@ -92,10 +79,20 @@ export function ProductDetailPage() {
     enabled: !!resolvedCategoryId,
   });
 
-  if (isProductPending && !mockProduct) {
+  if (isProductPending) {
     return (
       <div className="container page center py-24 text-center">
         <h2 className="text-xl font-bold text-[var(--ink)]">Đang tải thông tin món ăn...</h2>
+      </div>
+    );
+  }
+
+  if (isProductError) {
+    return (
+      <div className="container page center text-center" role="alert">
+        <h1 style={{ marginBottom: '16px' }}>Không thể tải thông tin món ăn</h1>
+        <button type="button" className="btn btn-primary" onClick={() => refetchProduct()}>Thử lại</button>
+        <Link to="/menu" className="btn btn-ghost" style={{ marginLeft: '8px' }}>Về thực đơn</Link>
       </div>
     );
   }
@@ -109,41 +106,24 @@ export function ProductDetailPage() {
     );
   }
 
-  const categoryName = apiProduct?.category?.name || categories.find((c) => c.id === mockProduct?.categoryId)?.name;
-  const categoryId = apiProduct?.category?.id || mockProduct?.categoryId;
+  const categoryName = product.category?.name || categories.find((c) => c.id === product.category?.id)?.name;
+  const categoryId = product.category?.id;
 
-  // Xử lý danh sách món liên quan (ưu tiên backend)
-  const relatedProducts = relatedProductsPage?.content && relatedProductsPage.content.length > 0
-    ? relatedProductsPage.content.filter((p) => p.id !== product.id).slice(0, 4)
-    : mockProducts
-      .filter((p) => p.categoryId === resolvedCategoryId && p.id !== product.id)
-      .slice(0, 4)
-      .map((p) => ({
-        ...p,
-        categoryName: categories.find((c) => c.id === p.categoryId)?.name,
-      }));
+  const relatedProducts = relatedProductsPage?.content
+    .filter((p) => p.id !== product.id)
+    .slice(0, 4) ?? [];
 
   const reviews = reviewsQuery.data?.content ?? [];
 
-  const avgRating = apiProduct?.ratingAverage ?? 0;
-  const reviewCount = reviewsQuery.data?.pagination.totalElements ?? apiProduct?.reviewCount ?? 0;
-  const isFavorite = wishlistQuery.data?.some((item) => item.productId === product.id) ?? apiProduct?.isFavorite ?? false;
-  const soldCount = apiProduct?.soldCount ?? mockProduct?.soldCount ?? 0;
-
-  const isOut = apiProduct
-    ? apiProduct.stockStatus?.code === 'OUT_OF_STOCK'
-    : !mockProduct?.isAvailable || (mockProduct?.stockQuantity ?? 0) <= 0;
-  const isLow = !apiProduct && !isOut && (mockProduct?.stockQuantity ?? 0) <= 5;
-
-  const off = apiProduct
-    ? (apiProduct.originalPrice && apiProduct.originalPrice > apiProduct.price
-      ? Math.round((1 - apiProduct.price / apiProduct.originalPrice) * 100)
-      : 0)
-    : (mockProduct?.discountPrice
-      ? Math.round((1 - mockProduct.discountPrice / mockProduct.price) * 100)
-      : 0);
-
-  const originalPriceDisplay = apiProduct?.originalPrice || (mockProduct?.discountPrice ? mockProduct.price : null);
+  const avgRating = product.ratingAverage ?? 0;
+  const reviewCount = reviewsQuery.data?.pagination.totalElements ?? product.reviewCount ?? 0;
+  const isFavorite = wishlistQuery.data?.some((item) => item.productId === product.id) ?? product.isFavorite ?? false;
+  const soldCount = product.soldCount ?? 0;
+  const isOut = product.stockStatus?.code === 'OUT_OF_STOCK' || product.canPurchase === false;
+  const off = product.originalPrice && product.originalPrice > product.price
+    ? Math.round((1 - product.price / product.originalPrice) * 100)
+    : 0;
+  const originalPriceDisplay = product.originalPrice ?? null;
   const currentPriceDisplay = product.price;
 
   const MAX_QUANTITY_PER_ITEM = 20;
@@ -262,7 +242,13 @@ export function ProductDetailPage() {
                     -{off}%
                   </span>
                 )}
-                <img src={selectedImage} alt={product.name} className="photo object-contain p-8" />
+                {selectedImage ? (
+                  <img src={selectedImage} alt={product.name} className="photo object-contain p-8" />
+                ) : (
+                  <div className="photo grid place-items-center text-[var(--ink-3)]" aria-label={`Chưa có ảnh cho ${product.name}`}>
+                    <Utensils size={64} strokeWidth={1.2} />
+                  </div>
+                )}
               </div>
             </div>
             <div className="thumbs" role="group" aria-label="Ảnh món">
@@ -288,13 +274,9 @@ export function ProductDetailPage() {
                   {categoryName}
                 </Link>
               )}
-              {apiProduct?.badges && apiProduct.badges.length > 0 ? (
-                apiProduct.badges.map((b, i) => (
+              {product.badges?.map((b, i) => (
                   <span key={i} className="tag gold">{b}</span>
-                ))
-              ) : (
-                (product as any).isBestSeller && <span className="tag gold">Bán chạy</span>
-              )}
+                ))}
             </div>
             <h1>{product.name}</h1>
             <div className="row wrap" style={{ gap: '14px' }}>
@@ -310,7 +292,7 @@ export function ProductDetailPage() {
                 {reviewCount} đánh giá
               </button>
               <span className="muted">
-                Đã bán {apiProduct?.soldCountDisplay || soldCount.toLocaleString('vi-VN')}
+                Đã bán {product.soldCountDisplay || soldCount.toLocaleString('vi-VN')}
               </span>
             </div>
 
@@ -329,11 +311,9 @@ export function ProductDetailPage() {
             <div className="row" style={{ marginTop: '18px', gap: '8px' }}>
               {isOut ? (
                 <span className="pill s-CANCELLED">Tạm hết hàng</span>
-              ) : isLow ? (
-                <span className="pill s-PENDING">Sắp hết hàng</span>
-              ) : (
-                <span className="pill s-COMPLETED">Còn hàng</span>
-              )}
+              ) : product.stockStatus?.label ? (
+                <span className="pill s-COMPLETED">{product.stockStatus.label}</span>
+              ) : null}
             </div>
 
             <div className="row wrap" style={{ marginTop: '24px', gap: '12px' }}>
@@ -379,22 +359,25 @@ export function ProductDetailPage() {
               </button>
             </div>
 
-            <div className="perks">
-              <div className="perk">
-                <Truck size={22} className="ic" />
-                <span>
-                  Giao khoảng {apiProduct?.delivery?.estimateMinutes || 30} phút<br />
-                  <span className="faint">Miễn phí từ {(apiProduct?.delivery?.freeShipThreshold || 200000).toLocaleString('vi-VN')}đ</span>
-                </span>
+            {(product.delivery || product.highlights?.length) && (
+              <div className="perks">
+                {product.delivery && (
+                  <div className="perk">
+                    <Truck size={22} className="ic" />
+                    <span>
+                      {product.delivery.estimateMinutes > 0 && <>Giao khoảng {product.delivery.estimateMinutes} phút<br /></>}
+                      {product.delivery.freeShipThreshold > 0 && <span className="faint">Miễn phí từ {product.delivery.freeShipThreshold.toLocaleString('vi-VN')}đ</span>}
+                    </span>
+                  </div>
+                )}
+                {product.highlights && product.highlights.length > 0 && (
+                  <div className="perk">
+                    <Flame size={22} className="ic" />
+                    <span>{product.highlights.map((highlight) => <span className="block" key={highlight}>{highlight}</span>)}</span>
+                  </div>
+                )}
               </div>
-              <div className="perk">
-                <Flame size={22} className="ic" />
-                <span>
-                  {apiProduct?.highlights?.[0] || 'Nấu tươi khi có đơn'}<br />
-                  <span className="faint">{apiProduct?.highlights?.[1] || 'Đóng gói giữ nhiệt'}</span>
-                </span>
-              </div>
-            </div>
+            )}
           </div>
         </div>
 
@@ -412,20 +395,18 @@ export function ProductDetailPage() {
             <div className="grid2" style={{ alignItems: 'start' }}>
               <div>
                 <h3 style={{ marginBottom: '12px' }}>Về món này</h3>
-                <p className="muted" style={{ maxWidth: '60ch' }}>
-                  {product.description || 'Nguyên liệu được nhập mỗi sáng và chế biến trong ngày, không dùng phụ gia bảo quản.'}
-                </p>
+                <p className="muted" style={{ maxWidth: '60ch' }}>{product.description || 'Chưa có mô tả cho món ăn này.'}</p>
               </div>
-              <dl className="kv card card-p" style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '12px 24px' }}>
-                <dt className="muted" style={{ fontWeight: 600 }}>Giao chỉ trong</dt>
-                <dd>{apiProduct?.details?.prepTime || '30 - 40 phút'}</dd>
-                <dt className="muted" style={{ fontWeight: 600 }}>Nên dùng trong</dt>
-                <dd>{apiProduct?.details?.consumeWithin || '60 phút sau khi nhận'}</dd>
-                <dt className="muted" style={{ fontWeight: 600 }}>Nhà bếp</dt>
-                <dd>{'120 Yên Lãng, Đống Đa, Hà Nội'}</dd>
-                <dt className="muted" style={{ fontWeight: 600 }}>CẢNH BÁO</dt>
-                <dd>{'Người bị bệnh đẹp trai/xinh gái ăn nhiều sẽ làm bệnh thêm trầm trọng'}</dd>
-              </dl>
+              {product.details && Object.values(product.details).some(Boolean) ? (
+                <dl className="kv card card-p" style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '12px 24px' }}>
+                  {product.details.prepTime && <><dt className="muted" style={{ fontWeight: 600 }}>Thời gian chuẩn bị</dt><dd>{product.details.prepTime}</dd></>}
+                  {product.details.consumeWithin && <><dt className="muted" style={{ fontWeight: 600 }}>Thời gian sử dụng</dt><dd>{product.details.consumeWithin}</dd></>}
+                  {product.details.kitchenAddress && <><dt className="muted" style={{ fontWeight: 600 }}>Nhà bếp</dt><dd>{product.details.kitchenAddress}</dd></>}
+                  {product.details.allergens && <><dt className="muted" style={{ fontWeight: 600 }}>Chất gây dị ứng</dt><dd>{product.details.allergens}</dd></>}
+                </dl>
+              ) : (
+                <p className="card card-p muted">Chưa có thông tin chi tiết cho món ăn này.</p>
+              )}
             </div>
           ) : (
             <>

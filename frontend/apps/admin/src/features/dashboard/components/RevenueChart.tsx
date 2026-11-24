@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import type { TimeRange, RevenueChartData } from '../types';
 
 interface RevenueChartProps {
-  stats: Record<TimeRange, RevenueChartData>;
+  stats: RevenueChartData;
   selectedRange: TimeRange;
   onRangeChange: (range: TimeRange) => void;
 }
@@ -18,7 +18,7 @@ export const RevenueChart: React.FC<RevenueChartProps> = ({
   selectedRange,
   onRangeChange,
 }) => {
-  const currentStat = stats[selectedRange];
+  const currentStat = stats;
   const vals = currentStat.values;
   const labels = currentStat.labels;
   const n = vals.length;
@@ -55,7 +55,7 @@ export const RevenueChart: React.FC<RevenueChartProps> = ({
   const step = usedNice(maxVal / 4);
   const top = step * Math.ceil(maxVal / step) || 1;
 
-  const cw = (W - pl - pr) / n;
+  const cw = (W - pl - pr) / Math.max(n, 1);
   const bw = Math.min(32, Math.max(12, cw * 0.6));
   const getY = (v: number) => pt + (H - pt - pb) * (1 - v / top);
   const every = Math.ceil((n * 44) / (W - pl));
@@ -120,7 +120,9 @@ export const RevenueChart: React.FC<RevenueChartProps> = ({
         ref={containerRef}
         style={{ position: 'relative', width: '100%', overflow: 'hidden' }}
       >
-        <svg
+        {n === 0 ? (
+          <p className="muted" style={{ textAlign: 'center', padding: '72px 16px' }}>Chưa có dữ liệu doanh thu trong khoảng thời gian này.</p>
+        ) : <svg
           viewBox={`0 0 ${W} ${H}`}
           width={W}
           height={H}
@@ -180,7 +182,7 @@ export const RevenueChart: React.FC<RevenueChartProps> = ({
               </g>
             );
           })}
-        </svg>
+        </svg>}
 
         {tooltip.show && (
           <div
