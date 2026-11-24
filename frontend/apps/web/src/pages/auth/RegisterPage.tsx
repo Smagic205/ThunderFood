@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuthStore } from '@/app/store/authStore';
 import { authApi } from '@/shared/api/authApi';
+import { GoogleAuthButton } from '@/shared/components/auth/GoogleAuthButton';
 import { registerSchema, type RegisterFormValues } from './authSchemas';
 
 export const RegisterPage = () => {
@@ -69,38 +70,31 @@ export const RegisterPage = () => {
           phone: response.user.phone || '',
           role: response.user.role as any,
           avatarUrl: response.user.avatarUrl,
+          authProvider: response.user.authProvider || 'GOOGLE',
+          status: response.user.status || 'ACTIVE',
         },
         response.token,
         response.refreshToken
       );
+
+      // Fetch thêm profile
+      import('@/shared/api/userApi').then(({ userApi }) => {
+        userApi.getProfile().then((profile) => {
+          useAuthStore.getState().updateUser({
+            authProvider: profile.authProvider as 'LOCAL' | 'GOOGLE',
+            status: profile.status as 'ACTIVE' | 'LOCKED',
+            phone: profile.phone || '',
+            createdAt: profile.createdAt || undefined,
+            updatedAt: profile.updatedAt || undefined,
+          });
+        }).catch(() => { /* silent */ });
+      });
+
       navigate('/');
     } catch (err: any) {
       setApiError(err.response?.data?.message || 'Đăng ký/Đăng nhập Google thất bại');
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleGoogleAuth = () => {
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
-    if (!clientId) {
-      alert('Vui lòng thêm VITE_GOOGLE_CLIENT_ID vào biến môi trường (.env) để kích hoạt Google Sign-In.');
-      return;
-    }
-
-    const google = (window as any).google;
-    if (google?.accounts?.id) {
-      google.accounts.id.initialize({
-        client_id: clientId,
-        callback: async (response: { credential: string }) => {
-          if (response.credential) {
-            await executeGoogleLogin(response.credential);
-          }
-        },
-      });
-      google.accounts.id.prompt();
-    } else {
-      alert('Đang tải thư viện Google, vui lòng thử lại sau vài giây.');
     }
   };
 
@@ -227,10 +221,12 @@ export const RegisterPage = () => {
       <p className="muted" style={{ marginBottom: 24 }}>Nhận ưu đãi 30.000₫ cho đơn đầu tiên.</p>
       
       <div className="social">
-        <button className="btn btn-ghost" type="button" onClick={handleGoogleAuth} disabled={isLoading}>
-          <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M22.5 12.27c0-.79-.07-1.54-.2-2.27H12v4.3h5.9a5.05 5.05 0 0 1-2.19 3.31v2.75h3.54c2.07-1.91 3.25-4.72 3.25-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.54-2.75c-.98.66-2.24 1.06-3.74 1.06-2.87 0-5.3-1.94-6.16-4.54H2.18v2.84A11 11 0 0 0 12 23z"/><path fill="#FBBC05" d="M5.84 14.11a6.6 6.6 0 0 1 0-4.22V7.05H2.18a11 11 0 0 0 0 9.9z"/><path fill="#EA4335" d="M12 5.35c1.62 0 3.06.56 4.21 1.64l3.15-3.15A10.6 10.6 0 0 0 12 1 11 11 0 0 0 2.18 7.05l3.66 2.84C6.7 7.29 9.13 5.35 12 5.35z"/></svg>
-          Google
-        </button>
+        <GoogleAuthButton
+          onSuccess={executeGoogleLogin}
+          onError={(msg) => setApiError(msg)}
+          disabled={isLoading}
+          text="signup_with"
+        />
         <button className="btn btn-ghost" type="button" onClick={() => alert('Đăng ký Facebook sẽ kết nối ở bước triển khai')}>
           <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path fill="#1877F2" d="M24 12a12 12 0 1 0-13.9 11.85v-8.38H7.08V12h3.02V9.36c0-3 1.79-4.67 4.53-4.67 1.31 0 2.68.24 2.68.24v2.95h-1.51c-1.49 0-1.96.93-1.96 1.88V12h3.33l-.53 3.47h-2.8v8.38A12 12 0 0 0 24 12z"/></svg>
           Facebook

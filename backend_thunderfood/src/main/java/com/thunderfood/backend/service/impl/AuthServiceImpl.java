@@ -479,6 +479,8 @@ public class AuthServiceImpl implements AuthService {
                 .phone(user.getPhone())
                 .role(user.getRole().getName())
                 .avatarUrl(user.getAvatarUrl())
+                .authProvider(user.getAuthProvider())
+                .status(user.getStatus())
                 .defaultAddress(defaultAddress)
                 .addresses(addresses)
                 .build();

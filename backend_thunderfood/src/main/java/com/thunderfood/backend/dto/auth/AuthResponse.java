@@ -30,6 +30,8 @@ public class AuthResponse {
         private String phone;
         private String role;
         private String avatarUrl;
+        private String authProvider;
+        private String status;
         private AddressResponse defaultAddress;
         private List<AddressResponse> addresses;
     }
