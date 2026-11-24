@@ -111,6 +111,7 @@ export interface ProductDetail {
     code: string;
     label: string;
   };
+  stockQuantity?: number;
   delivery?: {
     estimateMinutes: number;
     freeShipThreshold: number;

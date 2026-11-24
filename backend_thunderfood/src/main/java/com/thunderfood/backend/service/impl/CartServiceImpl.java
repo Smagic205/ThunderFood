@@ -88,12 +88,12 @@ public class CartServiceImpl implements CartService {
             CartItem existingItem = existingItemOpt.get();
             int newQuantity = existingItem.getQuantity() + request.getQuantity();
 
-            if (newQuantity > MAX_QUANTITY_PER_ITEM) {
-                throw new IllegalArgumentException("Số lượng món ăn '" + product.getName() + "' trong giỏ hàng tối đa là " + MAX_QUANTITY_PER_ITEM + ". Bạn đã có " + existingItem.getQuantity() + " món trong giỏ.");
-            }
-
             if (product.getStockQuantity() != null && newQuantity > product.getStockQuantity()) {
                 throw new IllegalArgumentException("Số lượng trong giỏ (" + newQuantity + ") vượt quá số lượng còn lại trong kho (" + product.getStockQuantity() + ")");
+            }
+
+            if (newQuantity > MAX_QUANTITY_PER_ITEM) {
+                throw new IllegalArgumentException("Số lượng món ăn '" + product.getName() + "' trong giỏ hàng tối đa là " + MAX_QUANTITY_PER_ITEM + ". Bạn đã có " + existingItem.getQuantity() + " món trong giỏ.");
             }
 
             existingItem.setQuantity(newQuantity);
@@ -128,16 +128,16 @@ public class CartServiceImpl implements CartService {
             throw new IllegalArgumentException("Số lượng món tối thiểu phải là 1. Nếu muốn xóa món ăn khỏi giỏ hàng, vui lòng sử dụng chức năng xóa.");
         }
 
-        if (request.getQuantity() > MAX_QUANTITY_PER_ITEM) {
-            throw new IllegalArgumentException("Số lượng món ăn tối đa cho mỗi món là " + MAX_QUANTITY_PER_ITEM);
-        }
-
         CartItem item = cartItemRepository.findByIdAndCartUserId(itemId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy món ăn trong giỏ hàng hoặc bạn không có quyền thao tác"));
 
         Product product = item.getProduct();
         if (product.getStockQuantity() != null && request.getQuantity() > product.getStockQuantity()) {
             throw new IllegalArgumentException("Số lượng yêu cầu (" + request.getQuantity() + ") vượt quá số lượng còn lại trong kho (" + product.getStockQuantity() + ")");
+        }
+
+        if (request.getQuantity() > MAX_QUANTITY_PER_ITEM) {
+            throw new IllegalArgumentException("Số lượng món ăn tối đa cho mỗi món là " + MAX_QUANTITY_PER_ITEM);
         }
 
         item.setQuantity(request.getQuantity());

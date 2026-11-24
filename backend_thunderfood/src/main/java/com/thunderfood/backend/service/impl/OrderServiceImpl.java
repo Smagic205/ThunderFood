@@ -58,12 +58,11 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional(readOnly = true)
     public CheckoutPreviewResponse previewCheckout(Long userId, CheckoutPreviewRequest request) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thông tin tài khoản người dùng"));
-
-        if ("LOCKED".equalsIgnoreCase(user.getStatus())) {
-            throw new AccessDeniedException("Tài khoản của bạn đã bị khóa bởi quản trị viên.");
-        }
+        userRepository.findById(userId).ifPresent(user -> {
+            if ("LOCKED".equalsIgnoreCase(user.getStatus())) {
+                throw new AccessDeniedException("Tài khoản của bạn đã bị khóa bởi quản trị viên.");
+            }
+        });
 
         Cart cart = getCartOrThrow(userId);
         List<CartItem> cartItems = cartItemRepository.findByCartId(cart.getId());

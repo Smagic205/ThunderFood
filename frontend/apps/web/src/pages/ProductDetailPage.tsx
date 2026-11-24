@@ -127,7 +127,7 @@ export function ProductDetailPage() {
   const currentPriceDisplay = product.price;
 
   const MAX_QUANTITY_PER_ITEM = 20;
-  const availableStock = apiProduct?.stockQuantity ?? mockProduct?.stockQuantity ?? MAX_QUANTITY_PER_ITEM;
+  const availableStock = product?.stockQuantity ?? MAX_QUANTITY_PER_ITEM;
   const maxAllowed = Math.min(MAX_QUANTITY_PER_ITEM, availableStock > 0 ? availableStock : MAX_QUANTITY_PER_ITEM);
 
   const handleQuantity = (delta: number) => {

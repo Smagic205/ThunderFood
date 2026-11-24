@@ -486,8 +486,8 @@ public class ProductServiceImpl implements ProductService {
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy danh mục với ID: " + request.getCategoryId()));
 
         if (request.getDiscountPrice() != null && request.getDiscountPrice().compareTo(BigDecimal.ZERO) > 0) {
-            if (request.getDiscountPrice().compareTo(request.getPrice()) > 0) {
-                throw new IllegalArgumentException("Giá khuyến mãi không được lớn hơn giá gốc");
+            if (request.getDiscountPrice().compareTo(request.getPrice()) >= 0) {
+                throw new IllegalArgumentException("Giá khuyến mãi phải nhỏ hơn giá gốc");
             }
         }
 
@@ -530,8 +530,8 @@ public class ProductServiceImpl implements ProductService {
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy danh mục với ID: " + request.getCategoryId()));
 
         if (request.getDiscountPrice() != null && request.getDiscountPrice().compareTo(BigDecimal.ZERO) > 0) {
-            if (request.getDiscountPrice().compareTo(request.getPrice()) > 0) {
-                throw new IllegalArgumentException("Giá khuyến mãi không được lớn hơn giá gốc");
+            if (request.getDiscountPrice().compareTo(request.getPrice()) >= 0) {
+                throw new IllegalArgumentException("Giá khuyến mãi phải nhỏ hơn giá gốc");
             }
         }
 
