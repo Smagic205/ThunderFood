@@ -45,8 +45,10 @@ jobs:
           RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
         run: |
           if [ -n "$RENDER_DEPLOY_HOOK" ]; then
-            echo "Triggering Render deployment..."
-            curl -s -X POST "$RENDER_DEPLOY_HOOK"
+            echo "Calling Render Deploy Hook..."
+            response=$(curl -s -w "\nHTTP_STATUS: %{http_code}" -X POST "$RENDER_DEPLOY_HOOK")
+            echo "$response"
           else
-            echo "RENDER_DEPLOY_HOOK is not set yet, skipping Render deployment."
+            echo "⚠️ CẢNH BÁO: Chưa cấu hình secret RENDER_DEPLOY_HOOK trên GitHub!"
+            echo "Render sẽ không tự động cập nhật được nếu thiếu secret này."
           fi
