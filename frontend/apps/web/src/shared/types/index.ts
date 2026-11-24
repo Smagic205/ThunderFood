@@ -76,6 +76,7 @@ export interface ProductListItem extends Partial<Product> {
   id: number;
   name: string;
   slug: string;
+  categoryName?: string;
   price: number;
   originalPrice?: number | null;
   ratingAverage?: number;

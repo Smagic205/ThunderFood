@@ -399,14 +399,10 @@ export const SupportPage: React.FC = () => {
 
             {/* Category Filter Pills */}
             <div
-              style={{
-                display: 'flex',
-                gap: '8px',
-                overflowX: 'auto',
-                paddingBottom: '12px',
-                marginBottom: '16px',
-                scrollbarWidth: 'none',
-              }}
+              className="faq-category-tabs"
+              role="group"
+              aria-label="Chủ đề câu hỏi thường gặp, có thể cuộn ngang"
+              tabIndex={0}
             >
               {CATEGORIES.map((cat) => {
                 const Icon = cat.icon;
@@ -414,6 +410,7 @@ export const SupportPage: React.FC = () => {
                 return (
                   <button
                     key={cat.key}
+                    className="faq-category-chip"
                     type="button"
                     onClick={() => setSelectedCategory(cat.key)}
                     style={{

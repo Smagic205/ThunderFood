@@ -147,7 +147,14 @@ export function ProductDetailPage() {
   const currentPriceDisplay = product.price;
 
   const handleQuantity = (delta: number) => {
-    setQuantity((q) => Math.max(1, Math.min(20, q + delta)));
+    setQuantity((q) => {
+      const next = q + delta;
+      if (next > 99) {
+        showToast('Số lượng tối đa cho mỗi món là 99', 'info');
+        return 99;
+      }
+      return Math.max(1, Math.min(99, next));
+    });
   };
 
   const handleAddToCart = async () => {
