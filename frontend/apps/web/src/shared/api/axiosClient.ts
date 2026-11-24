@@ -4,7 +4,7 @@ import { useToastStore } from '@/shared/stores/toastStore';
 import { authApi } from './authApi';
 
 export const axiosClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8080/api',
+  baseURL: import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api',
   headers: {
     'Content-Type': 'application/json',
   },
