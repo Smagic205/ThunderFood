@@ -363,6 +363,24 @@ dialog::backdrop { background:rgba(7,11,38,.55); backdrop-filter:blur(3px); }
 .dlg-b { padding: 8px 22px 22px; overflow-y: auto; flex: 1; }
 .dlg-f { display: flex; gap: 12px; justify-content: flex-end; padding: 16px 22px calc(16px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--line); background: var(--surface); }
 
+/* ---------- accessibility skip link ---------- */
+.skip {
+  position: absolute;
+  left: 12px;
+  top: -60px;
+  background: var(--volt);
+  color: var(--on-volt);
+  padding: 10px 16px;
+  border-radius: 999px;
+  z-index: 999;
+  font-weight: 600;
+  text-decoration: none;
+  transition: top 0.2s ease;
+}
+.skip:focus {
+  top: 12px;
+}
+
 /* ---------- admin ---------- */
 .adm { display: grid; grid-template-columns: 268px minmax(0, 1fr); min-height: 100vh; }
 .side { position: sticky; top: env(safe-area-inset-top, 0px); height: calc(100dvh - env(safe-area-inset-top, 0px)); background: var(--panel); color: #C9D0F5; display: flex; flex-direction: column; padding: 20px 14px; overflow-y: auto; z-index: 70; }

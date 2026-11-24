@@ -39,19 +39,19 @@ export const AuthLayout = () => {
           <span>ThunderFood</span>
         </div>
 
-        {/* User can change the src attribute below to their custom logo or illustration */}
+        {/* Logo hình ảnh thương hiệu */}
         <img
           src={logoUrl}
-          alt="ThunderFood Banner"
-          className="big"
+          alt="ThunderFood"
+          className="select-none"
           style={{
-            width: '100%',
-            maxWidth: '500px',
+            width: 'min(70%, 280px)',
+            height: 'auto',
+            maxHeight: '280px',
             alignSelf: 'center',
             objectFit: 'contain',
-            aspectRatio: '1/1',
-            transform: 'scale(1.8)',
-            filter: 'brightness(1.15) contrast(1.1) drop-shadow(0 10px 20px rgba(0,0,0,0.15))',
+            filter: 'drop-shadow(0 20px 35px rgba(0,0,0,0.4))',
+            margin: '20px 0',
             zIndex: 1
           }}
         />
