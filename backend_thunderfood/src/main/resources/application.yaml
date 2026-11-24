@@ -15,7 +15,7 @@ spring:
     properties:
       hibernate:
         format_sql: true
-        dialect: org.hibernate.dialect.MySQLDialect
+        dialect: com.thunderfood.backend.config.CustomTiDBDialect
     open-in-view: false
 
   flyway:
