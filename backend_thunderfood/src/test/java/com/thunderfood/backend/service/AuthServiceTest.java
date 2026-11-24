@@ -161,7 +161,6 @@ class AuthServiceTest {
         request.setPassword("12345678");
         request.setPhone("0987654321");
 
-        when(userRepository.existsByEmail("user2@gmail.com")).thenReturn(false);
         when(userRepository.existsByPhoneAndStatus("0987654321", "LOCKED")).thenReturn(true);
 
         ConflictException ex = assertThrows(ConflictException.class, () -> authService.register(request));
