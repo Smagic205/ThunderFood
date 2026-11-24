@@ -327,7 +327,12 @@ export const MenuPage = () => {
       </div>
 
       {/* ─── Category tabs ─── */}
-      <div className="cat-tabs" role="group" aria-label="Danh mục">
+      <div
+        className="cat-tabs"
+        role="group"
+        aria-label="Danh mục, có thể cuộn ngang"
+        tabIndex={0}
+      >
         <button
           className={`chip ${catSlug === '' && !categoryId ? 'on' : ''}`}
           onClick={() => updateFilter('cat', '')}

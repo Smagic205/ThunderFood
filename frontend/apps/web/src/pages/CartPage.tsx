@@ -383,8 +383,16 @@ export const CartPage: React.FC = () => {
 
           <Link 
             to="/menu" 
-            className="btn btn-ghost w-full text-center"
-            style={{ marginTop: 10, width: '100%', display: 'block' }}
+            className="btn btn-ghost w-full"
+            style={{ 
+              marginTop: 10, 
+              width: '100%', 
+              height: 48, 
+              fontSize: '15px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center' 
+            }}
           >
             Tiếp tục chọn món
           </Link>
