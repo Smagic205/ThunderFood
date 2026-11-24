@@ -146,14 +146,18 @@ export function ProductDetailPage() {
   const originalPriceDisplay = apiProduct?.originalPrice || (mockProduct?.discountPrice ? mockProduct.price : null);
   const currentPriceDisplay = product.price;
 
+  const MAX_QUANTITY_PER_ITEM = 20;
+  const availableStock = apiProduct?.stockQuantity ?? mockProduct?.stockQuantity ?? MAX_QUANTITY_PER_ITEM;
+  const maxAllowed = Math.min(MAX_QUANTITY_PER_ITEM, availableStock > 0 ? availableStock : MAX_QUANTITY_PER_ITEM);
+
   const handleQuantity = (delta: number) => {
     setQuantity((q) => {
       const next = q + delta;
-      if (next > 99) {
-        showToast('Số lượng tối đa cho mỗi món là 99', 'info');
-        return 99;
+      if (next > maxAllowed) {
+        showToast(`Số lượng tối đa cho mỗi món là ${maxAllowed}`, 'info');
+        return maxAllowed;
       }
-      return Math.max(1, Math.min(99, next));
+      return Math.max(1, Math.min(maxAllowed, next));
     });
   };
 
@@ -164,6 +168,13 @@ export function ProductDetailPage() {
       return;
     }
     if (!product) return;
+
+    const cart = useCartStore.getState().cart;
+    const currentInCart = cart?.items?.find((i) => i.productId === product.id)?.quantity || 0;
+    if (currentInCart + quantity > maxAllowed) {
+      showToast(`Số lượng món “${product.name}” trong giỏ sẽ vượt quá giới hạn tối đa (${maxAllowed} món). Bạn đã có ${currentInCart} món trong giỏ.`, 'error');
+      return;
+    }
 
     try {
       setIsAdding(true);
@@ -183,6 +194,14 @@ export function ProductDetailPage() {
       return;
     }
     if (!product) return;
+
+    const cart = useCartStore.getState().cart;
+    const currentInCart = cart?.items?.find((i) => i.productId === product.id)?.quantity || 0;
+    if (currentInCart + quantity > maxAllowed) {
+      showToast(`Số lượng món “${product.name}” trong giỏ sẽ vượt quá giới hạn tối đa (${maxAllowed} món). Bạn đã có ${currentInCart} món trong giỏ.`, 'error');
+      navigate('/cart');
+      return;
+    }
 
     try {
       setIsAdding(true);
@@ -321,7 +340,15 @@ export function ProductDetailPage() {
               <div className="stepper lg" role="group" aria-label="Số lượng" style={{ display: 'flex', alignItems: 'center', background: 'var(--surface)', border: '1.5px solid var(--line)', borderRadius: '999px', height: '54px', padding: '0 8px' }}>
                 <button onClick={() => handleQuantity(-1)} aria-label="Giảm" className="ibtn" style={{ width: '38px', height: '38px' }}><Minus size={18} /></button>
                 <output style={{ minWidth: '40px', textAlign: 'center', fontWeight: 'bold', fontSize: '1.1rem' }}>{quantity}</output>
-                <button onClick={() => handleQuantity(1)} aria-label="Tăng" className="ibtn" style={{ width: '38px', height: '38px' }}><Plus size={18} /></button>
+                <button 
+                  onClick={() => handleQuantity(1)} 
+                  aria-label="Tăng" 
+                  className="ibtn" 
+                  disabled={quantity >= maxAllowed}
+                  style={{ width: '38px', height: '38px', opacity: quantity >= maxAllowed ? 0.35 : 1, cursor: quantity >= maxAllowed ? 'not-allowed' : 'pointer' }}
+                >
+                  <Plus size={18} />
+                </button>
               </div>
               <button 
                 className="btn btn-primary btn-lg grow" 

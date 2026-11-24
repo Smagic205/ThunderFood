@@ -32,6 +32,17 @@ export function ProductCard({ product: p }: { product: Product }) {
     }
 
     if (actionName === 'add-to-cart') {
+      const MAX_QUANTITY_PER_ITEM = 20;
+      const cart = useCartStore.getState().cart;
+      const currentInCart = cart?.items?.find((item) => item.productId === p.id)?.quantity || 0;
+      const availableStock = p.stockQuantity ?? MAX_QUANTITY_PER_ITEM;
+      const maxAllowed = Math.min(MAX_QUANTITY_PER_ITEM, availableStock > 0 ? availableStock : MAX_QUANTITY_PER_ITEM);
+
+      if (currentInCart + 1 > maxAllowed) {
+        showToast(`Số lượng món “${p.name}” trong giỏ đã đạt tối đa (${maxAllowed} món)`, 'info');
+        return;
+      }
+
       try {
         setIsAdding(true);
         await addToCart(p.id, 1);
