@@ -1,328 +1,126 @@
 import { axiosClient } from '@/shared/api/axiosClient';
-import { useAuthStore } from '@/app/store/authStore';
-import type { DashboardData, ShipperPerformanceItem, TopProductItem } from '../types';
+import type { DashboardData, ShipperPerformanceItem, TimeRange, TopProductItem } from '../types';
 
-export const MOCK_DASHBOARD_DATA: DashboardData = {
-  kpis: {
-    revenueToday: {
-      label: 'Doanh thu hôm nay',
-      value: '8.450.000 ₫',
-      deltaText: '+12,4%',
-      isPositive: true,
-      sparkline: [5, 7, 6, 9, 8, 10, 12],
-      icon: 'wallet',
-    },
-    ordersToday: {
-      label: 'Đơn hôm nay',
-      value: '38',
-      deltaText: '+3 đơn',
-      isPositive: true,
-      sparkline: [4, 6, 5, 7, 6, 8, 9],
-      icon: 'receipt',
-    },
-    processingOrders: {
-      label: 'Đang xử lý',
-      value: '14',
-      deltaText: '-2 đơn',
-      isPositive: false,
-      sparkline: [9, 8, 10, 7, 8, 6, 5],
-      icon: 'clock',
-    },
-    newCustomersWeek: {
-      label: 'Khách mới tuần này',
-      value: '24',
-      deltaText: '+18%',
-      isPositive: true,
-      sparkline: [3, 4, 3, 5, 6, 5, 7],
-      icon: 'users',
-    },
-  },
-  revenueStats: {
-    day: {
-      labels: ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00'],
-      values: [0.6, 1.2, 2.5, 0.8, 0.7, 1.6, 2.8, 0.95],
-      periodTotalText: 'Hôm nay',
-      unit: 'triệu ₫',
-    },
-    week: {
-      labels: ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'],
-      values: [6.8, 7.5, 8.1, 7.9, 9.4, 11.2, 10.3],
-      periodTotalText: 'Tuần này',
-      unit: 'triệu ₫',
-    },
-    month: {
-      labels: ['Tuần 1', 'Tuần 2', 'Tuần 3', 'Tuần 4'],
-      values: [54.2, 59.8, 62.4, 60.4],
-      periodTotalText: 'Tháng này',
-      unit: 'triệu ₫',
-    },
-  },
-  orderStatusCounts: [
-    { status: 'PENDING', label: 'Chờ xác nhận', count: 6, color: 'var(--c-amber)' },
-    { status: 'CONFIRMED', label: 'Đã xác nhận', count: 5, color: 'var(--c-blue)' },
-    { status: 'DELIVERING', label: 'Đang giao', count: 3, color: 'var(--c-teal)' },
-    { status: 'DELIVERED', label: 'Đã giao', count: 22, color: 'var(--c-green)' },
-    { status: 'CANCELLED', label: 'Đã hủy', count: 2, color: 'var(--c-red)' },
-  ],
-  topProducts: [
-    {
-      id: 1,
-      name: 'Burger Bò Double Cheese',
-      categoryName: 'Burger',
-      soldCount: 1420,
-      price: 85000,
-      discountPrice: 79000,
-      tint: 'linear-gradient(135deg, #f97316, #ef4444)',
-      emoji: '🍔',
-    },
-    {
-      id: 2,
-      name: 'Pizza Hải Sản Sốt Pesto',
-      categoryName: 'Pizza',
-      soldCount: 1180,
-      price: 165000,
-      discountPrice: 155000,
-      tint: 'linear-gradient(135deg, #06b6d4, #3b82f6)',
-      emoji: '🍕',
-    },
-    {
-      id: 3,
-      name: 'Gà Rán Giòn Cay Sốt Mật Ong',
-      categoryName: 'Gà rán',
-      soldCount: 980,
-      price: 119000,
-      tint: 'linear-gradient(135deg, #eab308, #f97316)',
-      emoji: '🍗',
-    },
-    {
-      id: 4,
-      name: 'Mì Ý Bò Bằm Xốt Cà Chua',
-      categoryName: 'Mì Ý & Pasta',
-      soldCount: 760,
-      price: 95000,
-      discountPrice: 89000,
-      tint: 'linear-gradient(135deg, #ef4444, #b91c1c)',
-      emoji: '🍝',
-    },
-    {
-      id: 5,
-      name: 'Trà Đào Cam Sả Thảo Mộc',
-      categoryName: 'Đồ uống',
-      soldCount: 650,
-      price: 45000,
-      tint: 'linear-gradient(135deg, #10b981, #06b6d4)',
-      emoji: '🍹',
-    },
-  ],
-  recentOrders: [
-    {
-      id: 101,
-      orderCode: 'ORD-9281',
-      customerName: 'Lê Hoàng Nam',
-      receiverPhone: '0912 345 678',
-      totalAmount: 255000,
-      status: 'PENDING',
-      itemCount: 3,
-      createdAt: '5 phút trước',
-    },
-    {
-      id: 102,
-      orderCode: 'ORD-9280',
-      customerName: 'Trần Thị Mai',
-      receiverPhone: '0987 654 321',
-      totalAmount: 165000,
-      status: 'CONFIRMED',
-      itemCount: 1,
-      createdAt: '18 phút trước',
-    },
-    {
-      id: 103,
-      orderCode: 'ORD-9279',
-      customerName: 'Nguyễn Văn Hưng',
-      receiverPhone: '0903 112 233',
-      totalAmount: 412000,
-      status: 'DELIVERING',
-      itemCount: 4,
-      createdAt: '35 phút trước',
-    },
-    {
-      id: 104,
-      orderCode: 'ORD-9278',
-      customerName: 'Phạm Thu Hương',
-      receiverPhone: '0938 776 655',
-      totalAmount: 85000,
-      status: 'DELIVERED',
-      itemCount: 1,
-      createdAt: '1 giờ trước',
-    },
-    {
-      id: 105,
-      orderCode: 'ORD-9277',
-      customerName: 'Đỗ Tuấn Kiệt',
-      receiverPhone: '0971 889 900',
-      totalAmount: 310000,
-      status: 'DELIVERED',
-      itemCount: 2,
-      createdAt: '2 giờ trước',
-    },
-  ],
-  shipperPerformance: [
-    {
-      staffId: 2,
-      staffName: 'Nguyễn Văn Hùng',
-      email: 'shipper.hung@thunderfood.vn',
-      phone: '0987654321',
-      totalPackages: 18,
-      totalOrders: 42,
-      deliveredOrders: 40,
-      failedOrders: 2,
-      successRate: 95.2,
-      avgDeliveryMinutes: 26,
-    },
-  ],
+interface ApiResponse<T> {
+  success: boolean;
+  message: string;
+  data: T;
+}
+
+const formatVnd = (value: number): string =>
+  new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
+
+const formatDate = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 };
 
-function formatVnd(val: number): string {
-  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
+const getPeriod = (range: TimeRange) => {
+  const endDate = new Date();
+  const startDate = new Date(endDate);
+
+  if (range === 'week') {
+    const daysSinceMonday = (endDate.getDay() + 6) % 7;
+    startDate.setDate(endDate.getDate() - daysSinceMonday);
+  } else if (range === 'month') {
+    startDate.setDate(1);
+  }
+
+  return {
+    startDate: formatDate(startDate),
+    endDate: formatDate(endDate),
+    label: range === 'day' ? 'hôm nay' : range === 'week' ? 'tuần này' : 'tháng này',
+  };
+};
+
+function getData<T>(response: ApiResponse<T>, fallbackMessage: string): T {
+  if (!response?.success || response.data == null) {
+    throw new Error(response?.message || fallbackMessage);
+  }
+  return response.data;
 }
 
 export const dashboardApi = {
-  getDashboardData: async (): Promise<DashboardData> => {
-    const token = useAuthStore.getState().accessToken;
+  getDashboardData: async (range: TimeRange = 'day'): Promise<DashboardData> => {
+    const period = getPeriod(range);
+    const dateParams = { startDate: period.startDate, endDate: period.endDate };
+    const summaryParams = range === 'day' ? { period: 'TODAY' } : dateParams;
 
-    if (!token || token.startsWith('demo-')) {
-      return MOCK_DASHBOARD_DATA;
-    }
+    const [summaryRes, chartRes, topProductsRes, shippersRes] = await Promise.all([
+      axiosClient.get<ApiResponse<any>>('/admin/dashboard/summary', { params: summaryParams }),
+      axiosClient.get<ApiResponse<any[]>>('/admin/dashboard/revenue-chart', { params: dateParams }),
+      axiosClient.get<ApiResponse<any[]>>('/admin/dashboard/top-products', { params: { ...dateParams, limit: 5 } }),
+      axiosClient.get<ApiResponse<ShipperPerformanceItem[]>>('/admin/dashboard/shipper-performance', { params: dateParams }),
+    ]);
 
-    try {
-      // Gọi song song các API backend mới hoàn thiện
-      const [summaryRes, chartRes, topProductsRes, shippersRes] = await Promise.allSettled([
-        axiosClient.get('/admin/dashboard/summary'),
-        axiosClient.get('/admin/dashboard/revenue-chart'),
-        axiosClient.get('/admin/dashboard/top-products?limit=5'),
-        axiosClient.get('/admin/dashboard/shipper-performance'),
-      ]);
+    const summary = getData(summaryRes.data, 'Không thể tải dữ liệu tổng quan');
+    const chartPoints = getData(chartRes.data, 'Không thể tải biểu đồ doanh thu');
+    const products = getData(topProductsRes.data, 'Không thể tải món bán chạy');
+    const shippers = getData(shippersRes.data, 'Không thể tải hiệu suất giao hàng');
 
-      const summary = summaryRes.status === 'fulfilled' ? summaryRes.value.data?.data : null;
-      const chartPoints = chartRes.status === 'fulfilled' ? chartRes.value.data?.data : null;
-      const topProducts = topProductsRes.status === 'fulfilled' ? topProductsRes.value.data?.data : null;
-      const shippers = shippersRes.status === 'fulfilled' ? shippersRes.value.data?.data : null;
+    const revenueGrowthRate = Number(summary.revenueGrowthRate ?? 0);
+    const growthLabel = `${revenueGrowthRate > 0 ? '+' : ''}${revenueGrowthRate.toFixed(1)}% so với kỳ trước`;
+    const pendingOrders = Number(summary.pendingOrders ?? 0);
+    const confirmedOrders = Number(summary.confirmedOrders ?? 0);
+    const totalRevenue = Number(summary.totalRevenue ?? 0);
+    const totalOrders = Number(summary.totalOrders ?? 0);
+    const deliveredOrders = Number(summary.deliveredOrders ?? 0);
+    const newCustomers = Number(summary.newCustomersCount ?? 0);
 
-      if (!summary) {
-        return MOCK_DASHBOARD_DATA;
-      }
+    const topProducts: TopProductItem[] = products.map((product: any) => ({
+      id: Number(product.productId),
+      name: product.productName,
+      categoryName: product.categoryName || undefined,
+      soldCount: Number(product.soldQuantity ?? 0),
+    }));
 
-      // Xây dựng KPIs từ summary
-      const totalRev = Number(summary.totalRevenue) || 0;
-      const growthRate = summary.revenueGrowthRate ?? 0;
-      const totalOrders = Number(summary.totalOrders) || 0;
-      const processingOrders = (Number(summary.pendingOrders) || 0) + (Number(summary.confirmedOrders) || 0);
-      const newCustomers = Number(summary.newCustomersCount) || 0;
-
-      const kpis = {
+    return {
+      kpis: {
         revenueToday: {
-          label: 'Tổng doanh thu',
-          value: formatVnd(totalRev),
-          deltaText: `${growthRate >= 0 ? '+' : ''}${growthRate.toFixed(1)}%`,
-          isPositive: growthRate >= 0,
-          sparkline: [5, 7, 6, 8, 10, 12, 14],
-          icon: 'wallet' as const,
+          label: range === 'day' ? 'Doanh thu hôm nay' : range === 'week' ? 'Doanh thu tuần này' : 'Doanh thu tháng này',
+          value: formatVnd(totalRevenue),
+          detail: growthLabel,
+          icon: 'wallet',
         },
         ordersToday: {
-          label: 'Tổng đơn hàng',
-          value: String(totalOrders),
-          deltaText: `+${summary.deliveredOrders || 0} đã giao`,
-          isPositive: true,
-          sparkline: [4, 6, 7, 6, 8, 9, 10],
-          icon: 'receipt' as const,
+          label: range === 'day' ? 'Đơn hôm nay' : range === 'week' ? 'Đơn tuần này' : 'Đơn tháng này',
+          value: totalOrders,
+          detail: `${deliveredOrders} đơn đã giao`,
+          icon: 'receipt',
         },
         processingOrders: {
           label: 'Đang xử lý',
-          value: String(processingOrders),
-          deltaText: `${summary.pendingOrders || 0} chờ duyệt`,
-          isPositive: processingOrders <= 5,
-          sparkline: [8, 7, 9, 6, 5, 4, processingOrders],
-          icon: 'clock' as const,
+          value: pendingOrders + confirmedOrders,
+          detail: `${pendingOrders} chờ xác nhận · ${confirmedOrders} đã xác nhận`,
+          icon: 'clock',
         },
         newCustomersWeek: {
-          label: 'Khách hàng mới',
-          value: String(newCustomers),
-          deltaText: 'Kỳ này',
-          isPositive: true,
-          sparkline: [2, 4, 3, 5, 6, 7, newCustomers],
-          icon: 'users' as const,
+          label: range === 'day' ? 'Khách mới hôm nay' : range === 'week' ? 'Khách mới tuần này' : 'Khách mới tháng này',
+          value: newCustomers,
+          detail: 'Trong kỳ đang xem',
+          icon: 'users',
         },
-      };
-
-      // Xây dựng orderStatusCounts
-      const orderStatusCounts = [
-        { status: 'PENDING' as const, label: 'Chờ xác nhận', count: Number(summary.pendingOrders) || 0, color: 'var(--c-amber)' },
-        { status: 'CONFIRMED' as const, label: 'Đã xác nhận', count: Number(summary.confirmedOrders) || 0, color: 'var(--c-blue)' },
-        { status: 'DELIVERING' as const, label: 'Đang giao', count: Number(summary.deliveringOrders) || 0, color: 'var(--c-teal)' },
-        { status: 'DELIVERED' as const, label: 'Đã giao', count: Number(summary.deliveredOrders) || 0, color: 'var(--c-green)' },
-        { status: 'CANCELLED' as const, label: 'Đã hủy', count: Number(summary.cancelledOrders) || 0, color: 'var(--c-red)' },
-      ];
-
-      // Biểu đồ doanh thu từ backend chartPoints
-      let revenueStats = { ...MOCK_DASHBOARD_DATA.revenueStats };
-      if (Array.isArray(chartPoints) && chartPoints.length > 0) {
-        const labels = chartPoints.map((p: any) => {
-          const l = p.label || '';
-          return l.length > 5 ? l.substring(5) : l; // '11-10' từ '2026-11-10'
-        });
-        const values = chartPoints.map((p: any) => {
-          const rev = Number(p.revenue) || 0;
-          return Number((rev / 1000000).toFixed(2)); // Quy ra triệu VNĐ
-        });
-
-        revenueStats.day = {
-          labels,
-          values,
-          periodTotalText: 'Tháng này',
-          unit: 'triệu ₫',
-        };
-      }
-
-      // Top sản phẩm bán chạy từ backend
-      let formattedTopProducts: TopProductItem[] = MOCK_DASHBOARD_DATA.topProducts;
-      if (Array.isArray(topProducts) && topProducts.length > 0) {
-        const tints = [
-          'linear-gradient(135deg, #f97316, #ef4444)',
-          'linear-gradient(135deg, #06b6d4, #3b82f6)',
-          'linear-gradient(135deg, #eab308, #f97316)',
-          'linear-gradient(135deg, #ef4444, #b91c1c)',
-          'linear-gradient(135deg, #10b981, #06b6d4)',
-        ];
-        const emojis = ['🍔', '🍕', '🍗', '🍝', '🍹'];
-
-        formattedTopProducts = topProducts.map((p: any, idx: number) => ({
-          id: p.productId || idx + 1,
-          name: p.productName || 'Sản phẩm',
-          categoryName: p.categoryName || 'Món ăn',
-          soldCount: Number(p.soldQuantity) || 0,
-          price: Number(p.totalRevenue) && Number(p.soldQuantity) ? Math.round(Number(p.totalRevenue) / Number(p.soldQuantity)) : 50000,
-          tint: tints[idx % tints.length],
-          emoji: emojis[idx % emojis.length],
-        }));
-      }
-
-      // Shipper performance
-      const formattedShippers: ShipperPerformanceItem[] = Array.isArray(shippers) ? shippers : MOCK_DASHBOARD_DATA.shipperPerformance || [];
-
-      return {
-        kpis,
-        revenueStats,
-        orderStatusCounts,
-        topProducts: formattedTopProducts,
-        recentOrders: MOCK_DASHBOARD_DATA.recentOrders,
-        shipperPerformance: formattedShippers,
-      };
-    } catch {
-      return MOCK_DASHBOARD_DATA;
-    }
+      },
+      revenueStats: {
+        labels: chartPoints.map((point: any) => String(point.label ?? '').slice(5)),
+        values: chartPoints.map((point: any) => Number((Number(point.revenue ?? 0) / 1_000_000).toFixed(2))),
+        periodTotalText: period.label,
+        unit: 'triệu ₫',
+      },
+      orderStatusCounts: [
+        { status: 'PENDING', label: 'Chờ xác nhận', count: pendingOrders, color: 'var(--c-amber)' },
+        { status: 'CONFIRMED', label: 'Đã xác nhận', count: confirmedOrders, color: 'var(--c-blue)' },
+        { status: 'DELIVERING', label: 'Đang giao', count: Number(summary.deliveringOrders ?? 0), color: 'var(--c-teal)' },
+        { status: 'DELIVERED', label: 'Đã giao', count: deliveredOrders, color: 'var(--c-green)' },
+        { status: 'CANCELLED', label: 'Đã hủy', count: Number(summary.cancelledOrders ?? 0), color: 'var(--c-red)' },
+      ],
+      topProducts,
+      shipperPerformance: shippers,
+    };
   },
 
-  // Xuất file Excel báo cáo đơn hàng
   exportOrdersExcel: async (startDate?: string, endDate?: string) => {
     const res = await axiosClient.get('/admin/reports/export/excel', {
       params: { startDate, endDate },
@@ -341,7 +139,6 @@ export const dashboardApi = {
     window.URL.revokeObjectURL(url);
   },
 
-  // Xuất file PDF báo cáo tài chính
   exportRevenuePdf: async (startDate?: string, endDate?: string) => {
     const res = await axiosClient.get('/admin/reports/export/pdf', {
       params: { startDate, endDate },

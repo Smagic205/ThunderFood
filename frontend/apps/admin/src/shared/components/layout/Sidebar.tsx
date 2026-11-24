@@ -26,7 +26,7 @@ export const Sidebar = () => {
   const handleLogout = async () => {
     const refreshToken = useAuthStore.getState().refreshToken;
     try {
-      if (refreshToken && !refreshToken.startsWith('demo-') && !refreshToken.startsWith('mock-')) {
+      if (refreshToken) {
         await authApi.logout(refreshToken);
       }
     } catch {
@@ -38,7 +38,7 @@ export const Sidebar = () => {
   };
 
   const getInitials = (name?: string) => {
-    if (!name) return 'TS';
+    if (!name) return 'QT';
     const parts = name.trim().split(/\s+/);
     if (parts.length >= 2) {
       return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
@@ -46,7 +46,7 @@ export const Sidebar = () => {
     return name.slice(0, 2).toUpperCase();
   };
 
-  const displayName = user?.fullName || 'Trương Thanh Sơn';
+  const displayName = user?.fullName || user?.email || 'Quản trị viên';
 
   return (
     <aside className="side" id="side" aria-label="Menu quản trị">

@@ -67,6 +67,8 @@ export const ProductsPage: React.FC = () => {
     data: productData,
     isLoading: isProductsLoading,
     isFetching: isProductsFetching,
+    isError: isProductsError,
+    refetch: refetchProducts,
   } = useQuery({
     queryKey: ['admin-products', { page, size, categoryId: selectedCatId, keyword: debouncedKeyword, sort }],
     queryFn: () =>
@@ -80,7 +82,7 @@ export const ProductsPage: React.FC = () => {
     placeholderData: keepPreviousData,
   });
 
-  const { data: categories = [] } = useQuery({
+  const { data: categories = [], isError: isCategoriesError, refetch: refetchCategories } = useQuery({
     queryKey: ['admin-categories'],
     queryFn: catalogApi.getCategories,
   });
@@ -307,6 +309,12 @@ export const ProductsPage: React.FC = () => {
           </select>
         </div>
 
+        {isCategoriesError && (
+          <div className="card card-p" role="alert" style={{ marginBottom: '12px' }}>
+            Không thể tải danh sách danh mục. <button className="tlink" onClick={() => refetchCategories()}>Thử lại</button>
+          </div>
+        )}
+
         {/* Products Table */}
         <div className="tbl-wrap">
           <table className="tbl">
@@ -328,6 +336,15 @@ export const ProductsPage: React.FC = () => {
                     <div className="empty" style={{ padding: '48px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
                       <Loader2 size={28} className="spin" style={{ color: 'var(--volt, #FFC107)' }} />
                       <p className="muted" style={{ margin: 0 }}>Đang tải danh sách món ăn từ máy chủ…</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : isProductsError ? (
+                <tr>
+                  <td colSpan={7}>
+                    <div className="empty" role="alert" style={{ padding: '48px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+                      <p className="muted" style={{ margin: 0 }}>Không thể tải danh sách món ăn.</p>
+                      <button className="btn btn-primary btn-sm" onClick={() => refetchProducts()}>Thử lại</button>
                     </div>
                   </td>
                 </tr>

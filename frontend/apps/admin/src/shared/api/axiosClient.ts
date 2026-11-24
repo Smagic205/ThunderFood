@@ -46,11 +46,6 @@ axiosClient.interceptors.response.use(
       const store = useAuthStore.getState();
       const currentRefreshToken = store.refreshToken;
 
-      // Nếu đang dùng tài khoản Demo (token giả lập), không gọi refresh-token và không logout
-      if (currentRefreshToken?.startsWith('demo-') || store.accessToken?.startsWith('demo-')) {
-        return Promise.reject(error);
-      }
-
       if (!currentRefreshToken) {
         store.logout();
         window.location.href = '/login';

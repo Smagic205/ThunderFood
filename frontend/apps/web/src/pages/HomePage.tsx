@@ -3,8 +3,6 @@ import { CategoryList } from '@/features/home/components/CategoryList';
 import { VoucherList } from '@/features/home/components/VoucherList';
 import { HeroSection } from '@/features/home/components/HeroSection';
 import { ProductList } from '@/features/home/components/ProductList';
-import { ReviewSection } from '@/features/home/components/ReviewSection';
-import { mockBanners, mockVouchers, mockProducts } from '@/shared/api/mockData';
 import { categoryApi } from '@/shared/api/categoryApi';
 import { productApi } from '@/shared/api/productApi';
 import { voucherApi } from '@/shared/api/voucherApi';
@@ -26,6 +24,8 @@ export function HomePage() {
 
   const {
     data: bestSellersPage,
+    isPending: isBestSellersPending,
+    isError: isBestSellersError,
   } = useQuery({
     queryKey: ['best-selling-products'],
     queryFn: () => productApi.getProducts({ sort: 'bestSelling', size: 8 }),
@@ -34,6 +34,8 @@ export function HomePage() {
 
   const {
     data: availableVouchers = [],
+    isPending: isVouchersPending,
+    isError: isVouchersError,
   } = useQuery({
     queryKey: ['available-vouchers-home'],
     queryFn: () => voucherApi.getAvailableVouchers(),
@@ -42,33 +44,27 @@ export function HomePage() {
 
   const {
     data: activeBanners = [],
+    isError: isBannersError,
   } = useQuery({
     queryKey: ['active-banners-home'],
     queryFn: bannerApi.getActiveBanners,
     staleTime: CACHE_TIME.BANNERS,
   });
 
-  // Sử dụng dữ liệu thật từ backend; nếu db chưa có thì fallback mock
-  const bannersToDisplay = activeBanners.length > 0 ? activeBanners : mockBanners;
-  const vouchersToDisplay = availableVouchers.length > 0 ? availableVouchers : mockVouchers;
-
-  const bestSellers = bestSellersPage?.content && bestSellersPage.content.length > 0
-    ? bestSellersPage.content
-    : mockProducts
-        .filter((product) => product.isBestSeller)
-        .map((product) => ({
-          ...product,
-          categoryName: categories.find((category) => category.id === product.categoryId)?.name,
-        }));
+  const bestSellers = bestSellersPage?.content ?? [];
 
   return (
     <div className="w-full pb-16">
       {/* 0. Hero Section */}
-      <HeroSection />
+      <HeroSection featuredProduct={bestSellers[0]} />
 
       {/* 1. Banners Section */}
       <section className="container mx-auto px-4 mt-12 mb-12">
-        <BannerSlider banners={bannersToDisplay} />
+        {isBannersError ? (
+          <p className="text-red-600" role="alert">Không thể tải banner lúc này.</p>
+        ) : (
+          <BannerSlider banners={activeBanners} />
+        )}
       </section>
 
       {/* 2. Vouchers Section */}
@@ -82,7 +78,15 @@ export function HomePage() {
             Xem tất cả
           </Link>
         </div>
-        <VoucherList vouchers={vouchersToDisplay} />
+        {isVouchersPending ? (
+          <p className="text-[var(--ink-2)]">Đang tải ưu đãi...</p>
+        ) : isVouchersError ? (
+          <p className="text-red-600" role="alert">Không thể tải danh sách ưu đãi.</p>
+        ) : availableVouchers.length > 0 ? (
+          <VoucherList vouchers={availableVouchers} />
+        ) : (
+          <p className="text-[var(--ink-2)]">Hiện chưa có ưu đãi đang áp dụng.</p>
+        )}
       </section>
 
       {/* 3. Categories Section */}
@@ -104,36 +108,34 @@ export function HomePage() {
       
       {/* 4. Best Sellers Section */}
       <section className="container mx-auto px-4 mb-12">
-        <ProductList 
-          title="Bán chạy nhất" 
-          subtitle="Những món được gọi nhiều nhất tại ThunderFood."
-          products={bestSellers}
-          viewAllLink="/menu?sort=best"
-        />
+        {isBestSellersPending ? (
+          <p className="text-[var(--ink-2)]">Đang tải danh sách món bán chạy...</p>
+        ) : isBestSellersError ? (
+          <p className="text-red-600" role="alert">Không thể tải danh sách món bán chạy.</p>
+        ) : bestSellers.length > 0 ? (
+          <ProductList
+            title="Bán chạy nhất"
+            subtitle="Những món được gọi nhiều nhất tại ThunderFood."
+            products={bestSellers}
+            viewAllLink="/menu?sort=best"
+          />
+        ) : (
+          <div>
+            <h2 className="text-[clamp(1.5rem,3vw,2.15rem)] font-bold text-[var(--ink)]">Bán chạy nhất</h2>
+            <p className="text-[var(--ink-2)] mt-1.5">Hiện chưa có món bán chạy để hiển thị.</p>
+          </div>
+        )}
       </section>
 
       {/* 5. Info Section (Giao hàng) */}
       <section className="container mx-auto px-4 mb-12">
         <div className="bg-[var(--surface)] text-[var(--ink)] border border-[var(--line)] rounded-[clamp(24px,3vw,36px)] p-[clamp(28px,5vw,56px)] grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
           <div>
-            <h2 className="text-[clamp(1.5rem,3vw,2.15rem)] font-bold">Giao tận nơi trong 12 quận nội thành</h2>
+            <h2 className="text-[clamp(1.5rem,3vw,2.15rem)] font-bold">Đặt món và theo dõi đơn hàng trực tuyến</h2>
             <p className="text-[var(--ink-2)] mt-3 max-w-[44ch] leading-relaxed">
-              Đồ ăn được đóng gói giữ nhiệt và giao bằng shipper riêng của ThunderFood. Bạn theo dõi hành trình đơn hàng ngay trong tài khoản.
+              Chọn món từ thực đơn, hoàn tất đặt hàng và theo dõi trạng thái đơn trong tài khoản của bạn.
             </p>
-            <div className="flex flex-wrap gap-x-10 gap-y-6 mt-9">
-              <div>
-                <b className="block text-[clamp(1.5rem,3vw,1.8rem)] text-[var(--volt)]">~30 phút</b>
-                <span className="text-[var(--ink-2)] text-sm">Thời gian giao trung bình</span>
-              </div>
-              <div>
-                <b className="block text-[clamp(1.5rem,3vw,1.8rem)] text-[var(--volt)]">15.000đ</b>
-                <span className="text-[var(--ink-2)] text-sm">Phí giao, miễn phí từ 200k</span>
-              </div>
-              <div>
-                <b className="block text-[clamp(1.5rem,3vw,1.8rem)] text-[var(--volt)]">12 quận</b>
-                <span className="text-[var(--ink-2)] text-sm">Phạm vi phục vụ</span>
-              </div>
-            </div>
+            <Link to="/menu" className="btn btn-primary mt-8 inline-flex">Xem thực đơn</Link>
           </div>
           {/* Bạn có thể đặt 1 hình ảnh hoặc bản đồ bên phải ở đây tương tự thiết kế HTML gốc nếu có */}
           <div className="hidden md:flex justify-end opacity-90">
@@ -141,9 +143,6 @@ export function HomePage() {
           </div>
         </div>
       </section>
-
-      {/* 6. Review Section (Khách hàng nói gì) */}
-      <ReviewSection />
     </div>
   );
 }

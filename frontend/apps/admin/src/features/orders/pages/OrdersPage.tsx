@@ -21,7 +21,7 @@ export const OrdersPage: React.FC = () => {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Fetch orders
-  const { data: orders = [], isLoading } = useQuery({
+  const { data: orders = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['admin-orders'],
     queryFn: ordersApi.getOrders,
   });
@@ -220,6 +220,15 @@ export const OrdersPage: React.FC = () => {
                   <td colSpan={7}>
                     <div className="empty" style={{ padding: '40px' }}>
                       <p className="muted">Đang tải danh sách đơn hàng…</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : isError ? (
+                <tr>
+                  <td colSpan={7}>
+                    <div className="empty" role="alert" style={{ padding: '40px', textAlign: 'center' }}>
+                      <p className="muted">Không thể tải danh sách đơn hàng từ máy chủ.</p>
+                      <button className="btn btn-primary btn-sm" onClick={() => refetch()}>Thử lại</button>
                     </div>
                   </td>
                 </tr>

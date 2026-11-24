@@ -3,36 +3,18 @@ import { useQuery } from '@tanstack/react-query';
 import { Ticket, Percent, Truck, Copy, Search, Loader2 } from 'lucide-react';
 import { voucherApi } from '@/shared/api/voucherApi';
 import { useToastStore } from '@/shared/stores/toastStore';
-import { mockVouchers } from '@/shared/api/mockData';
 
 export const VouchersPage: React.FC = () => {
   const { showToast } = useToastStore();
   const [filterType, setFilterType] = useState<'ALL' | 'PRODUCT' | 'SHIPPING'>('ALL');
   const [search, setSearch] = useState('');
 
-  const { data: vouchers = [], isLoading } = useQuery({
+  const { data: vouchers = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['available-vouchers-page'],
     queryFn: () => voucherApi.getAvailableVouchers(),
   });
 
-  const displayVouchers = vouchers.length > 0 ? vouchers : (mockVouchers.map(m => ({
-    id: m.id,
-    code: m.code,
-    name: m.code,
-    description: m.description,
-    voucherType: 'PRODUCT' as const,
-    discountType: m.discountType,
-    discountValue: m.discountValue,
-    minOrderAmount: m.minOrderValue,
-    maxDiscountAmount: m.maxDiscount || null,
-    startDate: m.startDate,
-    endDate: m.endDate,
-    remainingUses: 50,
-    eligible: true,
-    ineligibleReason: null,
-  })));
-
-  const filtered = displayVouchers.filter((v) => {
+  const filtered = vouchers.filter((v) => {
     if (filterType !== 'ALL' && v.voucherType !== filterType) return false;
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -86,7 +68,7 @@ export const VouchersPage: React.FC = () => {
               : 'bg-[var(--surface)] text-[var(--ink-2)] border-[var(--line)] hover:border-[var(--ink-3)]'
           }`}
         >
-          Tất cả ưu đãi ({displayVouchers.length})
+          Tất cả ưu đãi ({vouchers.length})
         </button>
         <button
           type="button"
@@ -119,6 +101,12 @@ export const VouchersPage: React.FC = () => {
         <div className="py-24 text-center">
           <Loader2 size={36} className="animate-spin text-[var(--volt)] mx-auto mb-3" />
           <p className="text-[var(--ink-2)] font-medium">Đang tải danh sách ưu đãi...</p>
+        </div>
+      ) : isError ? (
+        <div className="card p-12 text-center max-w-md mx-auto my-8" role="alert">
+          <h3 className="font-bold text-lg text-[var(--ink)] mb-1">Không thể tải voucher</h3>
+          <p className="text-sm text-[var(--ink-2)] mb-4">Vui lòng thử lại sau.</p>
+          <button className="btn btn-primary" type="button" onClick={() => refetch()}>Thử lại</button>
         </div>
       ) : filtered.length === 0 ? (
         <div className="card p-12 text-center max-w-md mx-auto my-8">

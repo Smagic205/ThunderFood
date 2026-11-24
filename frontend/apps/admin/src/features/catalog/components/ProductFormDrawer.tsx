@@ -146,8 +146,8 @@ export const ProductFormDrawer: React.FC<ProductFormDrawerProps> = ({
       errs.price = 'Giá bán phải lớn hơn 0 ₫';
     }
     if (discountPrice !== '' && discountPrice !== null) {
-      if (Number(discountPrice) >= Number(price)) {
-        errs.discountPrice = 'Giá khuyến mãi phải nhỏ hơn giá bán';
+      if (Number(discountPrice) > Number(price)) {
+        errs.discountPrice = 'Giá khuyến mãi không được lớn hơn giá bán';
       }
     }
     if (stockQuantity < 0) {

@@ -1,14 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  PhoneCall,
-  Mail,
-  MapPin,
-  Clock,
   Search,
   ChevronDown,
-  Send,
-  CheckCircle2,
   Package,
   HelpCircle,
   Truck,
@@ -16,8 +10,6 @@ import {
   Percent,
   ShieldCheck,
   ChevronRight,
-  AlertCircle,
-  Loader2,
 } from 'lucide-react';
 
 interface FaqItem {
@@ -31,72 +23,72 @@ const FAQS_DATA: FaqItem[] = [
   {
     id: 'faq-1',
     category: 'ORDER',
-    question: 'Thời gian giao hàng trung bình của ThunderFood là bao lâu?',
+    question: 'Tôi xem thời gian giao hàng dự kiến ở đâu?',
     answer:
-      'Thời gian giao hàng thông thường từ 25 - 40 phút kể từ lúc bạn hoàn tất đặt đơn. Đội ngũ đầu bếp sẽ chuẩn bị món nóng hổi ngay khi nhận đơn và shipper chuyên trách sẽ giao tận tay bạn.',
+      'Thời gian dự kiến được cập nhật theo địa chỉ giao hàng và trạng thái đơn. Bạn có thể xem thông tin này khi đặt món và trong trang theo dõi đơn hàng.',
   },
   {
     id: 'faq-2',
     category: 'ORDER',
-    question: 'ThunderFood phục vụ giao hàng tại những khu vực nào?',
+    question: 'ThunderFood có giao đến khu vực của tôi không?',
     answer:
-      'Hiện tại ThunderFood phục vụ toàn bộ các quận nội thành Hà Nội: Hoàn Kiếm, Ba Đình, Đống Đa, Hai Bà Trưng, Cầu Giấy, Thanh Xuân, Tây Hồ và Nam/Bắc Từ Liêm. Bạn có thể kiểm tra phí giao hàng chính xác theo phường/xã tại bước Thanh toán.',
+      'Hãy chọn địa chỉ giao hàng ở bước thanh toán. Hệ thống sẽ hiển thị các phường/xã đang phục vụ và phí giao tương ứng với địa chỉ đó.',
   },
   {
     id: 'faq-3',
     category: 'ORDER',
     question: 'Làm thế nào để tôi theo dõi tiến độ đơn hàng của mình?',
     answer:
-      'Bạn có thể vào mục "Tài khoản > Đơn mua" để xem chi tiết trạng thái từng đơn hàng theo thời gian thực (Chờ xác nhận → Bếp đang chuẩn bị → Đang giao hàng → Hoàn thành).',
+      'Vào mục Tài khoản > Đơn mua để xem trạng thái và thông tin theo dõi hiện có của từng đơn hàng.',
   },
   {
     id: 'faq-4',
     category: 'ORDER',
-    question: 'Tôi có thể thay đổi địa chỉ hoặc số điện thoại sau khi đặt không?',
+    question: 'Tôi cần sửa địa chỉ hoặc số điện thoại sau khi đặt thì làm sao?',
     answer:
-      'Nếu đơn hàng đang ở trạng thái "Chờ xác nhận", bạn vui lòng liên hệ ngay hotline 1900 6868 để nhân viên hỗ trợ cập nhật thông tin trước khi đơn được giao cho shipper.',
+      'Mở mục Tài khoản > Đơn mua để kiểm tra trạng thái đơn. Nếu đơn chưa được xử lý, bạn có thể hủy đơn theo tùy chọn đang hiển thị rồi đặt lại với thông tin chính xác.',
   },
   {
     id: 'faq-5',
     category: 'PAYMENT',
     question: 'ThunderFood hỗ trợ những phương thức thanh toán nào?',
     answer:
-      'Chúng tôi hỗ trợ: 1) Thanh toán tiền mặt khi nhận hàng (COD), 2) Chuyển khoản ngân hàng qua mã QR / VNPay, 3) Thẻ ATM/Visa/MasterCard nội địa và quốc tế.',
+      'Các phương thức khả dụng sẽ được hiển thị ở bước thanh toán cho đơn hàng của bạn.',
   },
   {
     id: 'faq-6',
     category: 'PAYMENT',
     question: 'Tôi thanh toán online nhưng đơn hàng bị hủy, tiền sẽ được hoàn như thế nào?',
     answer:
-      'Với các đơn thanh toán trực tuyến bị hủy hoặc hoàn tiền, số tiền sẽ được hoàn trả tự động vào tài khoản ngân hàng hoặc thẻ của bạn trong vòng 2 - 5 ngày làm việc tùy chính sách của từng ngân hàng.',
+      'Kiểm tra trạng thái đơn và thông tin thanh toán trong Tài khoản > Đơn mua. Trang này hiện chưa có chức năng gửi yêu cầu tra soát.',
   },
   {
     id: 'faq-7',
     category: 'PROMO',
     question: 'Chính sách miễn phí vận chuyển (Freeship) áp dụng như thế nào?',
     answer:
-      'ThunderFood tự động áp dụng Miễn phí vận chuyển cho tất cả các đơn hàng có giá trị tiền món từ 300.000 ₫ trở lên. Ngoài ra, bạn có thể áp dụng thêm mã Freeship từ trang "Khuyến mãi".',
+      'Điều kiện và mức giảm phí giao hàng được ghi trong từng voucher. Mã đủ điều kiện sẽ được áp dụng ở bước thanh toán.',
   },
   {
     id: 'faq-8',
     category: 'PROMO',
     question: 'Tôi có thể áp dụng đồng thời mã giảm giá món và mã freeship không?',
     answer:
-      'Hệ thống của ThunderFood cho phép áp dụng tối đa 01 voucher ưu đãi trên mỗi đơn hàng. Bạn có thể chọn voucher có mức giảm cao nhất để tối ưu chi phí đặt món.',
+      'Nhập mã vào trường ưu đãi phù hợp ở bước thanh toán. Hệ thống sẽ kiểm tra điều kiện và hiển thị số tiền được giảm trước khi bạn xác nhận đơn.',
   },
   {
     id: 'faq-9',
     category: 'QUALITY',
     question: 'Nếu món ăn giao đến bị nguội, thiếu món hoặc không đúng yêu cầu thì xử lý ra sao?',
     answer:
-      'ThunderFood cam kết chất lượng 100%. Nếu có bất kỳ sự cố nào về món ăn, bạn chỉ cần chụp ảnh và gọi ngay hotline 1900 6868 hoặc gửi yêu cầu hỗ trợ bên dưới, chúng tôi sẽ giao lại món mới miễn phí hoặc hoàn tiền ngay lập tức.',
+      'Kiểm tra thông tin đơn hàng trong Tài khoản > Đơn mua. Chức năng gửi yêu cầu hỗ trợ trực tuyến hiện chưa khả dụng.',
   },
   {
     id: 'faq-10',
     category: 'QUALITY',
-    question: 'Món ăn của ThunderFood có đảm bảo vệ sinh an toàn thực phẩm không?',
+    question: 'Tôi xem thành phần hoặc thông tin dị ứng của món ăn ở đâu?',
     answer:
-      'Tất cả nguyên liệu thịt gà tươi, bò băm, rau củ đều có chứng nhận nguồn gốc xuất xứ rõ ràng và được kiểm dịch nghiêm ngặt. Quy trình chế biến tuân thủ tiêu chuẩn an toàn thực phẩm HACCP quốc tế.',
+      'Mở trang chi tiết món để xem thông tin thành phần được cung cấp. Ứng dụng chưa hiển thị thông tin dị ứng riêng cho từng món.',
   },
 ];
 
@@ -112,19 +104,6 @@ export const SupportPage: React.FC = () => {
   // Search and Category Filter
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
-
-  // Contact Form State
-  const [form, setForm] = useState({
-    fullName: '',
-    phone: '',
-    email: '',
-    orderCode: '',
-    topic: 'ORDER_ISSUE',
-    message: '',
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [formError, setFormError] = useState('');
 
   // Filtered FAQ List
   const filteredFaqs = useMemo(() => {
@@ -142,31 +121,6 @@ export const SupportPage: React.FC = () => {
       );
     });
   }, [searchQuery, selectedCategory]);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.fullName.trim() || !form.phone.trim() || !form.message.trim()) {
-      setFormError('Vui lòng điền đầy đủ Họ tên, Số điện thoại và Nội dung yêu cầu.');
-      return;
-    }
-
-    setIsSubmitting(true);
-    setFormError('');
-
-    // Giả lập gửi yêu cầu hỗ trợ
-    setTimeout(() => {
-      setIsSubmitting(false);
-      setSubmitted(true);
-      setForm({
-        fullName: '',
-        phone: '',
-        email: '',
-        orderCode: '',
-        topic: 'ORDER_ISSUE',
-        message: '',
-      });
-    }, 800);
-  };
 
   return (
     <div style={{ paddingBottom: '60px' }}>
@@ -204,7 +158,7 @@ export const SupportPage: React.FC = () => {
             }}
           >
             <HelpCircle size={15} />
-            Chăm sóc khách hàng 24/7
+            Trung tâm hỗ trợ
           </span>
 
           <h1 style={{ fontSize: 'clamp(1.8rem, 4vw, 2.8rem)', marginBottom: '12px' }}>
@@ -220,7 +174,7 @@ export const SupportPage: React.FC = () => {
               lineHeight: 1.6,
             }}
           >
-            Tìm câu trả lời nhanh cho các vấn đề thường gặp hoặc liên hệ trực tiếp với bộ phận chăm sóc khách hàng của ThunderFood.
+            Tìm câu trả lời cho các vấn đề thường gặp hoặc kiểm tra thông tin đơn hàng của bạn.
           </p>
 
           {/* Search Box */}
@@ -258,9 +212,9 @@ export const SupportPage: React.FC = () => {
       </section>
 
       <div className="container">
-        {/* Quick Contact Cards */}
+        {/* Available navigation shortcuts */}
         <section
-          aria-labelledby="contact-channels-heading"
+          aria-label="Lối tắt hỗ trợ"
           style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
@@ -268,9 +222,7 @@ export const SupportPage: React.FC = () => {
             marginBottom: '48px',
           }}
         >
-          <h2 id="contact-channels-heading" className="sr">Kênh liên hệ hỗ trợ</h2>
-
-          {/* Hotline */}
+          {/* FAQ shortcut */}
           <div className="card card-p" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div
               style={{
@@ -284,23 +236,22 @@ export const SupportPage: React.FC = () => {
                 justifyContent: 'center',
               }}
             >
-              <PhoneCall size={22} />
+              <HelpCircle size={22} />
             </div>
             <div>
-              <b style={{ fontSize: '16px', display: 'block', color: 'var(--ink)' }}>Tổng đài Hotline</b>
-              <span className="muted" style={{ fontSize: '13px' }}>08:00 - 22:00 hằng ngày</span>
+              <b style={{ fontSize: '16px', display: 'block', color: 'var(--ink)' }}>Câu hỏi thường gặp</b>
+              <span className="muted" style={{ fontSize: '13px' }}>Tìm hướng dẫn theo chủ đề</span>
             </div>
             <a
-              href="tel:19006868"
-              className="btn btn-primary btn-sm"
+              href="#faq-heading"
+              className="btn btn-soft btn-sm"
               style={{ marginTop: 'auto', textDecoration: 'none' }}
             >
-              <PhoneCall size={14} />
-              1900 6868
+              Xem câu hỏi <ChevronRight size={14} />
             </a>
           </div>
 
-          {/* Email */}
+          {/* Tracking Orders */}
           <div className="card card-p" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div
               style={{
@@ -314,23 +265,22 @@ export const SupportPage: React.FC = () => {
                 justifyContent: 'center',
               }}
             >
-              <Mail size={22} />
+              <Package size={22} />
             </div>
             <div>
-              <b style={{ fontSize: '16px', display: 'block', color: 'var(--ink)' }}>Hộp thư hỗ trợ</b>
-              <span className="muted" style={{ fontSize: '13px' }}>Phản hồi trong 2-4 giờ</span>
+              <b style={{ fontSize: '16px', display: 'block', color: 'var(--ink)' }}>Theo dõi đơn hàng</b>
+              <span className="muted" style={{ fontSize: '13px' }}>Xem trạng thái đơn trong tài khoản</span>
             </div>
-            <a
-              href="mailto:hotro@thunderfood.vn"
+            <Link
+              to="/account/orders"
               className="btn btn-soft btn-sm"
               style={{ marginTop: 'auto', textDecoration: 'none' }}
             >
-              <Mail size={14} />
-              hotro@thunderfood.vn
-            </a>
+              Xem đơn mua <ChevronRight size={14} />
+            </Link>
           </div>
 
-          {/* Tracking Orders */}
+          {/* Menu */}
           <div className="card card-p" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div
               style={{
@@ -344,55 +294,29 @@ export const SupportPage: React.FC = () => {
                 justifyContent: 'center',
               }}
             >
-              <Package size={22} />
+              <Truck size={22} />
             </div>
             <div>
-              <b style={{ fontSize: '16px', display: 'block', color: 'var(--ink)' }}>Theo dõi đơn hàng</b>
-              <span className="muted" style={{ fontSize: '13px' }}>Xem vị trí đơn đang giao</span>
+              <b style={{ fontSize: '16px', display: 'block', color: 'var(--ink)' }}>Thực đơn</b>
+              <span className="muted" style={{ fontSize: '13px' }}>Xem món ăn đang được cung cấp</span>
             </div>
             <Link
-              to="/account/orders"
+              to="/menu"
               className="btn btn-soft btn-sm"
               style={{ marginTop: 'auto', textDecoration: 'none' }}
             >
-              Xem đơn mua <ChevronRight size={14} />
+              Mở thực đơn <ChevronRight size={14} />
             </Link>
-          </div>
-
-          {/* Address */}
-          <div className="card card-p" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div
-              style={{
-                width: '46px',
-                height: '46px',
-                borderRadius: '12px',
-                backgroundColor: 'rgba(107, 63, 209, 0.12)',
-                color: 'var(--c-violet)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <MapPin size={22} />
-            </div>
-            <div>
-              <b style={{ fontSize: '16px', display: 'block', color: 'var(--ink)' }}>Cửa hàng & Bếp chính</b>
-              <span className="muted" style={{ fontSize: '13px' }}>86 Hàng Bài, Hoàn Kiếm, HN</span>
-            </div>
-            <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--ink-2)' }}>
-              <Clock size={14} />
-              <span>08:00 - 22:00</span>
-            </div>
           </div>
         </section>
 
-        {/* Main Content Layout: FAQ & Contact Form */}
+        {/* FAQ and currently available actions */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '36px', alignItems: 'start' }}>
           {/* FAQ Accordion Section */}
           <section aria-labelledby="faq-heading" style={{ flex: '1 1 500px' }}>
             <div className="sec-h" style={{ marginBottom: '18px' }}>
               <div>
-                <h2 id="faq-heading" style={{ fontSize: '1.65rem' }}>Câu hỏi thường gặp</h2>
+                <h2 id="faq-heading" style={{ fontSize: '1.65rem', scrollMarginTop: '24px' }}>Câu hỏi thường gặp</h2>
                 <p>Những giải đáp chi tiết cho các thắc mắc phổ biến nhất</p>
               </div>
             </div>
@@ -442,7 +366,7 @@ export const SupportPage: React.FC = () => {
                 <div style={{ padding: '40px 10px', textAlign: 'center', color: 'var(--ink-3)' }}>
                   <HelpCircle size={36} style={{ margin: '0 auto 10px', opacity: 0.5 }} />
                   <p style={{ fontWeight: 600 }}>Không tìm thấy câu hỏi phù hợp</p>
-                  <p style={{ fontSize: '13px', marginTop: '4px' }}>Thử tìm bằng từ khóa khác hoặc gửi yêu cầu bên cạnh.</p>
+                  <p style={{ fontSize: '13px', marginTop: '4px' }}>Thử tìm bằng từ khóa khác hoặc xem trạng thái đơn hàng trong tài khoản.</p>
                 </div>
               ) : (
                 filteredFaqs.map((faq, idx) => (
@@ -461,242 +385,24 @@ export const SupportPage: React.FC = () => {
                 ))
               )}
             </div>
-
-            {/* Quality Commitment Box */}
-            <div
-              className="card card-p"
-              style={{
-                marginTop: '24px',
-                background: 'linear-gradient(135deg, rgba(255, 184, 28, 0.08) 0%, rgba(36, 80, 214, 0.06) 100%)',
-                border: '1px solid var(--line)',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
-                <ShieldCheck size={22} style={{ color: 'var(--c-amber)' }} />
-                <b style={{ fontSize: '15px', color: 'var(--ink)' }}>Cam kết chất lượng ThunderFood</b>
-              </div>
-              <p style={{ fontSize: '13.5px', color: 'var(--ink-2)', lineHeight: 1.6 }}>
-                Mọi món ăn đều được đóng hộp giữ nhiệt cẩn thận, đảm bảo độ giòn và hương vị ngon nhất khi đến tay bạn. Nếu bạn không hài lòng về bất kỳ điều gì, hãy để chúng tôi có cơ hội phục vụ lại bạn tốt hơn!
-              </p>
-            </div>
           </section>
 
-          {/* Online Support Ticket Form */}
+          {/* No fabricated support contact or submission flow */}
           <section aria-labelledby="form-heading" style={{ flex: '1 1 380px' }}>
             <div className="card card-p">
               <div style={{ marginBottom: '20px' }}>
                 <h2 id="form-heading" style={{ fontSize: '1.4rem', marginBottom: '6px' }}>
-                  Gửi yêu cầu hỗ trợ trực tuyến
+                  Hỗ trợ đơn hàng
                 </h2>
                 <p className="muted" style={{ fontSize: '13.5px' }}>
-                  Điền thông tin và vấn đề bạn gặp phải, chuyên viên CSKH sẽ liên hệ lại trong thời gian sớm nhất.
+                  Chức năng gửi yêu cầu hỗ trợ trực tuyến chưa được kết nối. Bạn có thể xem thông tin và trạng thái đơn hàng trong tài khoản.
                 </p>
               </div>
-
-              {submitted ? (
-                <div
-                  style={{
-                    padding: '30px 20px',
-                    textAlign: 'center',
-                    backgroundColor: 'rgba(16, 185, 129, 0.08)',
-                    borderRadius: '16px',
-                    border: '1px solid rgba(16, 185, 129, 0.25)',
-                  }}
-                >
-                  <CheckCircle2 size={44} style={{ color: '#10b981', margin: '0 auto 12px' }} />
-                  <h3 style={{ fontSize: '1.2rem', marginBottom: '8px', color: 'var(--ink)' }}>
-                    Đã gửi yêu cầu thành công!
-                  </h3>
-                  <p style={{ fontSize: '14px', color: 'var(--ink-2)', lineHeight: 1.5, marginBottom: '20px' }}>
-                    Cảm ơn bạn đã phản hồi. Đội ngũ chăm sóc khách hàng của ThunderFood đã tiếp nhận và sẽ chủ động liên hệ lại qua số điện thoại của bạn.
-                  </p>
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-sm"
-                    onClick={() => setSubmitted(false)}
-                  >
-                    Gửi yêu cầu khác
-                  </button>
-                </div>
-              ) : (
-                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  {formError && (
-                    <div
-                      style={{
-                        padding: '10px 14px',
-                        borderRadius: '8px',
-                        backgroundColor: 'rgba(194, 55, 47, 0.1)',
-                        border: '1px solid rgba(194, 55, 47, 0.25)',
-                        color: 'var(--c-red)',
-                        fontSize: '13px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                      }}
-                    >
-                      <AlertCircle size={16} />
-                      <span>{formError}</span>
-                    </div>
-                  )}
-
-                  {/* Họ và tên */}
-                  <div>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
-                      Họ và tên <span style={{ color: 'var(--c-red)' }}>*</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="Nguyễn Văn A"
-                      value={form.fullName}
-                      onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-                      style={{
-                        width: '100%',
-                        padding: '10px 14px',
-                        borderRadius: '10px',
-                        border: '1px solid var(--line)',
-                        backgroundColor: 'var(--surface-2)',
-                        color: 'var(--ink)',
-                        fontSize: '14px',
-                      }}
-                    />
-                  </div>
-
-                  {/* SĐT & Email */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
-                        Số điện thoại <span style={{ color: 'var(--c-red)' }}>*</span>
-                      </label>
-                      <input
-                        type="tel"
-                        required
-                        placeholder="0912 345 678"
-                        value={form.phone}
-                        onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                        style={{
-                          width: '100%',
-                          padding: '10px 14px',
-                          borderRadius: '10px',
-                          border: '1px solid var(--line)',
-                          backgroundColor: 'var(--surface-2)',
-                          color: 'var(--ink)',
-                          fontSize: '14px',
-                        }}
-                      />
-                    </div>
-
-                    <div>
-                      <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
-                        Email
-                      </label>
-                      <input
-                        type="email"
-                        placeholder="ban@gmail.com"
-                        value={form.email}
-                        onChange={(e) => setForm({ ...form, email: e.target.value })}
-                        style={{
-                          width: '100%',
-                          padding: '10px 14px',
-                          borderRadius: '10px',
-                          border: '1px solid var(--line)',
-                          backgroundColor: 'var(--surface-2)',
-                          color: 'var(--ink)',
-                          fontSize: '14px',
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Mã đơn hàng (nếu có) */}
-                  <div>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
-                      Mã đơn hàng (nếu có)
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="VD: TF261110001"
-                      value={form.orderCode}
-                      onChange={(e) => setForm({ ...form, orderCode: e.target.value })}
-                      style={{
-                        width: '100%',
-                        padding: '10px 14px',
-                        borderRadius: '10px',
-                        border: '1px solid var(--line)',
-                        backgroundColor: 'var(--surface-2)',
-                        color: 'var(--ink)',
-                        fontSize: '14px',
-                      }}
-                    />
-                  </div>
-
-                  {/* Vấn đề cần hỗ trợ */}
-                  <div>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
-                      Chủ đề cần hỗ trợ
-                    </label>
-                    <select
-                      value={form.topic}
-                      onChange={(e) => setForm({ ...form, topic: e.target.value })}
-                      style={{
-                        width: '100%',
-                        padding: '10px 14px',
-                        borderRadius: '10px',
-                        border: '1px solid var(--line)',
-                        backgroundColor: 'var(--surface-2)',
-                        color: 'var(--ink)',
-                        fontSize: '14px',
-                      }}
-                    >
-                      <option value="ORDER_ISSUE">Tiến độ giao hàng / Shipper</option>
-                      <option value="FOOD_QUALITY">Chất lượng món ăn / Đổi trả món</option>
-                      <option value="PAYMENT_ISSUE">Thanh toán & Hoàn tiền</option>
-                      <option value="VOUCHER_ISSUE">Mã giảm giá & Khuyến mãi</option>
-                      <option value="FEEDBACK">Góp ý dịch vụ & Khác</option>
-                    </select>
-                  </div>
-
-                  {/* Nội dung tin nhắn */}
-                  <div>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
-                      Nội dung chi tiết <span style={{ color: 'var(--c-red)' }}>*</span>
-                    </label>
-                    <textarea
-                      required
-                      rows={4}
-                      placeholder="Mô tả cụ thể sự cố hoặc nội dung bạn cần ThunderFood hỗ trợ..."
-                      value={form.message}
-                      onChange={(e) => setForm({ ...form, message: e.target.value })}
-                      style={{
-                        width: '100%',
-                        padding: '10px 14px',
-                        borderRadius: '10px',
-                        border: '1px solid var(--line)',
-                        backgroundColor: 'var(--surface-2)',
-                        color: 'var(--ink)',
-                        fontSize: '14px',
-                        resize: 'vertical',
-                      }}
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    className="btn btn-primary btn-block"
-                    disabled={isSubmitting}
-                    style={{ marginTop: '8px' }}
-                  >
-                    {isSubmitting ? (
-                      <Loader2 className="animate-spin" size={18} />
-                    ) : (
-                      <>
-                        <Send size={16} />
-                        <span>Gửi yêu cầu hỗ trợ</span>
-                      </>
-                    )}
-                  </button>
-                </form>
-              )}
+              <Link to="/account/orders" className="btn btn-primary btn-block" style={{ textDecoration: 'none' }}>
+                <Package size={16} />
+                <span>Mở danh sách đơn mua</span>
+                <ChevronRight size={16} />
+              </Link>
             </div>
           </section>
         </div>

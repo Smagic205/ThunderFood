@@ -3,7 +3,7 @@ import { Autoplay, Pagination, Navigation } from 'swiper/modules';
 import 'swiper/css';
 import 'swiper/css/pagination';
 import 'swiper/css/navigation';
-import type { Banner } from '@/shared/types'; // We need to define this or use a mock
+import type { Banner } from '@/shared/types';
 
 interface BannerSliderProps {
   banners: Banner[];

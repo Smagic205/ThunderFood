@@ -55,7 +55,9 @@ export const VouchersPage: React.FC = () => {
   const { 
     data: vouchersData, 
     isLoading, 
-    isFetching 
+    isFetching,
+    isError,
+    refetch,
   } = useQuery({
     queryKey: ['admin-vouchers', { page, size, keyword: debouncedKeyword, selectedType, selectedStatus }],
     queryFn: () => vouchersApi.getVouchers({
@@ -345,6 +347,13 @@ export const VouchersPage: React.FC = () => {
                   <td colSpan={9} style={{ textAlign: 'center', padding: '48px 16px' }}>
                     <Loader2 size={28} className="animate-spin" style={{ margin: '0 auto 8px', color: 'var(--volt)' }} />
                     <p className="muted">Đang tải danh sách voucher…</p>
+                  </td>
+                </tr>
+              ) : isError ? (
+                <tr>
+                  <td colSpan={9} role="alert" style={{ textAlign: 'center', padding: '48px 16px' }}>
+                    <p style={{ fontWeight: 600, color: 'var(--ink)' }}>Không thể tải danh sách voucher.</p>
+                    <button className="btn btn-primary btn-sm" onClick={() => refetch()}>Thử lại</button>
                   </td>
                 </tr>
               ) : vouchers.length === 0 ? (

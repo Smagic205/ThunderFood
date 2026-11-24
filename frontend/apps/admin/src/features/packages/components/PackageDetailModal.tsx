@@ -148,7 +148,7 @@ export const PackageDetailModal: React.FC<PackageDetailModalProps> = ({
         >
           {getPackageStatusBadge(pkg.status)}
           <span className="tag" style={{ fontSize: '13px', fontWeight: 600 }}>
-            {pkg.orders.length}/7 đơn (Tối đa 7)
+            {pkg.orders.length} đơn
           </span>
           <div
             style={{

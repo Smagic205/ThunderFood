@@ -27,13 +27,7 @@ export const SettingsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'SYSTEM' | 'WARDS'>('SYSTEM');
 
   // Tab 1: System Settings Form State
-  const [formSettings, setFormSettings] = useState<Record<string, string>>({
-    FREESHIP_THRESHOLD: '300000',
-    MAX_ORDERS_PER_PACKAGE: '3',
-    DEFAULT_SHIPPING_FEE: '20000',
-    STORE_HOTLINE: '1900 6868',
-    ESTIMATED_DELIVERY_MINUTES: '30',
-  });
+  const [formSettings, setFormSettings] = useState<Record<string, string>>({});
 
   // Tab 2: Service Wards State
   const [districtFilter, setDistrictFilter] = useState<string>('ALL');
@@ -51,31 +45,27 @@ export const SettingsPage: React.FC = () => {
   };
 
   // Query: System Settings
-  const { data: settingsData = [] } = useQuery<SystemSetting[]>({
+  const { data: settingsData = [], isLoading: isLoadingSettings, isError: isSettingsError, refetch: refetchSettings } = useQuery<SystemSetting[]>({
     queryKey: ['admin-settings'],
     queryFn: settingsApi.getAllSettings,
     staleTime: 60 * 1000,
   });
 
   useEffect(() => {
-    if (settingsData && settingsData.length > 0) {
-      const map: Record<string, string> = {};
-      settingsData.forEach((s) => {
-        map[s.key] = s.value;
-      });
-      setFormSettings((prev) => ({ ...prev, ...map }));
-    }
+    const map: Record<string, string> = {};
+    settingsData.forEach((setting) => { map[setting.key] = setting.value; });
+    setFormSettings(map);
   }, [settingsData]);
 
   // Query: Districts
-  const { data: districts = [] } = useQuery<string[]>({
+  const { data: districts = [], isError: isDistrictsError, refetch: refetchDistricts } = useQuery<string[]>({
     queryKey: ['admin-ward-districts'],
     queryFn: settingsApi.getDistricts,
     staleTime: 5 * 60 * 1000,
   });
 
   // Query: Service Wards
-  const { data: wardsData, isLoading: isLoadingWards } = useQuery({
+  const { data: wardsData, isLoading: isLoadingWards, isError: isWardsError, refetch: refetchWards } = useQuery({
     queryKey: ['admin-wards', { district: districtFilter, keyword: wardKeyword, active: activeFilter, page: wardPage }],
     queryFn: () =>
       settingsApi.getWards({
@@ -231,6 +221,13 @@ export const SettingsPage: React.FC = () => {
       {/* TAB 1: SYSTEM SETTINGS */}
       {activeTab === 'SYSTEM' && (
         <div className="card card-p" style={{ maxWidth: '800px', backgroundColor: 'var(--surface-1, #1e2238)' }}>
+          {isSettingsError ? (
+            <div role="alert" style={{ marginBottom: '16px', color: 'var(--c-red)' }}>
+              Không thể tải cấu hình hệ thống. <button type="button" className="tlink" onClick={() => refetchSettings()}>Thử lại</button>
+            </div>
+          ) : isLoadingSettings ? (
+            <p className="muted" style={{ marginBottom: '16px' }}>Đang tải cấu hình hệ thống…</p>
+          ) : null}
           <form onSubmit={handleSaveSettings} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border, rgba(255, 255, 255, 0.08))', paddingBottom: '16px' }}>
               <div>
@@ -244,7 +241,7 @@ export const SettingsPage: React.FC = () => {
               <button
                 type="submit"
                 className="btn btn-primary"
-                disabled={saveSettingsMutation.isPending}
+                disabled={saveSettingsMutation.isPending || isLoadingSettings || isSettingsError}
                 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
               >
                 {saveSettingsMutation.isPending ? <Loader2 className="spin" size={16} /> : <Save size={16} />}
@@ -269,7 +266,7 @@ export const SettingsPage: React.FC = () => {
                     type="number"
                     step="10000"
                     min="0"
-                    value={formSettings.FREESHIP_THRESHOLD || '300000'}
+                    value={formSettings.FREESHIP_THRESHOLD ?? ''}
                     onChange={(e) => handleSettingChange('FREESHIP_THRESHOLD', e.target.value)}
                     style={{
                       width: '100%',
@@ -284,7 +281,7 @@ export const SettingsPage: React.FC = () => {
                   />
                 </div>
                 <div style={{ fontSize: '12px', color: '#34d399', textAlign: 'right', marginTop: '4px' }}>
-                  {formatCurrency(formSettings.FREESHIP_THRESHOLD || 0)}
+                  {formSettings.FREESHIP_THRESHOLD ? formatCurrency(formSettings.FREESHIP_THRESHOLD) : ''}
                 </div>
               </div>
             </div>
@@ -304,7 +301,7 @@ export const SettingsPage: React.FC = () => {
                 type="number"
                 min="1"
                 max="10"
-                value={formSettings.MAX_ORDERS_PER_PACKAGE || '3'}
+                value={formSettings.MAX_ORDERS_PER_PACKAGE ?? ''}
                 onChange={(e) => handleSettingChange('MAX_ORDERS_PER_PACKAGE', e.target.value)}
                 style={{
                   width: '100%',
@@ -335,7 +332,7 @@ export const SettingsPage: React.FC = () => {
                   type="number"
                   step="1000"
                   min="0"
-                  value={formSettings.DEFAULT_SHIPPING_FEE || '20000'}
+                  value={formSettings.DEFAULT_SHIPPING_FEE ?? ''}
                   onChange={(e) => handleSettingChange('DEFAULT_SHIPPING_FEE', e.target.value)}
                   style={{
                     width: '100%',
@@ -349,7 +346,7 @@ export const SettingsPage: React.FC = () => {
                   }}
                 />
                 <div style={{ fontSize: '12px', color: '#34d399', textAlign: 'right', marginTop: '4px' }}>
-                  {formatCurrency(formSettings.DEFAULT_SHIPPING_FEE || 0)}
+                  {formSettings.DEFAULT_SHIPPING_FEE ? formatCurrency(formSettings.DEFAULT_SHIPPING_FEE) : ''}
                 </div>
               </div>
             </div>
@@ -369,7 +366,7 @@ export const SettingsPage: React.FC = () => {
                 type="number"
                 min="10"
                 max="120"
-                value={formSettings.ESTIMATED_DELIVERY_MINUTES || '30'}
+                value={formSettings.ESTIMATED_DELIVERY_MINUTES ?? ''}
                 onChange={(e) => handleSettingChange('ESTIMATED_DELIVERY_MINUTES', e.target.value)}
                 style={{
                   width: '100%',
@@ -397,7 +394,7 @@ export const SettingsPage: React.FC = () => {
               </div>
               <input
                 type="text"
-                value={formSettings.STORE_HOTLINE || '1900 6868'}
+                value={formSettings.STORE_HOTLINE ?? ''}
                 onChange={(e) => handleSettingChange('STORE_HOTLINE', e.target.value)}
                 style={{
                   width: '100%',
@@ -418,6 +415,11 @@ export const SettingsPage: React.FC = () => {
       {/* TAB 2: SERVICE WARDS & SHIPPING FEES */}
       {activeTab === 'WARDS' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {isDistrictsError && (
+            <div className="card card-p" role="alert">
+              Không thể tải danh sách quận/huyện. <button className="tlink" onClick={() => refetchDistricts()}>Thử lại</button>
+            </div>
+          )}
           {/* Filters Bar */}
           <div className="card card-p" style={{ padding: '16px 20px', backgroundColor: 'var(--surface-1, #1e2238)' }}>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', alignItems: 'center' }}>
@@ -512,6 +514,10 @@ export const SettingsPage: React.FC = () => {
               <div style={{ padding: '60px', textAlign: 'center', color: 'var(--muted, #94a3b8)' }}>
                 <Loader2 className="spin" size={32} style={{ margin: '0 auto 12px' }} />
                 <div>Đang tải danh sách khu vực giao hàng...</div>
+              </div>
+            ) : isWardsError ? (
+              <div className="card card-p" role="alert" style={{ textAlign: 'center', padding: '40px' }}>
+                Không thể tải danh sách phường/xã. <button className="tlink" onClick={() => refetchWards()}>Thử lại</button>
               </div>
             ) : wards.length === 0 ? (
               <div style={{ padding: '60px', textAlign: 'center', color: 'var(--muted, #94a3b8)' }}>

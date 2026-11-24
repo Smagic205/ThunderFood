@@ -1,67 +1,43 @@
 import { axiosClient } from '@/shared/api/axiosClient';
 import type { BannerItem, CreateBannerPayload, UpdateBannerPayload } from '../types';
 
-export const MOCK_BANNERS: BannerItem[] = [
-  {
-    id: 1,
-    imageUrl: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1200&auto=format&fit=crop&q=80',
-    linkUrl: '/products',
-    sortOrder: 1,
-    isActive: true,
-    createdAt: '2026-11-01T10:00:00',
-    updatedAt: '2026-11-01T10:00:00',
-  },
-  {
-    id: 2,
-    imageUrl: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=1200&auto=format&fit=crop&q=80',
-    linkUrl: '/vouchers',
-    sortOrder: 2,
-    isActive: true,
-    createdAt: '2026-11-05T14:30:00',
-    updatedAt: '2026-11-05T14:30:00',
-  },
-  {
-    id: 3,
-    imageUrl: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=1200&auto=format&fit=crop&q=80',
-    linkUrl: '/categories/burger',
-    sortOrder: 3,
-    isActive: false,
-    createdAt: '2026-11-10T09:15:00',
-    updatedAt: '2026-11-10T09:15:00',
-  },
-];
+interface ApiResponse<T> {
+  success: boolean;
+  message: string;
+  data: T;
+}
 
 export const bannersApi = {
   getAllBanners: async (): Promise<BannerItem[]> => {
-    try {
-      const res = await axiosClient.get('/admin/banners');
-      if (Array.isArray(res.data?.data)) {
-        return res.data.data;
-      }
-      return MOCK_BANNERS;
-    } catch {
-      return MOCK_BANNERS;
+    const res = await axiosClient.get<ApiResponse<BannerItem[]>>('/admin/banners');
+    if (!res.data?.success || !Array.isArray(res.data.data)) {
+      throw new Error(res.data?.message || 'Không thể tải danh sách banner');
     }
+    return res.data.data;
   },
 
   getBannerById: async (id: number): Promise<BannerItem> => {
-    const res = await axiosClient.get(`/admin/banners/${id}`);
-    return res.data?.data;
+    const res = await axiosClient.get<ApiResponse<BannerItem>>(`/admin/banners/${id}`);
+    if (!res.data?.success || !res.data.data) throw new Error(res.data?.message || 'Không tìm thấy banner');
+    return res.data.data;
   },
 
   createBanner: async (payload: CreateBannerPayload): Promise<BannerItem> => {
-    const res = await axiosClient.post('/admin/banners', payload);
-    return res.data?.data;
+    const res = await axiosClient.post<ApiResponse<BannerItem>>('/admin/banners', payload);
+    if (!res.data?.success || !res.data.data) throw new Error(res.data?.message || 'Không thể tạo banner');
+    return res.data.data;
   },
 
   updateBanner: async (id: number, payload: UpdateBannerPayload): Promise<BannerItem> => {
-    const res = await axiosClient.put(`/admin/banners/${id}`, payload);
-    return res.data?.data;
+    const res = await axiosClient.put<ApiResponse<BannerItem>>(`/admin/banners/${id}`, payload);
+    if (!res.data?.success || !res.data.data) throw new Error(res.data?.message || 'Không thể cập nhật banner');
+    return res.data.data;
   },
 
   toggleActive: async (id: number): Promise<BannerItem> => {
-    const res = await axiosClient.patch(`/admin/banners/${id}/toggle-active`);
-    return res.data?.data;
+    const res = await axiosClient.patch<ApiResponse<BannerItem>>(`/admin/banners/${id}/toggle-active`);
+    if (!res.data?.success || !res.data.data) throw new Error(res.data?.message || 'Không thể đổi trạng thái banner');
+    return res.data.data;
   },
 
   deleteBanner: async (id: number): Promise<void> => {

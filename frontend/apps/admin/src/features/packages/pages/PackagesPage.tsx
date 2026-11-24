@@ -20,7 +20,7 @@ export const PackagesPage: React.FC = () => {
   const [selectedPackage, setSelectedPackage] = useState<DeliveryPackage | null>(null);
 
   // Fetch packages
-  const { data: packages = [], isLoading } = useQuery({
+  const { data: packages = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['admin-packages'],
     queryFn: packagesApi.getPackages,
   });
@@ -150,6 +150,11 @@ export const PackagesPage: React.FC = () => {
             <div className="empty" style={{ padding: '40px' }}>
               <p className="muted">Đang tải danh sách gói hàng…</p>
             </div>
+          ) : isError ? (
+            <div className="empty" role="alert" style={{ padding: '40px', textAlign: 'center' }}>
+              <p className="muted">Không thể tải danh sách gói hàng từ máy chủ.</p>
+              <button className="btn btn-primary btn-sm" onClick={() => refetch()}>Thử lại</button>
+            </div>
           ) : filteredPackages.length > 0 ? (
             <div
               style={{
@@ -159,7 +164,6 @@ export const PackagesPage: React.FC = () => {
               }}
             >
               {filteredPackages.map((pkg) => {
-                const percent = Math.min(100, Math.round((pkg.orders.length / 7) * 100));
                 return (
                   <article
                     key={pkg.id}
@@ -212,33 +216,8 @@ export const PackagesPage: React.FC = () => {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <Box size={16} className="muted" />
                           <span>
-                            Dung lượng: <b>{pkg.orders.length}/7 đơn</b>
+                            Số đơn: <b>{pkg.orders.length}</b>
                           </span>
-                        </div>
-
-                        {/* Capacity Progress Bar */}
-                        <div
-                          style={{
-                            width: '100%',
-                            height: '6px',
-                            backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                            borderRadius: '99px',
-                            overflow: 'hidden',
-                          }}
-                        >
-                          <div
-                            style={{
-                              width: `${percent}%`,
-                              height: '100%',
-                              backgroundColor:
-                                pkg.orders.length >= 7
-                                  ? 'var(--c-red, #ef4444)'
-                                  : pkg.orders.length >= 5
-                                  ? 'var(--c-amber, #f59e0b)'
-                                  : 'var(--c-green, #10b981)',
-                              transition: 'width 0.3s ease',
-                            }}
-                          />
                         </div>
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>

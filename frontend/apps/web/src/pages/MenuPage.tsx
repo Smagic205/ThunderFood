@@ -273,7 +273,7 @@ export const MenuPage = () => {
         <div>
           <h1>Thực đơn</h1>
           <p className="muted" style={{ marginTop: '6px' }}>
-            Nấu tươi khi có đơn, giao nóng trong khoảng 30 phút.
+            Chọn món yêu thích và đặt giao tận nơi.
           </p>
         </div>
       </div>
