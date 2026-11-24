@@ -543,7 +543,9 @@ s{color:var(--ink-3)}
 .auth-main{display:grid;place-items:center;padding:clamp(24px,4vw,56px)}
 .auth-box{width:100%;max-width:440px}
 .auth-box h1{font-size:clamp(1.8rem,3.4vw,2.4rem);font-weight:800;margin-bottom:8px}
-.social{display:flex;justify-content:center;align-items:center;width:100%;min-height:46px}
+.social{display:flex;justify-content:center;align-items:center;width:100%;min-height:44px}
+.google-auth-container{display:flex;justify-content:center;align-items:center;width:100%;color-scheme:light}
+.google-auth-inner,.google-auth-inner>div,.google-auth-inner iframe,.social iframe{border-radius:9999px!important;overflow:hidden!important;clip-path:inset(0 round 9999px)!important;-webkit-mask-image:-webkit-radial-gradient(white,black)!important;transform:translateZ(0)!important}
 .auth-switch-prompt{margin-top:28px;padding:14px 20px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:16px;text-align:center;font-size:15px;color:#C7CEF2;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 4px 12px rgba(0,0,0,.15)}
 .auth-switch-prompt span{color:#C7CEF2;font-weight:500}
 .auth-switch-link{color:var(--c-brand,#ff7a00)!important;font-weight:700!important;font-size:16px!important;text-decoration:underline!important;transition:all .2s ease;display:inline-flex;align-items:center}

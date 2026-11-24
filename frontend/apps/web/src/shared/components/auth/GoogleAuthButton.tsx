@@ -43,10 +43,6 @@ export const GoogleAuthButton = ({
           // Làm trống container trước khi render lại
           if (containerRef.current) {
             containerRef.current.innerHTML = '';
-            
-            // Tính toán chiều rộng nút chuẩn Google (tối đa 400px, tối thiểu 240px)
-            const parentWidth = containerRef.current.clientWidth || 380;
-            const btnWidth = Math.min(400, Math.max(240, Math.floor(parentWidth)));
 
             google.accounts.id.renderButton(containerRef.current, {
               theme: 'outline',
@@ -55,8 +51,25 @@ export const GoogleAuthButton = ({
               text,
               shape: 'pill',
               logo_alignment: 'left',
-              width: btnWidth,
             });
+
+            // Sau khi Google chèn iframe vào, bo tròn và clip triệt để các góc vuông trắng
+            const clipIframes = () => {
+              if (!containerRef.current) return;
+              const iframes = containerRef.current.querySelectorAll('iframe');
+              iframes.forEach((iframe) => {
+                iframe.style.borderRadius = '9999px';
+                iframe.style.overflow = 'hidden';
+                iframe.style.clipPath = 'inset(0 round 9999px)';
+                (iframe.style as any).WebkitMaskImage = '-webkit-radial-gradient(white, black)';
+                iframe.style.transform = 'translateZ(0)';
+                iframe.style.display = 'block';
+              });
+            };
+
+            clipIframes();
+            setTimeout(clipIframes, 50);
+            setTimeout(clipIframes, 200);
           }
 
           // Kích hoạt thêm Google One Tap nếu trình duyệt hỗ trợ
@@ -129,16 +142,33 @@ export const GoogleAuthButton = ({
 
   return (
     <div
-      ref={containerRef}
+      className="google-auth-container"
       style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         width: '100%',
-        minHeight: '46px',
+        minHeight: '44px',
+        colorScheme: 'light',
         opacity: disabled ? 0.6 : 1,
         pointerEvents: disabled ? 'none' : 'auto',
       }}
-    />
+    >
+      <div
+        ref={containerRef}
+        className="google-auth-inner"
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderRadius: '9999px',
+          overflow: 'hidden',
+          clipPath: 'inset(0 round 9999px)',
+          WebkitMaskImage: '-webkit-radial-gradient(white, black)',
+          transform: 'translateZ(0)',
+          maxWidth: '100%',
+        }}
+      />
+    </div>
   );
 };
