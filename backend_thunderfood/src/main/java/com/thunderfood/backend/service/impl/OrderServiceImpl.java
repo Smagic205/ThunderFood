@@ -1,5 +1,6 @@
 package com.thunderfood.backend.service.impl;
 
+import com.thunderfood.backend.config.security.SecurityUtils;
 import com.thunderfood.backend.dto.address.AddressResponse;
 import com.thunderfood.backend.dto.cart.CartItemResponse;
 import com.thunderfood.backend.dto.common.PageResponse;
@@ -434,8 +435,9 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional(readOnly = true)
     public OrderResponse getOrderDetail(Long userId, Long orderId) {
-        Order order = orderRepository.findByIdAndUserId(orderId, userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với ID: " + orderId));
+        Order order = (SecurityUtils.isStaffOrAdmin())
+                ? orderRepository.findById(orderId).orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với ID: " + orderId))
+                : orderRepository.findByIdAndUserId(orderId, userId).orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với ID: " + orderId));
 
         List<OrderItemResponse> itemResponses = new ArrayList<>();
         if (order.getItems() != null && !order.getItems().isEmpty()) {
@@ -464,8 +466,9 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional(readOnly = true)
     public OrderTrackingResponse getOrderTracking(Long userId, Long orderId) {
-        Order order = orderRepository.findByIdAndUserId(orderId, userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với ID: " + orderId));
+        Order order = (SecurityUtils.isStaffOrAdmin())
+                ? orderRepository.findById(orderId).orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với ID: " + orderId))
+                : orderRepository.findByIdAndUserId(orderId, userId).orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với ID: " + orderId));
 
         List<OrderStatusHistory> historyList = orderStatusHistoryRepository.findByOrderIdOrderByCreatedAtAsc(orderId);
         List<OrderStatusHistoryResponse> timeline = historyList.stream()
@@ -498,10 +501,11 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public OrderResponse cancelOrder(Long userId, Long orderId, CancelOrderRequest request) {
-        Order order = orderRepository.findByIdAndUserId(orderId, userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với ID: " + orderId));
+        Order order = (SecurityUtils.isAdmin())
+                ? orderRepository.findById(orderId).orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với ID: " + orderId))
+                : orderRepository.findByIdAndUserId(orderId, userId).orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với ID: " + orderId));
 
-        if (!"PENDING".equalsIgnoreCase(order.getStatus())) {
+        if (!"PENDING".equalsIgnoreCase(order.getStatus()) && !SecurityUtils.isAdmin()) {
             throw new IllegalArgumentException("Đơn hàng đang ở trạng thái '" + order.getStatus() + 
                     "', đã được cửa hàng tiếp nhận/xử lý nên không thể tự hủy. Vui lòng liên hệ nhân viên để được hỗ trợ.");
         }

@@ -21,4 +21,21 @@ public final class SecurityUtils {
     public static Optional<Long> getCurrentUserId() {
         return getCurrentUser().map(User::getId);
     }
+
+    public static boolean hasRole(String roleName) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.isAuthenticated()) {
+            return authentication.getAuthorities().stream()
+                    .anyMatch(a -> a.getAuthority().equalsIgnoreCase("ROLE_" + roleName) || a.getAuthority().equalsIgnoreCase(roleName));
+        }
+        return false;
+    }
+
+    public static boolean isAdmin() {
+        return hasRole("ADMIN");
+    }
+
+    public static boolean isStaffOrAdmin() {
+        return hasRole("STAFF") || hasRole("ADMIN");
+    }
 }
