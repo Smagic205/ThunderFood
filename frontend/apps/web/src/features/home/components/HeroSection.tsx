@@ -1,6 +1,7 @@
-import { Truck, Shield, Zap, Utensils } from 'lucide-react';
+import { Truck, Shield, Zap } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
+import brandLogo from '@/assets/hero-logo.png';
 import type { ProductListItem } from '@/shared/types';
 
 interface HeroSectionProps {
@@ -29,7 +30,7 @@ export function HeroSection({ featuredProduct }: HeroSectionProps) {
 
         <div className="grid grid-cols-1 md:grid-cols-[1.05fr_0.95fr] gap-6 items-center p-[clamp(28px,5.5vw,72px)]">
           <div>
-            <h1 className="text-[clamp(2.35rem,5.4vw,4.4rem)] font-extrabold tracking-tight  leading-[1.02] text-balance font-['Bricolage_Grotesque']">
+            <h1 className="text-[clamp(2.35rem,5.4vw,4.4rem)] font-extrabold tracking-tight leading-[1.02] text-balance font-['Bricolage_Grotesque']">
               Cảm xúc thăng hoa<br />Nâng tầm vị giác.
             </h1>
             <p className="mt-5 text-[clamp(1rem,1.5vw,1.15rem)] text-[#C7CEF2] max-w-[46ch]">
@@ -57,18 +58,14 @@ export function HeroSection({ featuredProduct }: HeroSectionProps) {
           </div>
 
           <div className="relative flex flex-col items-center justify-center min-h-[340px] md:min-h-[420px] mt-8 md:mt-0 pb-14 md:pb-18">
-            {featuredProduct?.thumbnailUrl || featuredProduct?.imageUrl ? (
-              <img
-                src={featuredProduct.thumbnailUrl || featuredProduct.imageUrl}
-                alt={featuredProduct.name}
-                className="w-[min(85%,300px)] sm:w-[340px] md:w-[380px] lg:w-[420px] h-[340px] md:h-[420px] object-contain drop-shadow-[0_20px_35px_rgba(0,0,0,0.45)] transition-transform duration-300 hover:scale-105 select-none"
-              />
-            ) : (
-              <div className="w-[min(85%,300px)] sm:w-[340px] md:w-[380px] lg:w-[420px] h-[340px] md:h-[420px] grid place-items-center text-white/50">
-                <Utensils size={88} strokeWidth={1.1} aria-hidden="true" />
-              </div>
-            )}
+            {/* Ảnh Logo thương hiệu cố định - luôn hiển thị logo ThunderFood */}
+            <img
+              src={brandLogo}
+              alt="ThunderFood"
+              className="w-[min(85%,300px)] sm:w-[340px] md:w-[380px] lg:w-[420px] h-auto object-contain drop-shadow-[0_20px_35px_rgba(0,0,0,0.45)] transition-transform duration-300 hover:scale-105 select-none"
+            />
 
+            {/* Badge nổi điều hướng đặt món */}
             <Link
               to={featuredProduct ? `/product/${featuredProduct.slug}` : '/menu'}
               className="absolute bottom-[-10px] md:bottom-[0px] left-1/2 -translate-x-1/2 w-[max-content] max-w-[95%] flex items-center gap-4 sm:gap-5 p-4 sm:p-5 pr-6 sm:pr-8 rounded-[24px] sm:rounded-[28px] bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20 transition-all duration-300 shadow-2xl hover:scale-[1.02]"
@@ -78,11 +75,15 @@ export function HeroSection({ featuredProduct }: HeroSectionProps) {
               </span>
               <span className="flex flex-col min-w-0">
                 <small className="block text-[#B9C0EA] text-sm sm:text-base font-medium tracking-wide">
-                  {featuredProduct ? 'Bán chạy nhất' : 'Thực đơn ThunderFood'}
+                  {featuredProduct ? 'Bán chạy nhất' : 'Khám phá ngay'}
                 </small>
                 <b className="text-[18px] sm:text-[20px] text-white truncate">
-                  {featuredProduct ? featuredProduct.name : 'Khám phá các món ăn'}
-                  {featuredProduct && <span className="text-[var(--volt)] ml-2 font-extrabold">{featuredProduct.price.toLocaleString('vi-VN')}đ</span>}
+                  {featuredProduct ? featuredProduct.name : 'Thực đơn ThunderFood'}
+                  {featuredProduct && (
+                    <span className="text-[var(--volt)] ml-2 font-extrabold">
+                      {featuredProduct.price.toLocaleString('vi-VN')}đ
+                    </span>
+                  )}
                 </b>
               </span>
             </Link>
