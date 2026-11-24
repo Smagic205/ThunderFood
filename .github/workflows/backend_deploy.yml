@@ -1,4 +1,4 @@
-name: Build and Push Backend to GHCR
+name: Backend Deploy (GHCR & Render)
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - main
     paths:
       - 'backend_thunderfood/**'
-      - '.github/workflows/deploy.yml'
+      - '.github/workflows/backend_deploy.yml'
 
 jobs:
   build-and-push:
