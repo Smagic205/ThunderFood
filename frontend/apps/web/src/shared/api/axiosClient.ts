@@ -77,6 +77,10 @@ axiosClient.interceptors.response.use(
     // Xử lý lỗi 403 Forbidden (không có quyền truy cập dữ liệu người khác hoặc chức năng bị cấm)
     if (error.response?.status === 403) {
       const message = error.response.data?.message || 'Bạn không có quyền thực hiện thao tác này';
+      if (message.toLowerCase().includes('khóa') || error.response?.data?.code === 'ACCOUNT_LOCKED') {
+        useAuthStore.getState().logout();
+        window.location.href = '/login';
+      }
       useToastStore.getState().showToast(message, 'error');
     }
 

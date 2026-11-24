@@ -53,11 +53,37 @@ public class AuthServiceImpl implements AuthService {
     private final AuthenticationManager authenticationManager;
     private final EmailService emailService;
 
+    private static final java.util.Set<String> DISPOSABLE_EMAIL_DOMAINS = java.util.Set.of(
+            "tempmail.com", "10minutemail.com", "guerrillamail.com", "mailinator.com",
+            "throwawaymail.com", "yopmail.com", "trashmail.com", "sharklasers.com",
+            "dispostable.com", "getairmail.com", "temp-mail.org", "mohmal.com"
+    );
+
+    private boolean isDisposableEmail(String email) {
+        if (email == null || !email.contains("@")) return false;
+        String domain = email.substring(email.indexOf("@") + 1).toLowerCase().trim();
+        return DISPOSABLE_EMAIL_DOMAINS.contains(domain);
+    }
+
     @Override
     @Transactional
     public AuthResponse register(RegisterRequest request) {
+        if (isDisposableEmail(request.getEmail())) {
+            throw new ConflictException("Hệ thống không chấp nhận địa chỉ email tạm thời / rác. Vui lòng sử dụng email thực.");
+        }
+
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new ConflictException("Email đã được sử dụng");
+        }
+
+        if (request.getPhone() != null && !request.getPhone().isBlank()) {
+            String cleanPhone = request.getPhone().trim();
+            if (userRepository.existsByPhoneAndStatus(cleanPhone, "LOCKED")) {
+                throw new ConflictException("Số điện thoại này đã bị khóa do vi phạm chính sách của ThunderFood. Không thể tạo tài khoản mới.");
+            }
+            if (userRepository.existsByPhone(cleanPhone)) {
+                throw new ConflictException("Số điện thoại này đã được sử dụng cho một tài khoản khác");
+            }
         }
 
         Role userRole = roleRepository.findByName("CUSTOMER")
@@ -173,6 +199,10 @@ public class AuthServiceImpl implements AuthService {
 
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
+
+        if ("LOCKED".equalsIgnoreCase(user.getStatus())) {
+            throw new AccessDeniedException("Tài khoản đã bị khóa. Vui lòng liên hệ quản trị viên.");
+        }
 
         UserDetailsImpl userDetails = new UserDetailsImpl(user);
 

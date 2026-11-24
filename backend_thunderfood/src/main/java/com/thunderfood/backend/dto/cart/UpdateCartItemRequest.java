@@ -16,6 +16,6 @@ public class UpdateCartItemRequest {
 
     @NotNull(message = "Số lượng món không được để trống")
     @Min(value = 1, message = "Số lượng món tối thiểu phải là 1. Nếu muốn xóa món ăn, vui lòng sử dụng chức năng xóa.")
-    @Max(value = 99, message = "Số lượng món tối đa là 99")
+    @Max(value = 20, message = "Số lượng món tối đa cho mỗi món là 20")
     private Integer quantity;
 }

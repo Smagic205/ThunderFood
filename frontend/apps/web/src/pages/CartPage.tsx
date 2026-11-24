@@ -17,6 +17,7 @@ import { useToastStore } from '@/shared/stores/toastStore';
 import { useAuthStore } from '@/app/store/authStore';
 
 const FREESHIP_THRESHOLD = 200000;
+const MAX_ITEM_QUANTITY = 20;
 const SHIPPING_FEE = 15000;
 
 export const CartPage: React.FC = () => {
@@ -47,8 +48,8 @@ export const CartPage: React.FC = () => {
 
   const handleUpdateQuantity = async (itemId: number, newQty: number, maxStock: number) => {
     if (newQty < 1) return;
-    if (newQty > 99) {
-      showToast('Số lượng tối đa cho mỗi món là 99', 'info');
+    if (newQty > MAX_ITEM_QUANTITY) {
+      showToast(`Số lượng tối đa cho mỗi món là ${MAX_ITEM_QUANTITY}`, 'info');
       return;
     }
     if (maxStock && newQty > maxStock) {
@@ -287,9 +288,20 @@ export const CartPage: React.FC = () => {
                         type="button" 
                         className="ibtn" 
                         aria-label="Tăng" 
-                        disabled={isItemLoading || (item.stockQuantity ? item.quantity >= item.stockQuantity : false)}
-                        onClick={() => handleUpdateQuantity(item.id, item.quantity + 1, item.stockQuantity)}
-                        style={{ width: 30, height: 30 }}
+                        disabled={isItemLoading || item.quantity >= MAX_ITEM_QUANTITY || (item.stockQuantity ? item.quantity >= item.stockQuantity : false)}
+                        onClick={() => {
+                          if (item.quantity >= MAX_ITEM_QUANTITY) {
+                            showToast(`Số lượng tối đa cho mỗi món là ${MAX_ITEM_QUANTITY}`, 'info');
+                            return;
+                          }
+                          handleUpdateQuantity(item.id, item.quantity + 1, item.stockQuantity);
+                        }}
+                        style={{ 
+                          width: 30, 
+                          height: 30,
+                          opacity: (item.quantity >= MAX_ITEM_QUANTITY || (item.stockQuantity ? item.quantity >= item.stockQuantity : false)) ? 0.35 : 1,
+                          cursor: (item.quantity >= MAX_ITEM_QUANTITY || (item.stockQuantity ? item.quantity >= item.stockQuantity : false)) ? 'not-allowed' : 'pointer'
+                        }}
                       >
                         <Plus size={14} />
                       </button>

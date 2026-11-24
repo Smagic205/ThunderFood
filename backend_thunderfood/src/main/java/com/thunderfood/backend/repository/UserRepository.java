@@ -13,6 +13,8 @@ import java.util.Optional;
 public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificationExecutor<User> {
     Optional<User> findByEmail(String email);
     boolean existsByEmail(String email);
+    boolean existsByPhone(String phone);
+    boolean existsByPhoneAndStatus(String phone, String status);
     List<User> findByRoleNameOrderByCreatedAtDesc(String roleName);
     long countByRoleName(String roleName);
     long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);

@@ -15,6 +15,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -291,6 +292,34 @@ class OrderServiceTest {
     // =========================================================================
     // 2. PLACE ORDER TESTS
     // =========================================================================
+
+    @Test
+    @DisplayName("placeOrder ném AccessDeniedException khi tài khoản người dùng đang bị khóa (LOCKED)")
+    void testPlaceOrder_UserLocked() {
+        user.setStatus("LOCKED");
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+        PlaceOrderRequest req = PlaceOrderRequest.builder().addressId(100L).paymentMethod("COD").build();
+
+        AccessDeniedException ex = assertThrows(AccessDeniedException.class, () -> orderService.placeOrder(1L, req));
+        assertTrue(ex.getMessage().contains("Tài khoản của bạn đã bị khóa"));
+    }
+
+    @Test
+    @DisplayName("placeOrder ném AccessDeniedException khi số điện thoại nhận hàng thuộc tài khoản bị khóa")
+    void testPlaceOrder_ReceiverPhoneBlacklisted() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(cartRepository.findByUserId(1L)).thenReturn(Optional.of(cart));
+        when(cartItemRepository.findByCartId(50L)).thenReturn(List.of(cartItem1));
+        when(addressRepository.findByIdAndUserId(100L, 1L)).thenReturn(Optional.of(address));
+        when(userRepository.existsByPhoneAndStatus("0987654321", "LOCKED")).thenReturn(true);
+
+        PlaceOrderRequest req = PlaceOrderRequest.builder().addressId(100L).paymentMethod("COD").build();
+
+        AccessDeniedException ex = assertThrows(AccessDeniedException.class, () -> orderService.placeOrder(1L, req));
+        assertTrue(ex.getMessage().contains("Số điện thoại nhận hàng"));
+        assertTrue(ex.getMessage().contains("thuộc danh sách đen bị khóa"));
+    }
 
     @Test
     @DisplayName("placeOrder ném ngoại lệ khi món hết hàng hoặc không đủ tồn kho")

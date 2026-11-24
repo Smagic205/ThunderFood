@@ -134,6 +134,36 @@ class AuthServiceTest {
     }
 
     @Test
+    @DisplayName("Đăng ký ném ConflictException khi dùng email tạm thời / rác")
+    void testRegister_DisposableEmail() {
+        RegisterRequest request = new RegisterRequest();
+        request.setFullName("Kẻ Spammer");
+        request.setEmail("troll99@tempmail.com");
+        request.setPassword("12345678");
+
+        ConflictException ex = assertThrows(ConflictException.class, () -> authService.register(request));
+        assertTrue(ex.getMessage().contains("không chấp nhận địa chỉ email tạm thời"));
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Đăng ký ném ConflictException khi số điện thoại thuộc tài khoản bị khóa")
+    void testRegister_PhoneBelongsToLockedUser() {
+        RegisterRequest request = new RegisterRequest();
+        request.setFullName("Nguyễn Văn A");
+        request.setEmail("user2@gmail.com");
+        request.setPassword("12345678");
+        request.setPhone("0987654321");
+
+        when(userRepository.existsByEmail("user2@gmail.com")).thenReturn(false);
+        when(userRepository.existsByPhoneAndStatus("0987654321", "LOCKED")).thenReturn(true);
+
+        ConflictException ex = assertThrows(ConflictException.class, () -> authService.register(request));
+        assertTrue(ex.getMessage().contains("Số điện thoại này đã bị khóa do vi phạm chính sách"));
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
     @DisplayName("Đăng nhập thành công trả về AuthResponse")
     void testLogin_Success() {
         LoginRequest request = new LoginRequest();
@@ -323,6 +353,18 @@ class AuthServiceTest {
         assertEquals("mock-access-token", response.getToken());
         assertEquals("mock-refresh-token", response.getRefreshToken());
         verify(userTokenRepository).save(tokenEntity);
+    }
+
+    @Test
+    @DisplayName("Làm mới token ném AccessDeniedException khi tài khoản bị khóa")
+    void testRefreshToken_LockedAccount() {
+        String refreshToken = "valid-refresh-token";
+        User lockedUser = User.builder().id(1L).email("user@gmail.com").status("LOCKED").build();
+
+        when(jwtService.extractUsername(refreshToken)).thenReturn("user@gmail.com");
+        when(userRepository.findByEmail("user@gmail.com")).thenReturn(Optional.of(lockedUser));
+
+        assertThrows(AccessDeniedException.class, () -> authService.refreshToken(refreshToken));
     }
 
     @Test

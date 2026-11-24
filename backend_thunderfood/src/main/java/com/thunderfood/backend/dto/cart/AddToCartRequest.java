@@ -19,6 +19,6 @@ public class AddToCartRequest {
 
     @NotNull(message = "Số lượng không được để trống")
     @Min(value = 1, message = "Số lượng món tối thiểu phải là 1")
-    @Max(value = 99, message = "Số lượng món tối đa cho mỗi lần thêm là 99")
+    @Max(value = 20, message = "Số lượng món tối đa cho mỗi lần thêm là 20")
     private Integer quantity;
 }

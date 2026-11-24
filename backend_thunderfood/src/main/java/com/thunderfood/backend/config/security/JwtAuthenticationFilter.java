@@ -1,5 +1,7 @@
 package com.thunderfood.backend.config.security;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.thunderfood.backend.dto.ApiResponse;
 import com.thunderfood.backend.service.JwtService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -7,6 +9,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -58,6 +62,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
                 if (jwtService.isTokenValid(jwt, userDetails)) {
+                    // Kiểm tra tài khoản có bị khóa (LOCKED) hoặc vô hiệu hóa không
+                    if (!userDetails.isAccountNonLocked() || !userDetails.isEnabled()) {
+                        log.warn("Tài khoản {} đã bị khóa hoặc vô hiệu hóa, từ chối request [{}]", userEmail, request.getRequestURI());
+                        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                        response.setCharacterEncoding("UTF-8");
+                        response.setStatus(HttpStatus.FORBIDDEN.value());
+
+                        ApiResponse<String> apiResponse = ApiResponse.error("Tài khoản của bạn đã bị khóa bởi quản trị viên. Vui lòng liên hệ hỗ trợ.");
+                        new ObjectMapper().writeValue(response.getOutputStream(), apiResponse);
+                        return;
+                    }
+
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                             userDetails,
                             null,

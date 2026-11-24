@@ -16,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -57,6 +58,13 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional(readOnly = true)
     public CheckoutPreviewResponse previewCheckout(Long userId, CheckoutPreviewRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thông tin tài khoản người dùng"));
+
+        if ("LOCKED".equalsIgnoreCase(user.getStatus())) {
+            throw new AccessDeniedException("Tài khoản của bạn đã bị khóa bởi quản trị viên.");
+        }
+
         Cart cart = getCartOrThrow(userId);
         List<CartItem> cartItems = cartItemRepository.findByCartId(cart.getId());
         if (cartItems.isEmpty()) {
@@ -170,6 +178,10 @@ public class OrderServiceImpl implements OrderService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thông tin tài khoản người dùng"));
 
+        if ("LOCKED".equalsIgnoreCase(user.getStatus())) {
+            throw new AccessDeniedException("Tài khoản của bạn đã bị khóa bởi quản trị viên. Không thể đặt hàng.");
+        }
+
         Cart cart = getCartOrThrow(userId);
         List<CartItem> cartItems = cartItemRepository.findByCartId(cart.getId());
         if (cartItems.isEmpty()) {
@@ -177,6 +189,12 @@ public class OrderServiceImpl implements OrderService {
         }
 
         Address address = getAddressOrThrow(request.getAddressId(), userId);
+        if (address.getPhone() != null && !address.getPhone().isBlank()) {
+            String cleanReceiverPhone = address.getPhone().trim();
+            if (userRepository.existsByPhoneAndStatus(cleanReceiverPhone, "LOCKED")) {
+                throw new AccessDeniedException("Số điện thoại nhận hàng (" + cleanReceiverPhone + ") thuộc danh sách đen bị khóa do vi phạm chính sách của ThunderFood. Không thể đặt hàng.");
+            }
+        }
         ServiceWard ward = validateAndGetWard(address);
 
         // Kiểm tra tồn kho & trạng thái kinh doanh của từng món

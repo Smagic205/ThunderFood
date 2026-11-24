@@ -29,6 +29,8 @@ import java.util.*;
 @RequiredArgsConstructor
 public class CartServiceImpl implements CartService {
 
+    public static final int MAX_QUANTITY_PER_ITEM = 20;
+
     private final CartRepository cartRepository;
     private final CartItemRepository cartItemRepository;
     private final ProductRepository productRepository;
@@ -68,6 +70,10 @@ public class CartServiceImpl implements CartService {
             throw new IllegalArgumentException("Số lượng món ăn tối thiểu phải là 1");
         }
 
+        if (request.getQuantity() > MAX_QUANTITY_PER_ITEM) {
+            throw new IllegalArgumentException("Số lượng món ăn tối đa cho mỗi lần thêm là " + MAX_QUANTITY_PER_ITEM);
+        }
+
         Product product = productRepository.findById(request.getProductId())
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy món ăn với ID: " + request.getProductId()));
 
@@ -81,6 +87,10 @@ public class CartServiceImpl implements CartService {
         if (existingItemOpt.isPresent()) {
             CartItem existingItem = existingItemOpt.get();
             int newQuantity = existingItem.getQuantity() + request.getQuantity();
+
+            if (newQuantity > MAX_QUANTITY_PER_ITEM) {
+                throw new IllegalArgumentException("Số lượng món ăn '" + product.getName() + "' trong giỏ hàng tối đa là " + MAX_QUANTITY_PER_ITEM + ". Bạn đã có " + existingItem.getQuantity() + " món trong giỏ.");
+            }
 
             if (product.getStockQuantity() != null && newQuantity > product.getStockQuantity()) {
                 throw new IllegalArgumentException("Số lượng trong giỏ (" + newQuantity + ") vượt quá số lượng còn lại trong kho (" + product.getStockQuantity() + ")");
@@ -116,6 +126,10 @@ public class CartServiceImpl implements CartService {
     public CartResponse updateCartItem(Long userId, Long itemId, UpdateCartItemRequest request) {
         if (request.getQuantity() == null || request.getQuantity() < 1) {
             throw new IllegalArgumentException("Số lượng món tối thiểu phải là 1. Nếu muốn xóa món ăn khỏi giỏ hàng, vui lòng sử dụng chức năng xóa.");
+        }
+
+        if (request.getQuantity() > MAX_QUANTITY_PER_ITEM) {
+            throw new IllegalArgumentException("Số lượng món ăn tối đa cho mỗi món là " + MAX_QUANTITY_PER_ITEM);
         }
 
         CartItem item = cartItemRepository.findByIdAndCartUserId(itemId, userId)
