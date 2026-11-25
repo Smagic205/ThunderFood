@@ -123,8 +123,19 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public StaffAccountResponse createStaffAccount(RegisterRequest request) {
-        if (userRepository.existsByEmail(request.getEmail())) {
+        String cleanEmail = request.getEmail().trim().toLowerCase();
+        if (userRepository.existsByEmail(cleanEmail)) {
             throw new ConflictException("Email đã được sử dụng");
+        }
+
+        String cleanPhone = request.getPhone() != null ? request.getPhone().trim() : null;
+        if (cleanPhone != null && !cleanPhone.isBlank()) {
+            if (userRepository.existsByPhoneAndStatus(cleanPhone, "LOCKED")) {
+                throw new ConflictException("Số điện thoại này thuộc về tài khoản đã bị khóa.");
+            }
+            if (userRepository.existsByPhone(cleanPhone)) {
+                throw new ConflictException("Số điện thoại này đã được sử dụng cho một tài khoản khác");
+            }
         }
 
         Role staffRole = roleRepository.findByName("STAFF")
@@ -132,9 +143,9 @@ public class UserServiceImpl implements UserService {
 
         User staffUser = User.builder()
                 .fullName(request.getFullName().trim())
-                .email(request.getEmail().trim().toLowerCase())
+                .email(cleanEmail)
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
-                .phone(request.getPhone() != null ? request.getPhone().trim() : null)
+                .phone(cleanPhone)
                 .role(staffRole)
                 .authProvider("LOCAL")
                 .status("ACTIVE")

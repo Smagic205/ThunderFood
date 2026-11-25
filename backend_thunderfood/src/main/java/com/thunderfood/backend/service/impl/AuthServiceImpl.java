@@ -326,8 +326,21 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public void forgotPassword(String email) {
-        User user = userRepository.findByEmail(email)
+        if (email == null || email.isBlank()) {
+            throw new IllegalArgumentException("Email không được để trống");
+        }
+        String cleanEmail = email.trim().toLowerCase();
+
+        User user = userRepository.findByEmail(cleanEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản với email này"));
+
+        if ("LOCKED".equalsIgnoreCase(user.getStatus())) {
+            throw new AccessDeniedException("Tài khoản của bạn đã bị khóa bởi quản trị viên.");
+        }
+
+        if ("UNVERIFIED".equalsIgnoreCase(user.getStatus())) {
+            throw new IllegalArgumentException("Tài khoản của bạn chưa được kích hoạt. Vui lòng kiểm tra email kích hoạt tài khoản trước khi đặt lại mật khẩu.");
+        }
 
         // Generate 6-digit OTP using SecureRandom (000000 - 999999)
         int otpNumber = SECURE_RANDOM.nextInt(1_000_000);
@@ -346,14 +359,23 @@ public class AuthServiceImpl implements AuthService {
 
         userTokenRepository.save(userToken);
 
-        emailService.sendPasswordResetOtp(email, otp);
+        emailService.sendPasswordResetOtp(user.getEmail(), otp);
     }
 
     @Override
     @Transactional
     public void resetPassword(ResetPasswordRequest request) {
-        User user = userRepository.findByEmail(request.getEmail())
+        String cleanEmail = request.getEmail().trim().toLowerCase();
+        User user = userRepository.findByEmail(cleanEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản với email này"));
+
+        if ("LOCKED".equalsIgnoreCase(user.getStatus())) {
+            throw new AccessDeniedException("Tài khoản của bạn đã bị khóa bởi quản trị viên.");
+        }
+
+        if ("UNVERIFIED".equalsIgnoreCase(user.getStatus())) {
+            throw new IllegalArgumentException("Tài khoản của bạn chưa được kích hoạt. Vui lòng kích hoạt tài khoản trước.");
+        }
 
         UserToken userToken = userTokenRepository.findByUserIdAndType(user.getId(), "OTP")
                 .orElseThrow(() -> new IllegalArgumentException("Mã OTP không hợp lệ hoặc đã hết hạn"));
@@ -372,7 +394,8 @@ public class AuthServiceImpl implements AuthService {
         }
 
         // 3. Kiểm tra mã OTP
-        if (!userToken.getToken().equals(request.getOtp())) {
+        String submittedOtp = request.getOtp() != null ? request.getOtp().trim() : "";
+        if (!userToken.getToken().equals(submittedOtp)) {
             attempts++;
             userToken.setFailedAttempts(attempts);
             if (attempts >= 5) {
@@ -383,12 +406,12 @@ public class AuthServiceImpl implements AuthService {
             throw new IllegalArgumentException("Mã OTP không chính xác. Bạn còn " + (5 - attempts) + " lần thử.");
         }
 
-        // 4. Đúng OTP: Cập nhật mật khẩu và xóa token
+        // 4. Đúng OTP: Cập nhật mật khẩu, xóa token OTP và thu hồi toàn bộ Refresh Token cũ
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
 
-        // Delete OTP after successful reset
         userTokenRepository.delete(userToken);
+        logoutAllDevices(user.getId());
     }
 
     @Override
@@ -510,18 +533,29 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     @PreAuthorize("hasRole('ADMIN')")
     public AuthResponse registerStaff(RegisterRequest request) {
-        if (userRepository.existsByEmail(request.getEmail())) {
+        String cleanEmail = request.getEmail().trim().toLowerCase();
+        if (userRepository.existsByEmail(cleanEmail)) {
             throw new ConflictException("Email đã được sử dụng");
+        }
+
+        String cleanPhone = request.getPhone() != null ? request.getPhone().trim() : null;
+        if (cleanPhone != null && !cleanPhone.isBlank()) {
+            if (userRepository.existsByPhoneAndStatus(cleanPhone, "LOCKED")) {
+                throw new ConflictException("Số điện thoại này thuộc về tài khoản đã bị khóa.");
+            }
+            if (userRepository.existsByPhone(cleanPhone)) {
+                throw new ConflictException("Số điện thoại này đã được sử dụng cho một tài khoản khác");
+            }
         }
 
         Role userRole = roleRepository.findByName("STAFF")
                 .orElseThrow(() -> new RuntimeException("Role STAFF không tồn tại trong hệ thống"));
 
         User user = User.builder()
-                .fullName(request.getFullName())
-                .email(request.getEmail())
+                .fullName(request.getFullName().trim())
+                .email(cleanEmail)
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
-                .phone(request.getPhone())
+                .phone(cleanPhone)
                 .role(userRole)
                 .authProvider("LOCAL")
                 .status("ACTIVE")
@@ -535,9 +569,10 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public AuthResponse loginStaff(LoginRequest request) {
-        authenticateCredentials(request.getEmail(), request.getPassword());
+        String cleanEmail = request.getEmail().trim().toLowerCase();
+        authenticateCredentials(cleanEmail, request.getPassword());
 
-        User user = userRepository.findByEmail(request.getEmail())
+        User user = userRepository.findByEmail(cleanEmail)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
 
         if (!"STAFF".equals(user.getRole().getName())) {
