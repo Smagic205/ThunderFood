@@ -128,8 +128,8 @@ export const ReviewsPage = () => {
                   </div>
                 </div>
 
-                <div className="faint" style={{ fontSize: 12, marginTop: 4 }}>Mã đơn #{review.orderId}</div>
-                <p style={{ margin: '8px 0', color: review.isHidden ? 'var(--ink-3)' : 'var(--ink)', whiteSpace: 'pre-wrap' }}>
+                <div className="faint" style={{ fontSize: 12, marginTop: 4 }}>Mã đơn {review.orderCode || `#${review.orderId}`}</div>
+                <p style={{ margin: '8px 0', color: review.isHidden ? 'var(--ink-3)' : 'var(--ink)', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
                   {review.comment || 'Khách không để lại nhận xét.'}
                 </p>
                 {review.imageUrl && (
@@ -147,7 +147,7 @@ export const ReviewsPage = () => {
                       <Bolt size={15} /> ThunderFood phản hồi
                       {review.repliedAt && <span className="faint" style={{ fontWeight: 400 }}>· {formatDate(review.repliedAt)}</span>}
                     </b>
-                    <div style={{ whiteSpace: 'pre-wrap' }}>{review.staffReply}</div>
+                    <div style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{review.staffReply}</div>
                   </div>
                 )}
 
@@ -191,8 +191,8 @@ export const ReviewsPage = () => {
               <blockquote style={{ margin: '0 0 16px', padding: '14px 16px', borderRadius: 14, background: 'var(--surface-2)' }}>
                 <b>{selectedReview.userName || 'Khách hàng'}</b>
                 <div className="row" style={{ gap: 2, marginTop: 4 }}>{renderStars(selectedReview.rating)}</div>
-                <div className="muted" style={{ marginTop: 4 }}>{selectedReview.comment || 'Không có nhận xét.'}</div>
-                <div className="faint" style={{ fontSize: 12, marginTop: 4 }}>{selectedReview.productName} · Đơn #{selectedReview.orderId}</div>
+                <div className="muted" style={{ marginTop: 4, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{selectedReview.comment || 'Không có nhận xét.'}</div>
+                <div className="faint" style={{ fontSize: 12, marginTop: 4 }}>{selectedReview.productName} · Đơn {selectedReview.orderCode || `#${selectedReview.orderId}`}</div>
               </blockquote>
               <form id="staff-review-reply-form" onSubmit={handleSubmitReply}>
                 <label className="field">

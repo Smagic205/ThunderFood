@@ -4,6 +4,7 @@ import { Zap, ArrowLeft } from 'lucide-react';
 import { ScrollToTop } from './ScrollToTop';
 import { PageLoader } from '@/shared/components/ui/PageLoader';
 import { ErrorBoundary } from '@/shared/components/ui/ErrorBoundary';
+import { ToastContainer } from '@/shared/components/ui/ToastContainer';
 import logoUrl from '@/assets/logo.png';
 
 const SIDE_CONTENT: Record<string, { h: string; p: string }> = {
@@ -29,6 +30,7 @@ export const AuthLayout = () => {
   return (
     <div className="auth">
       <ScrollToTop />
+      <ToastContainer />
       <aside className="auth-side">
         <svg className="hero-bolt" viewBox="0 0 210 300" aria-hidden="true">
           <path className="f" d="M128 0 20 168h70l-24 132L190 110h-76L150 0Z" style={{ fill: '#79FFFF', opacity: 0.9 }} />

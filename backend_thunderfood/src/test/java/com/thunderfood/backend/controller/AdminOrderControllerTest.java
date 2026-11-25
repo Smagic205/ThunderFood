@@ -18,6 +18,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 
 import static org.hamcrest.Matchers.hasSize;
@@ -61,13 +62,37 @@ class AdminOrderControllerTest {
                 .totalAmount(BigDecimal.valueOf(150000))
                 .build();
 
-        when(adminOrderService.getAllOrders(any(), any())).thenReturn(List.of(order));
+        when(adminOrderService.getAllOrders(any(), any(), any(), any())).thenReturn(List.of(order));
 
         mockMvc.perform(get("/api/v1/admin/orders"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success", is(true)))
                 .andExpect(jsonPath("$.data", hasSize(1)))
                 .andExpect(jsonPath("$.data[0].orderCode", is("ORD-1001")));
+    }
+
+    @Test
+    @DisplayName("Admin lọc đơn hàng theo khoảng thời gian - 200 OK")
+    void testGetOrders_WithDateRange() throws Exception {
+        AdminOrderResponse order = AdminOrderResponse.builder()
+                .id(1L)
+                .orderCode("ORD-1002")
+                .status("DELIVERED")
+                .build();
+
+        LocalDate startDate = LocalDate.of(2026, 11, 1);
+        LocalDate endDate = LocalDate.of(2026, 11, 25);
+        when(adminOrderService.getAllOrders(eq("DELIVERED"), eq("ORD"), eq(startDate), eq(endDate)))
+                .thenReturn(List.of(order));
+
+        mockMvc.perform(get("/api/v1/admin/orders")
+                        .param("status", "DELIVERED")
+                        .param("search", "ORD")
+                        .param("startDate", "2026-11-01")
+                        .param("endDate", "2026-11-25"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success", is(true)))
+                .andExpect(jsonPath("$.data[0].orderCode", is("ORD-1002")));
     }
 
     @Test

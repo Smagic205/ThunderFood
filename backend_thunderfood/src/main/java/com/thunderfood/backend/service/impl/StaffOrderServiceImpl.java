@@ -14,6 +14,7 @@ import com.thunderfood.backend.repository.*;
 import com.thunderfood.backend.service.NotificationService;
 import com.thunderfood.backend.service.StaffOrderService;
 import com.thunderfood.backend.service.VoucherService;
+import com.thunderfood.backend.util.DateRangeUtils;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
@@ -27,6 +28,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -54,8 +56,14 @@ public class StaffOrderServiceImpl implements StaffOrderService {
             String ward,
             String streetKeyword,
             String search,
+            LocalDate startDate,
+            LocalDate endDate,
             Pageable pageable
     ) {
+        DateRangeUtils.validate(startDate, endDate);
+        LocalDateTime startDateTime = DateRangeUtils.toStartOfDay(startDate);
+        LocalDateTime endDateTime = DateRangeUtils.toEndOfDay(endDate);
+
         Specification<Order> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
@@ -102,6 +110,14 @@ public class StaffOrderServiceImpl implements StaffOrderService {
                 Predicate matchPhone = cb.like(root.get("receiverPhone"), "%" + phoneNoSpace + "%");
 
                 predicates.add(cb.or(matchOrderCode, matchReceiverName, matchPhone));
+            }
+
+            // 6. Lọc theo khoảng thời gian tạo đơn
+            if (startDateTime != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), startDateTime));
+            }
+            if (endDateTime != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("createdAt"), endDateTime));
             }
 
             return cb.and(predicates.toArray(new Predicate[0]));
@@ -296,11 +312,15 @@ public class StaffOrderServiceImpl implements StaffOrderService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<DeliveryPackageResponse> getOpenPackages() {
+    public List<DeliveryPackageResponse> getOpenPackages(LocalDate startDate, LocalDate endDate) {
+        DateRangeUtils.validate(startDate, endDate);
         List<DeliveryPackage> openPackages = deliveryPackageRepository.findByStatusOrderByCreatedAtDesc("PENDING");
         List<DeliveryPackageResponse> responses = new ArrayList<>();
 
         for (DeliveryPackage pkg : openPackages) {
+            if (!DateRangeUtils.isWithinRange(pkg.getCreatedAt(), startDate, endDate)) {
+                continue;
+            }
             List<Order> ordersInPkg = orderRepository.findByDeliveryPackageIdOrderByCreatedAtAsc(pkg.getId());
             List<String> orderCodes = ordersInPkg.stream().map(Order::getOrderCode).toList();
             responses.add(DeliveryPackageResponse.fromEntity(pkg, orderCodes));

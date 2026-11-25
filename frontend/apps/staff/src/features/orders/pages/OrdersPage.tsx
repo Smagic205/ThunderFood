@@ -12,6 +12,7 @@ import { OrderDrawer } from '../components/OrderDrawer';
 import { ConfirmOrderModal } from '../components/ConfirmOrderModal';
 import { CancelOrderModal } from '../components/CancelOrderModal';
 import { addressApi } from '@/shared/api/addressApi';
+import { DateRangePicker } from '@/shared/components/ui/DateRangePicker';
 
 const STATUS_MAP: Record<string, string> = {
   PENDING: 'Chờ xác nhận',
@@ -50,8 +51,12 @@ export const OrdersPage = () => {
   const [searchInput, setSearchInput] = useState<string>('');
   const [debouncedSearch, setDebouncedSearch] = useState<string>('');
   const [selectedWard, setSelectedWard] = useState<string>('ALL');
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
   const [page, setPage] = useState<number>(0);
   const pageSize = 15;
+
+  const isInvalidDateRange = Boolean(startDate && endDate && startDate > endDate);
 
   // Selected order for drawer
   const [selectedOrder, setSelectedOrder] = useState<StaffOrderListItem | null>(null);
@@ -79,6 +84,16 @@ export const OrdersPage = () => {
 
   const handleWardChange = (ward: string) => {
     setSelectedWard(ward);
+    setPage(0);
+  };
+
+  const handleStartDateChange = (value: string) => {
+    setStartDate(value);
+    setPage(0);
+  };
+
+  const handleEndDateChange = (value: string) => {
+    setEndDate(value);
     setPage(0);
   };
 
@@ -110,21 +125,24 @@ export const OrdersPage = () => {
     error: ordersError,
     refetch: refetchOrders,
   } = useQuery<PageResponse<StaffOrderListItem>>({
-    queryKey: ['staff-orders', activeTab, selectedWard, debouncedSearch, page, pageSize],
+    queryKey: ['staff-orders', activeTab, selectedWard, debouncedSearch, startDate, endDate, page, pageSize],
     queryFn: () => staffOrderApi.getOrders({
       status: activeTab === 'ALL' ? undefined : activeTab,
       ward: selectedWard === 'ALL' ? undefined : selectedWard,
       search: debouncedSearch || undefined,
+      startDate: startDate || undefined,
+      endDate: endDate || undefined,
       page,
       size: pageSize,
     }),
+    enabled: !isInvalidDateRange,
     staleTime: 10 * 1000,
   });
 
   // Fetch open packages for confirmation modal
   const { data: openPackages = [] } = useQuery<DeliveryPackage[]>({
     queryKey: ['open-packages'],
-    queryFn: staffOrderApi.getOpenPackages,
+    queryFn: () => staffOrderApi.getOpenPackages(),
     staleTime: 15 * 1000,
   });
 
@@ -264,6 +282,13 @@ export const OrdersPage = () => {
               <option key={key} value={label}>{label}</option>
             ))}
           </select>
+
+          <DateRangePicker
+            startDate={startDate}
+            endDate={endDate}
+            onStartDateChange={handleStartDateChange}
+            onEndDateChange={handleEndDateChange}
+          />
 
           <small className="muted" style={{ alignSelf: 'center', marginLeft: 'auto' }}>
             {isOrdersFetching && !isOrdersLoading && (

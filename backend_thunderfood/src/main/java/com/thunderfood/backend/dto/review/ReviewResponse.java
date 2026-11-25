@@ -19,6 +19,7 @@ public class ReviewResponse {
     private String userName;
     private String userAvatar;
     private Long orderId;
+    private String orderCode;
     private Short rating;
     private String comment;
     private String imageUrl;
@@ -43,6 +44,7 @@ public class ReviewResponse {
                 .userName(review.getUser() != null ? review.getUser().getFullName() : null)
                 .userAvatar(review.getUser() != null ? review.getUser().getAvatarUrl() : null)
                 .orderId(review.getOrder() != null ? review.getOrder().getId() : null)
+                .orderCode(review.getOrder() != null ? review.getOrder().getOrderCode() : null)
                 .rating(review.getRating())
                 .comment(review.getComment())
                 .imageUrl(review.getImageUrl())

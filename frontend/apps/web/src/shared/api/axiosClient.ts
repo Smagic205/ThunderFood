@@ -3,6 +3,8 @@ import { useAuthStore } from '@/app/store/authStore';
 import { useToastStore } from '@/shared/stores/toastStore';
 import { authApi } from './authApi';
 
+export const LOCKED_ACCOUNT_NOTICE_KEY = 'thunderfood_locked_account_notice';
+
 export const axiosClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api',
   headers: {
@@ -77,11 +79,26 @@ axiosClient.interceptors.response.use(
     // Xử lý lỗi 403 Forbidden (không có quyền truy cập dữ liệu người khác hoặc chức năng bị cấm)
     if (error.response?.status === 403) {
       const message = error.response.data?.message || 'Bạn không có quyền thực hiện thao tác này';
-      if (message.toLowerCase().includes('khóa') || error.response?.data?.code === 'ACCOUNT_LOCKED') {
+      const isLockedError = message.toLowerCase().includes('khóa') || error.response?.data?.code === 'ACCOUNT_LOCKED';
+
+      if (isLockedError && !isAuthRoute) {
+        try {
+          sessionStorage.setItem(LOCKED_ACCOUNT_NOTICE_KEY, message);
+        } catch {
+          // Bỏ qua lỗi storage nếu trình duyệt chặn
+        }
         useAuthStore.getState().logout();
-        window.location.href = '/login';
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        } else {
+          useToastStore.getState().showToast(message, 'error');
+        }
+        return Promise.reject(error);
       }
-      useToastStore.getState().showToast(message, 'error');
+
+      if (!isAuthRoute) {
+        useToastStore.getState().showToast(message, 'error');
+      }
     }
 
     // Xử lý mã lỗi Rate Limit (HTTP 429 Too Many Requests)

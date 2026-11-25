@@ -125,8 +125,15 @@ export interface GetStaffOrdersParams {
   status?: string;
   ward?: string;
   search?: string;
+  startDate?: string;
+  endDate?: string;
   page?: number;
   size?: number;
+}
+
+export interface GetOpenPackagesParams {
+  startDate?: string;
+  endDate?: string;
 }
 
 export interface ConfirmOrderPayload {
@@ -144,6 +151,8 @@ export const staffOrderApi = {
     if (params.status && params.status !== 'ALL') cleanParams.status = params.status;
     if (params.ward && params.ward !== 'ALL') cleanParams.ward = params.ward;
     if (params.search && params.search.trim()) cleanParams.search = params.search.trim();
+    if (params.startDate) cleanParams.startDate = params.startDate;
+    if (params.endDate) cleanParams.endDate = params.endDate;
     if (params.page !== undefined) cleanParams.page = params.page;
     if (params.size !== undefined) cleanParams.size = params.size;
 
@@ -180,8 +189,14 @@ export const staffOrderApi = {
     return res.data.data;
   },
 
-  getOpenPackages: async (): Promise<DeliveryPackage[]> => {
-    const res = await axiosClient.get<ApiResponse<DeliveryPackage[]>>('/v1/staff/orders/packages/open');
+  getOpenPackages: async (params: GetOpenPackagesParams = {}): Promise<DeliveryPackage[]> => {
+    const cleanParams: Record<string, string> = {};
+    if (params.startDate) cleanParams.startDate = params.startDate;
+    if (params.endDate) cleanParams.endDate = params.endDate;
+
+    const res = await axiosClient.get<ApiResponse<DeliveryPackage[]>>('/v1/staff/orders/packages/open', {
+      params: cleanParams,
+    });
     if (!res.data.success) {
       throw new Error(res.data.message || 'Không thể tải danh sách gói hàng đang mở');
     }

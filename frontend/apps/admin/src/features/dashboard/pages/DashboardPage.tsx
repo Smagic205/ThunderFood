@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { FileSpreadsheet, Download, RefreshCw, Loader2 } from 'lucide-react';
+import { Calendar, FileSpreadsheet, Download, RefreshCw, Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/app/store/authStore';
 import { dashboardApi } from '../api/dashboardApi';
 import type { TimeRange } from '../types';
@@ -10,9 +10,29 @@ import { OrderStatusDonut } from '../components/OrderStatusDonut';
 import { TopProductsCard } from '../components/TopProductsCard';
 import { ShipperPerformanceCard } from '../components/ShipperPerformanceCard';
 
+const formatDateInput = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const getDefaultExportRange = () => {
+  const end = new Date();
+  const prevMonthLastDay = new Date(end.getFullYear(), end.getMonth(), 0).getDate();
+  const start = new Date(end.getFullYear(), end.getMonth() - 1, Math.min(end.getDate(), prevMonthLastDay));
+  return {
+    startDate: formatDateInput(start),
+    endDate: formatDateInput(end),
+  };
+};
+
 export const DashboardPage = () => {
   const user = useAuthStore((state) => state.user);
   const [selectedRange, setSelectedRange] = useState<TimeRange>('day');
+  const [{ startDate: defaultStartDate, endDate: defaultEndDate }] = useState(getDefaultExportRange);
+  const [exportStartDate, setExportStartDate] = useState(defaultStartDate);
+  const [exportEndDate, setExportEndDate] = useState(defaultEndDate);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isExportingExcel, setIsExportingExcel] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
@@ -30,11 +50,17 @@ export const DashboardPage = () => {
     }, 3500);
   };
 
+  const isInvalidExportRange = Boolean(exportStartDate && exportEndDate && exportStartDate > exportEndDate);
+
   const handleExportExcel = async () => {
+    if (isInvalidExportRange) {
+      showToast('Ngày bắt đầu không được lớn hơn ngày kết thúc.');
+      return;
+    }
     try {
       setIsExportingExcel(true);
       showToast('Đang tạo báo cáo Excel... Tệp sẽ sẵn sàng tải xuống ngay.');
-      await dashboardApi.exportOrdersExcel();
+      await dashboardApi.exportOrdersExcel(exportStartDate || undefined, exportEndDate || undefined);
       showToast('Đã tải xuống báo cáo Excel thành công!');
     } catch {
       showToast('Không thể xuất báo cáo Excel từ máy chủ.');
@@ -44,10 +70,14 @@ export const DashboardPage = () => {
   };
 
   const handleExportPdf = async () => {
+    if (isInvalidExportRange) {
+      showToast('Ngày bắt đầu không được lớn hơn ngày kết thúc.');
+      return;
+    }
     try {
       setIsExportingPdf(true);
       showToast('Đang kết xuất báo cáo tài chính PDF...');
-      await dashboardApi.exportRevenuePdf();
+      await dashboardApi.exportRevenuePdf(exportStartDate || undefined, exportEndDate || undefined);
       showToast('Đã tải xuống báo cáo PDF thành công!');
     } catch {
       showToast('Không thể xuất báo cáo PDF từ máy chủ.');
@@ -121,7 +151,64 @@ export const DashboardPage = () => {
             {getFormattedDate()}. Dữ liệu được tổng hợp theo khoảng thời gian đã chọn.
           </p>
         </div>
-        <div className="row wrap" style={{ gap: '10px' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '10px' }}>
+          <div
+            style={{
+              display: 'inline-flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              gap: '8px',
+              minHeight: '44px',
+              padding: '4px 14px',
+              borderRadius: '999px',
+              background: 'var(--surface)',
+              border: '1.5px solid var(--line)',
+            }}
+            aria-label="Khoảng thời gian xuất báo cáo"
+          >
+            <Calendar size={15} style={{ color: 'var(--ink-3)', flexShrink: 0 }} />
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--ink-2)', fontWeight: 500 }}>
+              <span>Từ</span>
+              <input
+                type="date"
+                aria-label="Từ ngày"
+                value={exportStartDate}
+                max={exportEndDate || undefined}
+                onChange={(e) => setExportStartDate(e.target.value)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--ink)',
+                  font: 'inherit',
+                  fontSize: '13.5px',
+                  fontWeight: 600,
+                  outline: 'none',
+                  cursor: 'pointer',
+                }}
+              />
+            </label>
+            <span style={{ color: 'var(--ink-3)', fontSize: '13px' }}>–</span>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--ink-2)', fontWeight: 500 }}>
+              <span>Đến</span>
+              <input
+                type="date"
+                aria-label="Đến ngày"
+                value={exportEndDate}
+                min={exportStartDate || undefined}
+                onChange={(e) => setExportEndDate(e.target.value)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--ink)',
+                  font: 'inherit',
+                  fontSize: '13.5px',
+                  fontWeight: 600,
+                  outline: 'none',
+                  cursor: 'pointer',
+                }}
+              />
+            </label>
+          </div>
           <button
             className="btn btn-ghost"
             onClick={() => refetch()}
@@ -134,8 +221,8 @@ export const DashboardPage = () => {
           <button
             className="btn btn-ghost"
             onClick={handleExportExcel}
-            disabled={isExportingExcel}
-            title="Xuất danh sách đơn hàng sang file Excel (.xlsx)"
+            disabled={isExportingExcel || isInvalidExportRange}
+            title="Xuất danh sách đơn hàng theo khoảng ngày đã chọn sang file Excel (.xlsx)"
           >
             {isExportingExcel ? <Loader2 className="spin" size={16} /> : <FileSpreadsheet size={16} />}
             Xuất Excel
@@ -143,8 +230,8 @@ export const DashboardPage = () => {
           <button
             className="btn btn-dark"
             onClick={handleExportPdf}
-            disabled={isExportingPdf}
-            title="Xuất báo cáo tài chính tổng hợp sang file PDF"
+            disabled={isExportingPdf || isInvalidExportRange}
+            title="Xuất báo cáo tài chính tổng hợp theo khoảng ngày đã chọn sang file PDF"
           >
             {isExportingPdf ? <Loader2 className="spin" size={16} /> : <Download size={16} />}
             Xuất PDF

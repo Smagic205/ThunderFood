@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { packagesApi } from '../api/packagesApi';
 import { PackageDetailModal } from '../components/PackageDetailModal';
+import { DateRangePicker } from '@/shared/components/ui/DateRangePicker';
 import type { DeliveryPackage, PackageFilterTab, PackageStatus } from '../types';
 
 export const PackagesPage: React.FC = () => {
@@ -17,12 +18,17 @@ export const PackagesPage: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<PackageFilterTab>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [selectedPackage, setSelectedPackage] = useState<DeliveryPackage | null>(null);
+
+  const isInvalidDateRange = Boolean(startDate && endDate && startDate > endDate);
 
   // Fetch packages
   const { data: packages = [], isLoading, isError, refetch } = useQuery({
-    queryKey: ['admin-packages'],
-    queryFn: packagesApi.getPackages,
+    queryKey: ['admin-packages', startDate, endDate],
+    queryFn: () => packagesApi.getPackages({ startDate: startDate || undefined, endDate: endDate || undefined }),
+    enabled: !isInvalidDateRange,
   });
 
   // URL query param ?open=GOI-X
@@ -130,8 +136,8 @@ export const PackagesPage: React.FC = () => {
         </div>
 
         {/* Filter / Search Bar */}
-        <div className="filters-bar" style={{ padding: '16px' }}>
-          <div className="input-ic" style={{ width: '100%', maxWidth: '420px' }}>
+        <div className="filters-bar" style={{ padding: '16px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px' }}>
+          <div className="input-ic" style={{ flex: '1 1 240px', maxWidth: '420px' }}>
             <Search size={18} className="muted" />
             <input
               className="input"
@@ -142,6 +148,12 @@ export const PackagesPage: React.FC = () => {
               aria-label="Tìm gói hàng"
             />
           </div>
+          <DateRangePicker
+            startDate={startDate}
+            endDate={endDate}
+            onStartDateChange={setStartDate}
+            onEndDateChange={setEndDate}
+          />
         </div>
 
         {/* Packages Grid */}

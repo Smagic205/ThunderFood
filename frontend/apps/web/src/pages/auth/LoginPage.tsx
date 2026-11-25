@@ -1,23 +1,44 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Eye, EyeOff, Lock } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuthStore } from '@/app/store/authStore';
 import { authApi } from '@/shared/api/authApi';
+import { LOCKED_ACCOUNT_NOTICE_KEY } from '@/shared/api/axiosClient';
 import { GoogleAuthButton } from '@/shared/components/auth/GoogleAuthButton';
 import { loginSchema, type LoginFormValues } from './authSchemas';
 
 export const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [apiError, setApiError] = useState('');
+  const [apiError, setApiError] = useState(() => {
+    try {
+      const notice = sessionStorage.getItem(LOCKED_ACCOUNT_NOTICE_KEY) || '';
+      if (notice) sessionStorage.removeItem(LOCKED_ACCOUNT_NOTICE_KEY);
+      return notice;
+    } catch {
+      return '';
+    }
+  });
   const [unverifiedEmail, setUnverifiedEmail] = useState('');
   const [resendStatus, setResendStatus] = useState('');
   const [isResending, setIsResending] = useState(false);
 
   const { login } = useAuthStore();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    try {
+      const notice = sessionStorage.getItem(LOCKED_ACCOUNT_NOTICE_KEY);
+      if (notice) {
+        sessionStorage.removeItem(LOCKED_ACCOUNT_NOTICE_KEY);
+        setApiError(notice);
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }, []);
 
   const {
     register,
@@ -176,7 +197,7 @@ export const LoginPage = () => {
       
       <form onSubmit={handleSubmit(onSubmit)} className="form-grid" noValidate>
         {apiError && (
-          <div className="p-3 bg-red-50 text-red-600 rounded-xl mb-2 text-sm">
+          <div role="alert" className="p-3 bg-red-50 text-red-600 rounded-xl mb-2 text-sm">
             {apiError}
             {unverifiedEmail && (
               <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #fee2e2' }}>

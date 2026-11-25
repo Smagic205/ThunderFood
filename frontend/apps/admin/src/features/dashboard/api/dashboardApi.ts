@@ -129,10 +129,11 @@ export const dashboardApi = {
     const blob = new Blob([res.data], {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     });
+    const dateSuffix = startDate && endDate ? `${startDate}_${endDate}` : startDate || endDate || new Date().toISOString().slice(0, 10);
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `thunderfood_orders_report_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    link.download = `thunderfood_orders_report_${dateSuffix}.xlsx`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -145,10 +146,11 @@ export const dashboardApi = {
       responseType: 'blob',
     });
     const blob = new Blob([res.data], { type: 'application/pdf' });
+    const dateSuffix = startDate && endDate ? `${startDate}_${endDate}` : startDate || endDate || new Date().toISOString().slice(0, 10);
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `thunderfood_revenue_report_${new Date().toISOString().slice(0, 10)}.pdf`;
+    link.download = `thunderfood_revenue_report_${dateSuffix}.pdf`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

@@ -3,13 +3,11 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   Search,
-  Download,
   Receipt,
-  FileSpreadsheet,
-  Check,
 } from 'lucide-react';
 import { ordersApi } from '../api/ordersApi';
 import { OrderDrawer } from '../components/OrderDrawer';
+import { DateRangePicker } from '@/shared/components/ui/DateRangePicker';
 import type { AdminOrder, OrderFilterTab, OrderStatus } from '../types';
 
 export const OrdersPage: React.FC = () => {
@@ -17,13 +15,17 @@ export const OrdersPage: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<OrderFilterTab>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const isInvalidDateRange = Boolean(startDate && endDate && startDate > endDate);
 
   // Fetch orders
   const { data: orders = [], isLoading, isError, refetch } = useQuery({
-    queryKey: ['admin-orders'],
-    queryFn: ordersApi.getOrders,
+    queryKey: ['admin-orders', startDate, endDate],
+    queryFn: () => ordersApi.getOrders({ startDate: startDate || undefined, endDate: endDate || undefined }),
+    enabled: !isInvalidDateRange,
   });
 
   // Check URL query param ?open=ORD-XXXX
@@ -71,13 +73,6 @@ export const OrdersPage: React.FC = () => {
     });
   }, [orders, activeTab, searchQuery]);
 
-  const handleExportExcel = () => {
-    setToastMessage('Đang tạo báo cáo Excel… Tải xuống file "ThunderFood_Orders_2026.xlsx"');
-    setTimeout(() => {
-      setToastMessage(null);
-    }, 4000);
-  };
-
   const handleCloseDrawer = () => {
     setSelectedOrder(null);
     if (searchParams.has('open')) {
@@ -118,34 +113,6 @@ export const OrdersPage: React.FC = () => {
 
   return (
     <div>
-      {/* Toast Notification */}
-      {toastMessage && (
-        <div
-          style={{
-            position: 'fixed',
-            bottom: '24px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            backgroundColor: '#1E2238',
-            color: '#fff',
-            border: '1px solid rgba(255,255,255,0.15)',
-            boxShadow: '0 12px 30px rgba(0,0,0,0.5)',
-            padding: '12px 20px',
-            borderRadius: '14px',
-            zIndex: 2000,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            fontSize: '14px',
-            animation: 'fadeIn 0.2s ease',
-          }}
-        >
-          <FileSpreadsheet size={18} color="var(--volt, #FFC107)" />
-          <span>{toastMessage}</span>
-          <Check size={16} color="var(--c-green, #10b981)" />
-        </div>
-      )}
-
       {/* Page Header (ahead) */}
       <div className="ah">
         <div>
@@ -154,14 +121,6 @@ export const OrdersPage: React.FC = () => {
             {orders.length} đơn, {tabCounts.PENDING || 0} đơn đang chờ xác nhận. Admin chỉ xem, việc xác nhận và giao hàng do nhân viên xử lý.
           </p>
         </div>
-        <button
-          className="btn btn-ghost"
-          onClick={handleExportExcel}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
-        >
-          <Download size={18} />
-          Xuất danh sách
-        </button>
       </div>
 
       {/* Main Panel */}
@@ -186,8 +145,8 @@ export const OrdersPage: React.FC = () => {
         </div>
 
         {/* Filter / Search Bar */}
-        <div className="filters-bar" style={{ padding: '16px' }}>
-          <div className="input-ic" style={{ width: '100%', maxWidth: '420px' }}>
+        <div className="filters-bar" style={{ padding: '16px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px' }}>
+          <div className="input-ic" style={{ flex: '1 1 240px', maxWidth: '420px' }}>
             <Search size={18} className="muted" />
             <input
               className="input"
@@ -198,6 +157,12 @@ export const OrdersPage: React.FC = () => {
               aria-label="Tìm đơn hàng"
             />
           </div>
+          <DateRangePicker
+            startDate={startDate}
+            endDate={endDate}
+            onStartDateChange={setStartDate}
+            onEndDateChange={setEndDate}
+          />
         </div>
 
         {/* Orders Table */}
