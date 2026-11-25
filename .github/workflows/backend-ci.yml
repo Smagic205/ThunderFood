@@ -50,10 +50,6 @@ jobs:
         run: chmod +x mvnw
 
       - name: Run Tests
-        env:
-          SPRING_DATASOURCE_URL: jdbc:mysql://127.0.0.1:3306/db_thunderfood?useSSL=false&serverTimezone=UTC&createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true
-          SPRING_DATASOURCE_USERNAME: root
-          SPRING_DATASOURCE_PASSWORD: root
         run: ./mvnw clean test
 
       - name: Print Surefire Failure Reports
