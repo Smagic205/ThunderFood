@@ -27,6 +27,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -178,9 +180,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public AuthResponse login(LoginRequest request) {
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getEmail().trim(), request.getPassword())
-        );
+        authenticateCredentials(request.getEmail().trim(), request.getPassword());
 
         User user = userRepository.findByEmail(request.getEmail().trim())
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
@@ -194,6 +194,20 @@ public class AuthServiceImpl implements AuthService {
         }
 
         return generateAuthResponse(user);
+    }
+
+    private void authenticateCredentials(String email, String password) {
+        try {
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(email, password)
+            );
+        } catch (DisabledException ex) {
+            throw new AccessDeniedException(
+                    "Tài khoản của bạn chưa được kích hoạt. Vui lòng kiểm tra email để kích hoạt tài khoản trước khi đăng nhập."
+            );
+        } catch (LockedException ex) {
+            throw new AccessDeniedException("Tài khoản đã bị khóa");
+        }
     }
 
     @Override
@@ -521,9 +535,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public AuthResponse loginStaff(LoginRequest request) {
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
-        );
+        authenticateCredentials(request.getEmail(), request.getPassword());
 
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
