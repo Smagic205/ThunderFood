@@ -10,10 +10,12 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -29,9 +31,11 @@ public class AdminOrderController {
     @Operation(summary = "Lấy danh sách tất cả đơn hàng cho Admin")
     public ResponseEntity<ApiResponse<List<AdminOrderResponse>>> getOrders(
             @RequestParam(required = false) String status,
-            @RequestParam(required = false) String search
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
     ) {
-        List<AdminOrderResponse> orders = adminOrderService.getAllOrders(status, search);
+        List<AdminOrderResponse> orders = adminOrderService.getAllOrders(status, search, startDate, endDate);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách đơn hàng thành công", orders));
     }
 

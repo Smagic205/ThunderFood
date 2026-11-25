@@ -9,11 +9,13 @@ import com.thunderfood.backend.repository.DeliveryPackageRepository;
 import com.thunderfood.backend.repository.OrderRepository;
 import com.thunderfood.backend.repository.UserRepository;
 import com.thunderfood.backend.service.AdminPackageService;
+import com.thunderfood.backend.util.DateRangeUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -32,11 +34,15 @@ public class AdminPackageServiceImpl implements AdminPackageService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<AdminPackageResponse> getAllPackages(String status) {
+    public List<AdminPackageResponse> getAllPackages(String status, LocalDate startDate, LocalDate endDate) {
+        DateRangeUtils.validate(startDate, endDate);
         List<DeliveryPackage> packages = deliveryPackageRepository.findAll();
 
         return packages.stream()
                 .filter(p -> {
+                    if (!DateRangeUtils.isWithinRange(p.getCreatedAt(), startDate, endDate)) {
+                        return false;
+                    }
                     if (status != null && !status.isBlank() && !"ALL".equalsIgnoreCase(status.trim())) {
                         String filterStatus = status.trim().toUpperCase();
                         String actualStatus = "PENDING".equalsIgnoreCase(p.getStatus()) ? "UNASSIGNED" : p.getStatus().toUpperCase();

@@ -459,11 +459,54 @@ class StaffOrderServiceTest {
         when(orderRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(page);
 
         PageResponse<StaffOrderListResponse> response = staffOrderService.getStaffOrders(
-                "PENDING", "Đống Đa", "Kim Liên", "Yên Lãng", "TF", PageRequest.of(0, 10)
+                "PENDING", "Đống Đa", "Kim Liên", "Yên Lãng", "TF", null, null, PageRequest.of(0, 10)
         );
 
         assertNotNull(response);
         assertEquals(1, response.getContent().size());
         assertEquals("TF261110001", response.getContent().get(0).getOrderCode());
+    }
+
+    @Test
+    @DisplayName("Lọc đơn hàng cho Staff với khoảng ngày không hợp lệ sẽ báo lỗi")
+    void getStaffOrders_InvalidDateRange_ThrowsException() {
+        assertThrows(IllegalArgumentException.class, () -> staffOrderService.getStaffOrders(
+                null, null, null, null, null,
+                java.time.LocalDate.of(2026, 11, 26),
+                java.time.LocalDate.of(2026, 11, 20),
+                PageRequest.of(0, 10)
+        ));
+    }
+
+    @Test
+    @DisplayName("Lấy danh sách gói hàng đang mở lọc theo khoảng ngày")
+    void getOpenPackages_FilterByDateRange() {
+        DeliveryPackage inRangePkg = DeliveryPackage.builder()
+                .id(11L)
+                .packageName("GOI-TRONG-NGAY")
+                .status("PENDING")
+                .maxOrders(7)
+                .createdAt(LocalDateTime.of(2026, 11, 20, 10, 0))
+                .build();
+        DeliveryPackage outRangePkg = DeliveryPackage.builder()
+                .id(12L)
+                .packageName("GOI-NGOAI-NGAY")
+                .status("PENDING")
+                .maxOrders(7)
+                .createdAt(LocalDateTime.of(2026, 11, 10, 10, 0))
+                .build();
+
+        when(deliveryPackageRepository.findByStatusOrderByCreatedAtDesc("PENDING"))
+                .thenReturn(List.of(inRangePkg, outRangePkg));
+        when(orderRepository.findByDeliveryPackageIdOrderByCreatedAtAsc(11L))
+                .thenReturn(List.of());
+
+        var result = staffOrderService.getOpenPackages(
+                java.time.LocalDate.of(2026, 11, 15),
+                java.time.LocalDate.of(2026, 11, 25)
+        );
+
+        assertEquals(1, result.size());
+        assertEquals("GOI-TRONG-NGAY", result.get(0).getPackageName());
     }
 }

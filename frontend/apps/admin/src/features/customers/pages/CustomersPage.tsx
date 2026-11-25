@@ -48,8 +48,8 @@ export const CustomersPage: React.FC = () => {
   });
 
   const users = data?.content || [];
-  const totalElements = data?.totalElements || 0;
-  const totalPages = data?.totalPages || 1;
+  const totalElements = data?.pagination?.totalElements ?? 0;
+  const totalPages = data?.pagination?.totalPages ?? 1;
 
   // Mutation: Toggle status
   const statusMutation = useMutation({

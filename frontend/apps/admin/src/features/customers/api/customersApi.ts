@@ -7,13 +7,20 @@ interface ApiResponse<T> {
   data: T;
 }
 
+interface PaginationInfo {
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrevious: boolean;
+}
+
 export const customersApi = {
   getAllUsers: async (params: UserFilterParams = {}) => {
     const res = await axiosClient.get<ApiResponse<{
       content: UserAdminItem[];
-      totalElements: number;
-      totalPages: number;
-      pageNumber: number;
+      pagination: PaginationInfo;
     }>>('/admin/users', {
       params: {
         keyword: params.keyword || undefined,

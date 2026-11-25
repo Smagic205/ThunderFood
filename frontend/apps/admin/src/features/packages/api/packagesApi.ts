@@ -7,9 +7,20 @@ interface ApiResponse<T> {
   data: T;
 }
 
+export interface GetAdminPackagesParams {
+  startDate?: string;
+  endDate?: string;
+}
+
 export const packagesApi = {
-  getPackages: async (): Promise<DeliveryPackage[]> => {
-    const res = await axiosClient.get<ApiResponse<DeliveryPackage[]>>('/admin/packages');
+  getPackages: async (params: GetAdminPackagesParams = {}): Promise<DeliveryPackage[]> => {
+    const cleanParams: Record<string, string> = {};
+    if (params.startDate) cleanParams.startDate = params.startDate;
+    if (params.endDate) cleanParams.endDate = params.endDate;
+
+    const res = await axiosClient.get<ApiResponse<DeliveryPackage[]>>('/admin/packages', {
+      params: cleanParams,
+    });
     if (!res.data?.success || !Array.isArray(res.data?.data)) {
       throw new Error(res.data?.message || 'Không thể tải danh sách gói hàng');
     }

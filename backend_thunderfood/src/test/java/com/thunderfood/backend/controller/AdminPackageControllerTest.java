@@ -14,6 +14,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import static org.hamcrest.Matchers.hasSize;
@@ -57,13 +58,36 @@ class AdminPackageControllerTest {
                 .orderCodes(List.of("ORD-1001", "ORD-1002"))
                 .build();
 
-        when(adminPackageService.getAllPackages(any())).thenReturn(List.of(pkg));
+        when(adminPackageService.getAllPackages(any(), any(), any())).thenReturn(List.of(pkg));
 
         mockMvc.perform(get("/api/v1/admin/packages"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success", is(true)))
                 .andExpect(jsonPath("$.data", hasSize(1)))
                 .andExpect(jsonPath("$.data[0].code", is("GOI-Q1-01")));
+    }
+
+    @Test
+    @DisplayName("Admin lọc gói hàng theo khoảng thời gian - 200 OK")
+    void testGetPackages_WithDateRange() throws Exception {
+        AdminPackageResponse pkg = AdminPackageResponse.builder()
+                .id(2L)
+                .code("GOI-Q1-02")
+                .status("DELIVERING")
+                .build();
+
+        LocalDate startDate = LocalDate.of(2026, 11, 1);
+        LocalDate endDate = LocalDate.of(2026, 11, 25);
+        when(adminPackageService.getAllPackages(eq("DELIVERING"), eq(startDate), eq(endDate)))
+                .thenReturn(List.of(pkg));
+
+        mockMvc.perform(get("/api/v1/admin/packages")
+                        .param("status", "DELIVERING")
+                        .param("startDate", "2026-11-01")
+                        .param("endDate", "2026-11-25"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success", is(true)))
+                .andExpect(jsonPath("$.data[0].code", is("GOI-Q1-02")));
     }
 
     @Test

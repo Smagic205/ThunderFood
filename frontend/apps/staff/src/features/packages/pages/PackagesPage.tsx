@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertCircle, Box, Clock, Eye, Info, Loader2, Package, Truck, User } from 'lucide-react';
 import { staffOrderApi, type DeliveryPackage } from '@/features/orders/api/staffOrderApi';
 import { PackageDetailModal } from '../components/PackageDetailModal';
+import { DateRangePicker } from '@/shared/components/ui/DateRangePicker';
 
 const formatDate = (value: string) => {
   const date = new Date(value);
@@ -16,12 +17,17 @@ const errorMessage = (error: unknown) =>
 export const PackagesPage = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [detailPackageId, setDetailPackageId] = useState<number | null>(null);
   const [claimError, setClaimError] = useState('');
 
+  const isInvalidDateRange = Boolean(startDate && endDate && startDate > endDate);
+
   const packagesQuery = useQuery({
-    queryKey: ['open-packages'],
-    queryFn: staffOrderApi.getOpenPackages,
+    queryKey: ['open-packages', startDate, endDate],
+    queryFn: () => staffOrderApi.getOpenPackages({ startDate: startDate || undefined, endDate: endDate || undefined }),
+    enabled: !isInvalidDateRange,
     staleTime: 15_000,
   });
   const heldPackageQuery = useQuery({
@@ -53,13 +59,19 @@ export const PackagesPage = () => {
 
   return (
     <>
-      <div className="ah">
+      <div className="ah" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '16px', marginBottom: '20px' }}>
         <div>
           <h2>Gói hàng chờ giao</h2>
           <p>
             {packages.length} gói đang chờ nhận. Mỗi nhân viên chỉ giữ một gói tại một thời điểm.
           </p>
         </div>
+        <DateRangePicker
+          startDate={startDate}
+          endDate={endDate}
+          onStartDateChange={setStartDate}
+          onEndDateChange={setEndDate}
+        />
       </div>
 
       {heldPackage && (

@@ -9,12 +9,13 @@ import com.thunderfood.backend.dto.staff.StaffOrderDetailResponse;
 import com.thunderfood.backend.dto.staff.StaffOrderListResponse;
 import org.springframework.data.domain.Pageable;
 
+import java.time.LocalDate;
 import java.util.List;
 
 public interface StaffOrderService {
 
     /**
-     * Lọc danh sách đơn hàng cho Staff: hỗ trợ lọc Quận -> Phường -> Số nhà/tên đường
+     * Lọc danh sách đơn hàng cho Staff: hỗ trợ lọc Quận -> Phường -> Số nhà/tên đường và khoảng thời gian
      */
     PageResponse<StaffOrderListResponse> getStaffOrders(
             String status,
@@ -22,6 +23,8 @@ public interface StaffOrderService {
             String ward,
             String streetKeyword,
             String search,
+            LocalDate startDate,
+            LocalDate endDate,
             Pageable pageable
     );
 
@@ -35,7 +38,7 @@ public interface StaffOrderService {
 
     StaffOrderDetailResponse cancelOrderByStaff(Long orderId, CancelOrderRequest request, Long staffId);
 
-    List<DeliveryPackageResponse> getOpenPackages();
+    List<DeliveryPackageResponse> getOpenPackages(LocalDate startDate, LocalDate endDate);
 
     /**
      * Nhân viên nhận giao gói hàng (tối đa 1 gói DELIVERING/nhân viên).

@@ -448,7 +448,7 @@ export function ProductDetailPage() {
                           ))}
                         </span>
                       </div>
-                      {r.comment && <p style={{ marginTop: '10px' }}>{r.comment}</p>}
+                      {r.comment && <p style={{ marginTop: '10px', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{r.comment}</p>}
                       {r.imageUrl && (
                         <div className="prev" style={{ marginTop: '10px', width: '96px', height: '96px' }}>
                           <div className="tile xs" style={{ background: 'var(--surface)' }}>
@@ -459,7 +459,7 @@ export function ProductDetailPage() {
                       {r.staffReply && (
                         <div className="reply">
                           <b><Bolt size={15} className="ic" style={{ color: 'var(--volt)' }} /> ThunderFood phản hồi</b>
-                          {r.staffReply}
+                          <div style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{r.staffReply}</div>
                         </div>
                       )}
                     </article>

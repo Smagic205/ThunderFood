@@ -105,18 +105,40 @@ class StaffOrderControllerTest {
                 .pagination(pagination)
                 .build();
 
-        when(staffOrderService.getStaffOrders(any(), any(), any(), any(), any(), any(Pageable.class)))
+        when(staffOrderService.getStaffOrders(any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
                 .thenReturn(pageResponse);
 
         mockMvc.perform(get("/api/v1/staff/orders")
                         .param("status", "PENDING")
                         .param("district", "Đống Đa")
                         .param("ward", "Kim Liên")
-                        .param("streetKeyword", "Yên Lãng"))
+                        .param("streetKeyword", "Yên Lãng")
+                        .param("startDate", "2026-11-01")
+                        .param("endDate", "2026-11-25"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success", is(true)))
                 .andExpect(jsonPath("$.data.content", hasSize(1)))
                 .andExpect(jsonPath("$.data.content[0].orderCode", is("TF261110001")));
+    }
+
+    @Test
+    @DisplayName("Lấy danh sách gói hàng đang mở theo khoảng thời gian - Trả về 200 OK")
+    void getOpenPackages_WithDateRange_Success() throws Exception {
+        DeliveryPackageResponse pkg = DeliveryPackageResponse.builder()
+                .id(10L)
+                .packageName("GOI-DONGDA-01")
+                .status("PENDING")
+                .build();
+
+        when(staffOrderService.getOpenPackages(eq(java.time.LocalDate.of(2026, 11, 1)), eq(java.time.LocalDate.of(2026, 11, 25))))
+                .thenReturn(List.of(pkg));
+
+        mockMvc.perform(get("/api/v1/staff/orders/packages/open")
+                        .param("startDate", "2026-11-01")
+                        .param("endDate", "2026-11-25"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success", is(true)))
+                .andExpect(jsonPath("$.data[0].packageName", is("GOI-DONGDA-01")));
     }
 
     @Test

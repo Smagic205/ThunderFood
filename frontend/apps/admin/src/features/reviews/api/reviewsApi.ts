@@ -9,6 +9,7 @@ export interface AdminReview {
   userName: string;
   userAvatar: string | null;
   orderId: number;
+  orderCode: string | null;
   rating: number;
   comment: string | null;
   imageUrl: string | null;

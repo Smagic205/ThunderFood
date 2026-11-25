@@ -12,11 +12,13 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -29,19 +31,21 @@ public class StaffOrderController {
     private final StaffOrderService staffOrderService;
 
     @GetMapping
-    @Operation(summary = "Lấy danh sách đơn hàng cho Staff (lọc Quận -> Phường -> Số nhà/tên đường, trạng thái, tìm kiếm)")
+    @Operation(summary = "Lấy danh sách đơn hàng cho Staff (lọc Quận -> Phường -> Số nhà/tên đường, trạng thái, tìm kiếm, khoảng thời gian)")
     public ResponseEntity<ApiResponse<PageResponse<StaffOrderListResponse>>> getOrders(
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String district,
             @RequestParam(required = false) String ward,
             @RequestParam(required = false) String streetKeyword,
             @RequestParam(required = false) String search,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "15") int size
     ) {
         Pageable pageable = PageRequest.of(page, size);
         PageResponse<StaffOrderListResponse> response = staffOrderService.getStaffOrders(
-                status, district, ward, streetKeyword, search, pageable
+                status, district, ward, streetKeyword, search, startDate, endDate, pageable
         );
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách đơn hàng thành công", response));
     }
@@ -93,8 +97,11 @@ public class StaffOrderController {
 
     @GetMapping("/packages/open")
     @Operation(summary = "Lấy danh sách các gói hàng đang mở (PENDING) để chọn khi duyệt đơn")
-    public ResponseEntity<ApiResponse<List<DeliveryPackageResponse>>> getOpenPackages() {
-        List<DeliveryPackageResponse> response = staffOrderService.getOpenPackages();
+    public ResponseEntity<ApiResponse<List<DeliveryPackageResponse>>> getOpenPackages(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
+    ) {
+        List<DeliveryPackageResponse> response = staffOrderService.getOpenPackages(startDate, endDate);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách gói hàng đang mở thành công", response));
     }
 

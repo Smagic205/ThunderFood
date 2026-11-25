@@ -1,4 +1,5 @@
 import { useState, type CSSProperties, type FormEvent } from 'react';
+import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertCircle, Bolt, ChevronLeft, ChevronRight, Eye, EyeOff, Image, Loader2, MessageSquare, Send, Star, X } from 'lucide-react';
 import { reviewsApi, type AdminReview } from '@/features/reviews/api/reviewsApi';
@@ -125,8 +126,17 @@ export const ReviewsPage = () => {
                     <span className="faint" style={{ fontSize: 13, whiteSpace: 'nowrap' }}>{formatDate(review.createdAt)}</span>
                   </div>
                 </div>
-                <div className="faint" style={{ fontSize: 12, marginTop: 7 }}>Mã đơn #{review.orderId}</div>
-                <p style={{ margin: '14px 0 10px', color: review.isHidden ? 'var(--ink-3)' : 'var(--ink)', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{review.comment || 'Khách không để lại nhận xét.'}</p>
+                <div className="faint" style={{ fontSize: 12, marginTop: 7 }}>
+                  Mã đơn{' '}
+                  {review.orderCode ? (
+                    <Link to={`/admin/orders?open=${encodeURIComponent(review.orderCode)}`} className="tlink" style={{ fontSize: 12 }}>
+                      {review.orderCode}
+                    </Link>
+                  ) : (
+                    `#${review.orderId}`
+                  )}
+                </div>
+                <p style={{ margin: '14px 0 10px', color: review.isHidden ? 'var(--ink-3)' : 'var(--ink)', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'break-word', lineHeight: 1.6 }}>{review.comment || 'Khách không để lại nhận xét.'}</p>
                 {review.imageUrl && <a href={review.imageUrl} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13 }} className="tlink"><Image size={15} /> Xem ảnh khách gửi</a>}
                 {review.isHidden && <div><span className="pill s-CANCELLED nodot" style={{ margin: '10px 0 0' }}>Đang ẩn khỏi cửa hàng</span></div>}
                 {review.staffReply && (
@@ -136,7 +146,7 @@ export const ReviewsPage = () => {
                     {review.repliedByStaffName && <span className="faint" style={{ fontWeight: 400 }}>· Nhân viên: {review.repliedByStaffName}</span>}
                     {review.repliedAt && <span className="faint" style={{ fontWeight: 400 }}>· {formatDate(review.repliedAt)}</span>}
                   </b>
-                    <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.55, marginTop: 6 }}>{review.staffReply}</div>
+                    <div style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'break-word', lineHeight: 1.55, marginTop: 6 }}>{review.staffReply}</div>
                   </div>
                 )}
                 <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', marginTop: 14, gap: 8 }}>
@@ -176,8 +186,8 @@ export const ReviewsPage = () => {
               <blockquote style={{ margin: '0 0 16px', padding: '14px 16px', borderRadius: 14, background: 'var(--surface-2)' }}>
                 <b>{selectedReview.userName || 'Khách hàng'}</b>
                 <div aria-label={`${selectedReview.rating} trên 5 sao`} style={{ display: 'inline-flex', flexDirection: 'row', flexWrap: 'nowrap', alignItems: 'center', gap: 2, marginTop: 4 }}>{renderStars(selectedReview.rating)}</div>
-                <div className="muted" style={{ marginTop: 4 }}>{selectedReview.comment || 'Không có nhận xét.'}</div>
-                <div className="faint" style={{ fontSize: 12, marginTop: 4 }}>{selectedReview.productName} · Đơn #{selectedReview.orderId}</div>
+                <div className="muted" style={{ marginTop: 4, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{selectedReview.comment || 'Không có nhận xét.'}</div>
+                <div className="faint" style={{ fontSize: 12, marginTop: 4 }}>{selectedReview.productName} · Đơn {selectedReview.orderCode || `#${selectedReview.orderId}`}</div>
               </blockquote>
               <form id="admin-review-reply-form" onSubmit={submitReply}>
                 <label className="field"><span>Nội dung phản hồi</span><textarea className="textarea" placeholder="Cảm ơn bạn đã góp ý…" value={replyText} onChange={(event) => setReplyText(event.target.value)} maxLength={1000} autoFocus disabled={replyMutation.isPending} /></label>

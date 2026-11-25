@@ -10,6 +10,7 @@ export interface ProductReview {
   userName: string;
   userAvatar: string | null;
   orderId: number | null;
+  orderCode?: string | null;
   rating: number;
   comment: string | null;
   imageUrl: string | null;

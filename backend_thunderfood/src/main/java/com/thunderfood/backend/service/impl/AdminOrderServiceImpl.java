@@ -8,12 +8,14 @@ import com.thunderfood.backend.repository.*;
 import com.thunderfood.backend.service.AdminOrderService;
 import com.thunderfood.backend.service.NotificationService;
 import com.thunderfood.backend.service.VoucherService;
+import com.thunderfood.backend.util.DateRangeUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -35,11 +37,15 @@ public class AdminOrderServiceImpl implements AdminOrderService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<AdminOrderResponse> getAllOrders(String status, String search) {
+    public List<AdminOrderResponse> getAllOrders(String status, String search, LocalDate startDate, LocalDate endDate) {
+        DateRangeUtils.validate(startDate, endDate);
         List<Order> orders = orderRepository.findAll();
 
         return orders.stream()
                 .filter(o -> {
+                    if (!DateRangeUtils.isWithinRange(o.getCreatedAt(), startDate, endDate)) {
+                        return false;
+                    }
                     if (status != null && !status.isBlank() && !"ALL".equalsIgnoreCase(status.trim())) {
                         if (!status.trim().equalsIgnoreCase(o.getStatus())) {
                             return false;
