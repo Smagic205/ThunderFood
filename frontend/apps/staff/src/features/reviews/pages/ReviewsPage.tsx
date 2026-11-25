@@ -104,10 +104,10 @@ export const ReviewsPage = () => {
           <p className="muted">Đánh giá mới của khách hàng sẽ xuất hiện tại đây.</p>
         </div>
       ) : (
-        <div className="stack" style={{ display: 'grid', gap: 14 }}>
+        <div className="stack" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 14 }}>
           {reviews.map((review) => (
-            <article key={review.id} className={`card rv-adm ${review.isHidden ? 'hidden-rv' : ''}`}>
-              <div style={{ width: 56, flexShrink: 0 }}>
+            <article key={review.id} className={`card rv-adm ${review.isHidden ? 'hidden-rv' : ''}`} style={{ minWidth: 0 }}>
+              <div style={{ width: 56, flexShrink: 0, paddingTop: 2 }}>
                 {review.userAvatar ? (
                   <img src={review.userAvatar} alt="" className="avatar" style={{ width: 48, height: 48, objectFit: 'cover' }} />
                 ) : (
@@ -116,42 +116,45 @@ export const ReviewsPage = () => {
                   </div>
                 )}
               </div>
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <div className="row between wrap" style={{ gap: 8 }}>
-                  <div>
-                    <b>{review.userName || 'Khách hàng'}</b> <span className="faint">đánh giá</span>{' '}
+              <div style={{ minWidth: 0 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', columnGap: 16, rowGap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: 6 }}>
+                    <b>{review.userName || 'Khách hàng'}</b>
+                    <span className="faint">đánh giá</span>
                     <span className="tlink">{review.productName || 'Món ăn'}</span>
                   </div>
-                  <div className="row wrap" style={{ gap: 8 }}>
-                    <div className="row" aria-label={`${review.rating} trên 5 sao`} style={{ gap: 2 }}>{renderStars(review.rating)}</div>
-                    <span className="faint" style={{ fontSize: 13 }}>{formatDate(review.createdAt)}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', columnGap: 10, rowGap: 6 }}>
+                    <div aria-label={`${review.rating} trên 5 sao`} style={{ display: 'inline-flex', flexDirection: 'row', flexWrap: 'nowrap', alignItems: 'center', gap: 2, whiteSpace: 'nowrap' }}>{renderStars(review.rating)}</div>
+                    <span className="faint" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>{review.rating}/5</span>
+                    <span className="faint" style={{ fontSize: 13, whiteSpace: 'nowrap' }}>{formatDate(review.createdAt)}</span>
                   </div>
                 </div>
 
-                <div className="faint" style={{ fontSize: 12, marginTop: 4 }}>Mã đơn {review.orderCode || `#${review.orderId}`}</div>
-                <p style={{ margin: '8px 0', color: review.isHidden ? 'var(--ink-3)' : 'var(--ink)', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
+                <div className="faint" style={{ fontSize: 12, marginTop: 6 }}>Mã đơn {review.orderCode || `#${review.orderId}`}</div>
+                <p style={{ margin: '12px 0 8px', color: review.isHidden ? 'var(--ink-3)' : 'var(--ink)', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'break-word', lineHeight: 1.6 }}>
                   {review.comment || 'Khách không để lại nhận xét.'}
                 </p>
                 {review.imageUrl && (
-                  <a className="row tlink" href={review.imageUrl} target="_blank" rel="noreferrer" style={{ gap: 6, fontSize: 13 }}>
+                  <a className="tlink" href={review.imageUrl} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
                     <Image size={15} /> Xem ảnh khách gửi
                   </a>
                 )}
                 {review.isHidden && (
-                  <span className="pill s-CANCELLED nodot" style={{ margin: '8px 0' }}>Đang ẩn khỏi cửa hàng</span>
+                  <div><span className="pill s-CANCELLED nodot" style={{ margin: '8px 0 0' }}>Đang ẩn khỏi cửa hàng</span></div>
                 )}
 
                 {review.staffReply && (
-                  <div className="reply" style={{ marginTop: 12, padding: 12, background: 'var(--surface-2)', borderRadius: 12 }}>
-                    <b className="row" style={{ gap: 6, marginBottom: 4 }}>
+                  <div className="reply" style={{ marginTop: 14, padding: 14, background: 'var(--surface-2)', borderRadius: 12 }}>
+                    <b style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 4 }}>
                       <Bolt size={15} /> ThunderFood phản hồi
+                      {review.repliedByStaffName && <span className="faint" style={{ fontWeight: 400 }}>· Nhân viên: {review.repliedByStaffName}</span>}
                       {review.repliedAt && <span className="faint" style={{ fontWeight: 400 }}>· {formatDate(review.repliedAt)}</span>}
                     </b>
-                    <div style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{review.staffReply}</div>
+                    <div style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'break-word', lineHeight: 1.55, marginTop: 6 }}>{review.staffReply}</div>
                   </div>
                 )}
 
-                <div className="row wrap" style={{ marginTop: 12, gap: 8 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', marginTop: 14, gap: 8 }}>
                   <button className="btn btn-soft btn-sm" onClick={() => openReply(review)}>
                     <MessageSquare size={16} /> {review.staffReply ? 'Sửa phản hồi' : 'Phản hồi'}
                   </button>
