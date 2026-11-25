@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { 
   Receipt, 
@@ -13,14 +13,16 @@ import {
   MapPin, 
   Calendar,
   Star,
-  CheckCircle2
+  CheckCircle2,
+  QrCode
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { 
   orderApi, 
   type OrderResponse, 
   type OrderTrackingResponse 
 } from '@/shared/api/orderApi';
+import { paymentApi } from '@/shared/api/paymentApi';
 import { useToastStore } from '@/shared/stores/toastStore';
 import { useAuthStore } from '@/app/store/authStore';
 import { ReviewOrderModal } from './ReviewOrderModal';
@@ -49,11 +51,65 @@ export const OrdersPage: React.FC = () => {
   const [trackingData, setTrackingData] = useState<OrderTrackingResponse | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
 
-  // Modal hủy đơn
+  // Modal hủy đơn & thanh toán SePay
+  const [searchParams, setSearchParams] = useSearchParams();
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [cancelOrderId, setCancelOrderId] = useState<number | null>(null);
   const [cancelReason, setCancelReason] = useState('');
   const [isCancelling, setIsCancelling] = useState(false);
+  const [payingOrderId, setPayingOrderId] = useState<number | null>(null);
+
+  useEffect(() => {
+    const sepayStatus = searchParams.get('sepayStatus');
+    const sepayOrderIdParam = searchParams.get('orderId');
+    if (!sepayStatus) return;
+
+    const cleanParams = () => {
+      const next = new URLSearchParams(searchParams);
+      next.delete('sepayStatus');
+      next.delete('orderId');
+      setSearchParams(next, { replace: true });
+    };
+
+    if (sepayStatus === 'success' && sepayOrderIdParam) {
+      const numericOrderId = Number(sepayOrderIdParam);
+      if (Number.isFinite(numericOrderId) && numericOrderId > 0) {
+        paymentApi
+          .verifyGatewayOrder(numericOrderId)
+          .then((res) => {
+            if (res.paymentStatus === 'PAID') {
+              showToast(`Thanh toán SePay thành công cho đơn #${res.orderCode}!`, 'success');
+            } else {
+              showToast('Đã ghi nhận kết quả từ SePay, đang chờ xác nhận thanh toán.', 'info');
+            }
+            queryClient.invalidateQueries({ queryKey: ['my-orders'] });
+          })
+          .catch(() => {
+            showToast('Đang đồng bộ trạng thái thanh toán SePay...', 'info');
+            queryClient.invalidateQueries({ queryKey: ['my-orders'] });
+          })
+          .finally(cleanParams);
+        return;
+      }
+    } else if (sepayStatus === 'error') {
+      showToast('Thanh toán SePay thất bại. Vui lòng thử lại.', 'error');
+    } else if (sepayStatus === 'cancel') {
+      showToast('Bạn đã hủy phiên thanh toán SePay. Có thể bấm Thanh toán SePay để thử lại.', 'info');
+    }
+
+    cleanParams();
+  }, [searchParams, setSearchParams, queryClient, showToast]);
+
+  const handlePayWithSepay = async (orderId: number) => {
+    try {
+      setPayingOrderId(orderId);
+      const gateway = await paymentApi.initGatewayCheckout(orderId, window.location.origin);
+      paymentApi.submitSepayCheckoutForm(gateway.checkoutUrl, gateway.fields);
+    } catch (err: any) {
+      showToast(err?.message || 'Không thể kết nối cổng thanh toán SePay', 'error');
+      setPayingOrderId(null);
+    }
+  };
 
   // Fetch danh sách đơn hàng
   const { 
@@ -221,7 +277,20 @@ export const OrdersPage: React.FC = () => {
                       {new Date(order.createdAt).toLocaleString('vi-VN')}
                     </span>
                   </div>
-                  {renderStatusBadge(order.status)}
+                  <div className="flex items-center gap-2">
+                    {order.paymentMethod === 'SEPAY' && (
+                      <span
+                        className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
+                          order.paymentStatus === 'PAID'
+                            ? 'bg-emerald-100 text-emerald-700'
+                            : 'bg-amber-100 text-amber-800'
+                        }`}
+                      >
+                        {order.paymentStatus === 'PAID' ? 'SePay: Đã thanh toán' : 'SePay: Chờ thanh toán'}
+                      </span>
+                    )}
+                    {renderStatusBadge(order.status)}
+                  </div>
                 </div>
 
                 {/* Danh sách món tóm tắt */}
@@ -281,7 +350,22 @@ export const OrdersPage: React.FC = () => {
                         </button>
                       )
                     )}
-                    {isPending && (
+                    {isPending && order.paymentMethod === 'SEPAY' && order.paymentStatus !== 'PAID' && (
+                      <button
+                        type="button"
+                        disabled={payingOrderId === order.id}
+                        onClick={() => handlePayWithSepay(order.id)}
+                        className="btn btn-sm btn-soft text-xs px-3 text-[var(--c-blue)]"
+                      >
+                        {payingOrderId === order.id ? (
+                          <Loader2 size={15} className="animate-spin" />
+                        ) : (
+                          <QrCode size={15} />
+                        )}
+                        <span>Thanh toán SePay</span>
+                      </button>
+                    )}
+                    {isPending && order.paymentStatus !== 'PAID' && (
                       <button
                         type="button"
                         onClick={() => {

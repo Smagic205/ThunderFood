@@ -30,7 +30,7 @@ export interface PlaceOrderRequest {
   addressId: number;
   productVoucherCode?: string;
   shippingVoucherCode?: string;
-  paymentMethod: 'COD' | 'VNPAY' | 'MOMO' | 'STRIPE' | string;
+  paymentMethod: 'COD' | 'SEPAY' | 'VNPAY' | 'MOMO' | 'STRIPE' | string;
   note?: string;
 }
 

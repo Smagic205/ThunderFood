@@ -19,6 +19,19 @@ services:
       CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-your_cloudinary_cloud_name}
       CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-your_cloudinary_api_key}
       CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-your_cloudinary_api_secret}
+      APP_FRONTEND_URL: ${APP_FRONTEND_URL:-http://localhost:5173}
+      SEPAY_ENABLED: ${SEPAY_ENABLED:-true}
+      SEPAY_SANDBOX: ${SEPAY_SANDBOX:-true}
+      SEPAY_MERCHANT_ID: ${SEPAY_MERCHANT_ID:-}
+      SEPAY_SECRET_KEY: ${SEPAY_SECRET_KEY:-}
+      SEPAY_CHECKOUT_URL: ${SEPAY_CHECKOUT_URL:-https://pay-sandbox.sepay.vn/v1/checkout/init}
+      SEPAY_PG_API_URL: ${SEPAY_PG_API_URL:-https://pgapi-sandbox.sepay.vn}
+      SEPAY_PG_PAYMENT_METHOD: ${SEPAY_PG_PAYMENT_METHOD:-BANK_TRANSFER}
+      SEPAY_BANK_CODE: ${SEPAY_BANK_CODE:-MBBank}
+      SEPAY_ACCOUNT_NUMBER: ${SEPAY_ACCOUNT_NUMBER:-}
+      SEPAY_ACCOUNT_NAME: ${SEPAY_ACCOUNT_NAME:-}
+      SEPAY_WEBHOOK_API_KEY: ${SEPAY_WEBHOOK_API_KEY:-}
+      SEPAY_QR_BASE_URL: ${SEPAY_QR_BASE_URL:-https://qr.sepay.vn/img}
 
   # Ứng dụng Web Khách hàng (React / Vite)
   frontend-web:

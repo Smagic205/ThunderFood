@@ -510,6 +510,10 @@ public class OrderServiceImpl implements OrderService {
                     "', đã được cửa hàng tiếp nhận/xử lý nên không thể tự hủy. Vui lòng liên hệ nhân viên để được hỗ trợ.");
         }
 
+        if ("PAID".equalsIgnoreCase(order.getPaymentStatus()) && !SecurityUtils.isAdmin()) {
+            throw new IllegalArgumentException("Đơn hàng đã thanh toán trực tuyến thành công nên không thể tự hủy. Vui lòng liên hệ nhân viên để được hỗ trợ hoàn tiền.");
+        }
+
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thông tin tài khoản người dùng"));
 

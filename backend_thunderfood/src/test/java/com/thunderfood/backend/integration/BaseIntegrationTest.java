@@ -94,6 +94,9 @@ public abstract class BaseIntegrationTest {
     protected OrderStatusHistoryRepository orderStatusHistoryRepository;
 
     @Autowired
+    protected PaymentRepository paymentRepository;
+
+    @Autowired
     protected NotificationRepository notificationRepository;
 
     @Autowired
@@ -115,6 +118,7 @@ public abstract class BaseIntegrationTest {
         orderItemRepository.deleteAllInBatch();
         cartItemRepository.deleteAllInBatch();
         cartRepository.deleteAllInBatch();
+        paymentRepository.deleteAllInBatch();
         orderRepository.deleteAllInBatch();
         deliveryPackageRepository.deleteAllInBatch();
         addressRepository.deleteAllInBatch();

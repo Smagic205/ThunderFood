@@ -1,6 +1,10 @@
 spring:
   application:
     name: backend_thunderfood
+  config:
+    import:
+      - optional:file:.env[.properties]
+      - optional:file:../.env[.properties]
 
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/db_thunderfood?useSSL=false&serverTimezone=UTC&createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true}
@@ -58,3 +62,17 @@ app:
   frontend-url: "${APP_FRONTEND_URL:http://localhost:5173}"
   google:
     client-id: "${GOOGLE_CLIENT_ID:}"
+
+sepay:
+  enabled: ${SEPAY_ENABLED:true}
+  sandbox: ${SEPAY_SANDBOX:true}
+  merchant-id: ${SEPAY_MERCHANT_ID:}
+  secret-key: ${SEPAY_SECRET_KEY:}
+  checkout-url: ${SEPAY_CHECKOUT_URL:https://pay-sandbox.sepay.vn/v1/checkout/init}
+  pg-api-url: ${SEPAY_PG_API_URL:https://pgapi-sandbox.sepay.vn}
+  pg-payment-method: ${SEPAY_PG_PAYMENT_METHOD:BANK_TRANSFER}
+  bank-code: ${SEPAY_BANK_CODE:MBBank}
+  account-number: ${SEPAY_ACCOUNT_NUMBER:}
+  account-name: ${SEPAY_ACCOUNT_NAME:}
+  webhook-api-key: ${SEPAY_WEBHOOK_API_KEY:}
+  qr-base-url: ${SEPAY_QR_BASE_URL:https://qr.sepay.vn/img}

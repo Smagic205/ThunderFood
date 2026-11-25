@@ -33,3 +33,17 @@ app:
   frontend-url: "http://localhost:5173"
   google:
     client-id: "test-google-client-id"
+
+sepay:
+  enabled: true
+  sandbox: true
+  merchant-id: "SP-TEST-UNIT0001"
+  secret-key: "spsk_test_unit_dummy_secret_key_0001"
+  checkout-url: "https://pay-sandbox.sepay.vn/v1/checkout/init"
+  pg-api-url: "https://pgapi-sandbox.sepay.vn"
+  pg-payment-method: "BANK_TRANSFER"
+  bank-code: "MBBank"
+  account-number: "0123456789"
+  account-name: "THUNDERFOOD SANDBOX"
+  webhook-api-key: "test-sepay-webhook-key"
+  qr-base-url: "https://qr.sepay.vn/img"

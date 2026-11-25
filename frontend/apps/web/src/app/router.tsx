@@ -22,7 +22,7 @@ const AccountLayout = lazy(() => import('../pages/account/AccountLayout').then((
 const AddressesPage = lazy(() => import('../pages/account/AddressesPage').then((m) => ({ default: m.AddressesPage })));
 const ProfilePage = lazy(() => import('../pages/account/ProfilePage').then((m) => ({ default: m.ProfilePage })));
 const OrdersPage = lazy(() => import('../pages/account/OrdersPage').then((m) => ({ default: m.OrdersPage })));
-const PaymentsPage = lazy(() => import('../pages/account/Placeholders').then((m) => ({ default: m.PaymentsPage })));
+const PaymentsPage = lazy(() => import('../pages/account/PaymentsPage').then((m) => ({ default: m.PaymentsPage })));
 const WishlistPage = lazy(() => import('../pages/account/WishlistPage').then((m) => ({ default: m.WishlistPage })));
 const NotificationsPage = lazy(() => import('../pages/account/NotificationsPage').then((m) => ({ default: m.NotificationsPage })));
 

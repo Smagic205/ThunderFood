@@ -21,6 +21,7 @@ import { useToastStore } from '@/shared/stores/toastStore';
 import { addressApi, type CustomerAddress } from '@/shared/api/addressApi';
 import { voucherApi, type VoucherClientResponse } from '@/shared/api/voucherApi';
 import { orderApi, type CheckoutPreviewResponse, type PlaceOrderRequest } from '@/shared/api/orderApi';
+import { paymentApi } from '@/shared/api/paymentApi';
 
 export const CheckoutPage: React.FC = () => {
   const navigate = useNavigate();
@@ -40,7 +41,7 @@ export const CheckoutPage: React.FC = () => {
   const [voucherModalType, setVoucherModalType] = useState<'PRODUCT' | 'SHIPPING' | null>(null);
 
   // State thanh toán & ghi chú
-  const [paymentMethod, setPaymentMethod] = useState<'COD' | 'VNPAY' | 'MOMO'>('COD');
+  const [paymentMethod, setPaymentMethod] = useState<'COD' | 'SEPAY'>('COD');
   const [note, setNote] = useState<string>('');
 
   // State Preview & Đặt hàng
@@ -142,12 +143,24 @@ export const CheckoutPage: React.FC = () => {
       };
 
       const order = await orderApi.placeOrder(payload);
-      showToast('Đặt hàng thành công! Mã đơn: ' + order.orderCode, 'success');
-      
+
       // Xóa giỏ hàng trên store
       resetCart();
       fetchCartCount();
 
+      if (paymentMethod === 'SEPAY') {
+        try {
+          const gateway = await paymentApi.initGatewayCheckout(order.id, window.location.origin);
+          paymentApi.submitSepayCheckoutForm(gateway.checkoutUrl, gateway.fields);
+          return;
+        } catch (gwErr: any) {
+          showToast(gwErr?.message || 'Đã tạo đơn nhưng không thể chuyển sang SePay. Bạn có thể thanh toán lại ở mục Đơn hàng.', 'error');
+          navigate('/account/orders');
+          return;
+        }
+      }
+
+      showToast('Đặt hàng thành công! Mã đơn: ' + order.orderCode, 'success');
       // Chuyển hướng sang trang quản lý đơn hàng
       navigate('/account/orders');
     } catch (err: any) {
@@ -432,44 +445,23 @@ export const CheckoutPage: React.FC = () => {
 
               <label 
                 className={`opt p-3.5 flex items-center justify-between rounded-xl border cursor-pointer transition-all ${
-                  paymentMethod === 'VNPAY' ? 'border-[var(--ink)] bg-amber-50/20 shadow-sm' : 'border-[var(--line)]'
+                  paymentMethod === 'SEPAY' ? 'border-[var(--ink)] bg-amber-50/20 shadow-sm' : 'border-[var(--line)]'
                 }`}
               >
                 <div className="flex items-center gap-3">
                   <input
                     type="radio"
                     name="payment"
-                    value="VNPAY"
-                    checked={paymentMethod === 'VNPAY'}
-                    onChange={() => setPaymentMethod('VNPAY')}
+                    value="SEPAY"
+                    checked={paymentMethod === 'SEPAY'}
+                    onChange={() => setPaymentMethod('SEPAY')}
                   />
                   <div>
-                    <h4 className="text-sm font-bold text-[var(--ink)]">Cổng thanh toán VNPAY</h4>
-                    <p className="text-xs text-[var(--ink-2)]">Quét mã VNPAY-QR hoặc thẻ ATM / Visa nội địa</p>
+                    <h4 className="text-sm font-bold text-[var(--ink)]">Chuyển khoản QR qua cổng SePay (Sandbox)</h4>
+                    <p className="text-xs text-[var(--ink-2)]">Chuyển thẳng sang cổng SePay để quét mã QR (hỗ trợ tiền ảo thử nghiệm)</p>
                   </div>
                 </div>
-                <span className="pay-logo bg-[#005BAA]">VNPAY</span>
-              </label>
-
-              <label 
-                className={`opt p-3.5 flex items-center justify-between rounded-xl border cursor-pointer transition-all ${
-                  paymentMethod === 'MOMO' ? 'border-[var(--ink)] bg-amber-50/20 shadow-sm' : 'border-[var(--line)]'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <input
-                    type="radio"
-                    name="payment"
-                    value="MOMO"
-                    checked={paymentMethod === 'MOMO'}
-                    onChange={() => setPaymentMethod('MOMO')}
-                  />
-                  <div>
-                    <h4 className="text-sm font-bold text-[var(--ink)]">Ví điện tử MoMo</h4>
-                    <p className="text-xs text-[var(--ink-2)]">Thanh toán tức thì qua ứng dụng MoMo</p>
-                  </div>
-                </div>
-                <span className="pay-logo bg-[#A50064]">MOMO</span>
+                <span className="pay-logo bg-[#005BAA]">SEPAY</span>
               </label>
             </div>
           </div>
