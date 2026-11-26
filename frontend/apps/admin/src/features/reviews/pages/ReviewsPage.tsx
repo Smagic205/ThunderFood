@@ -99,12 +99,12 @@ export const ReviewsPage = () => {
       ) : reviews.length === 0 ? (
         <div className="empty card" style={{ padding: 40, textAlign: 'center' }}><MessageSquare size={30} className="muted" /><h3>Chưa có đánh giá nào</h3></div>
       ) : (
-        <div className="stack" style={{ display: 'grid', gap: 14 }}>
+        <div className="stack" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 14 }}>
           {reviews.map((review) => (
             <article
               key={review.id}
               className={`card rv-adm ${review.isHidden ? 'hidden-rv' : ''}`}
-              style={{ display: 'grid', gridTemplateColumns: '56px minmax(0, 1fr)', alignItems: 'start', gap: 16, padding: 18 }}
+              style={{ display: 'grid', gridTemplateColumns: '56px minmax(0, 1fr)', alignItems: 'start', gap: 16, padding: 18, minWidth: 0 }}
             >
               <div style={{ width: 56, flexShrink: 0, paddingTop: 2 }}>
                 {review.userAvatar ? (

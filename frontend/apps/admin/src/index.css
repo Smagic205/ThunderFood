@@ -740,10 +740,6 @@ body {
   margin: 0;
 }
 
-.atop .hsearch {
-  max-width: 340px;
-}
-
 /* Form Controls (Inputs, Select, Textarea, Switch) */
 .field {
   display: block;

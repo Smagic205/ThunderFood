@@ -33,10 +33,6 @@ export const authApi = {
     const res = await authAxios.post<ApiResponse<StaffAuthResponse>>('/v1/auth/staff/login', credentials);
     return res.data;
   },
-  register: async (data: { fullName: string; email: string; phone: string; password: string }) => {
-    const res = await authAxios.post<ApiResponse<StaffAuthResponse>>('/v1/auth/staff/register', data);
-    return res.data;
-  },
   refreshToken: async (refreshToken: string) => {
     const res = await authAxios.post<ApiResponse<StaffAuthResponse>>('/v1/auth/refresh-token', {
       refreshToken,

@@ -1,4 +1,4 @@
-import { Menu, Search, Moon, Sun, Bell, Store } from 'lucide-react';
+import { Menu, Moon, Sun, Bell, Store } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useThemeStore } from '@/shared/stores/themeStore';
 import { useEffect } from 'react';
@@ -30,14 +30,9 @@ export const AdminHeader = () => {
         <Menu size={24} />
       </button>
       <h1 id="atitle">Tổng quan</h1>
-      <form className="hsearch" style={{ marginLeft: 'auto' }} role="search" onSubmit={(e) => e.preventDefault()}>
-        <div className="input-ic">
-          <Search size={18} />
-          <input className="input" name="q" placeholder="Tìm đơn, món, khách…" aria-label="Tìm kiếm quản trị" />
-        </div>
-      </form>
       <button
         className="ibtn"
+        style={{ marginLeft: 'auto' }}
         onClick={toggleTheme}
         aria-label="Đổi giao diện sáng tối"
         title={isDark ? 'Chuyển sang giao diện Sáng' : 'Chuyển sang giao diện Tối'}

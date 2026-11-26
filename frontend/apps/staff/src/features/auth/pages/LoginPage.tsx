@@ -143,8 +143,8 @@ export const LoginPage = () => {
             </button>
           </form>
           
-          <p className="muted center" style={{ marginTop: '22px' }}>
-            Chưa có tài khoản? <Link to="/register" className="tlink"><b>Đăng ký</b></Link>
+          <p className="muted center" style={{ marginTop: '22px', fontSize: '13px' }}>
+            Tài khoản nhân viên do Quản trị viên cấp. Vui lòng liên hệ Admin nếu chưa có tài khoản.
           </p>
         </div>
       </div>

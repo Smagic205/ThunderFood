@@ -259,6 +259,42 @@ class AuthServiceTest {
 
         verify(userRepository).save(mockUser);
         verify(userTokenRepository).delete(token);
+        verify(userTokenRepository).deleteByUserIdAndType(mockUser.getId(), "REFRESH_TOKEN");
+    }
+
+    @Test
+    @DisplayName("Quên mật khẩu chuẩn hóa email (trim + lowercase)")
+    void testForgotPassword_NormalizesEmail() {
+        when(userRepository.findByEmail("user@gmail.com")).thenReturn(Optional.of(mockUser));
+
+        authService.forgotPassword("  User@Gmail.COM  ");
+
+        verify(userTokenRepository).deleteByUserIdAndType(mockUser.getId(), "OTP");
+        verify(emailService).sendPasswordResetOtp(eq("user@gmail.com"), anyString());
+    }
+
+    @Test
+    @DisplayName("Quên mật khẩu thất bại khi tài khoản đã bị LOCKED")
+    void testForgotPassword_LockedUser() {
+        mockUser.setStatus("LOCKED");
+        when(userRepository.findByEmail("user@gmail.com")).thenReturn(Optional.of(mockUser));
+
+        AccessDeniedException ex = assertThrows(AccessDeniedException.class,
+                () -> authService.forgotPassword("user@gmail.com"));
+        assertTrue(ex.getMessage().contains("bị khóa"));
+        verify(emailService, never()).sendPasswordResetOtp(anyString(), anyString());
+    }
+
+    @Test
+    @DisplayName("Quên mật khẩu thất bại khi tài khoản chưa kích hoạt UNVERIFIED")
+    void testForgotPassword_UnverifiedUser() {
+        mockUser.setStatus("UNVERIFIED");
+        when(userRepository.findByEmail("user@gmail.com")).thenReturn(Optional.of(mockUser));
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> authService.forgotPassword("user@gmail.com"));
+        assertTrue(ex.getMessage().contains("chưa được kích hoạt"));
+        verify(emailService, never()).sendPasswordResetOtp(anyString(), anyString());
     }
 
     @Test
