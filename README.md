@@ -34,7 +34,6 @@
 9. [CI/CD & Deployment Pipeline](#cicd--deployment-pipeline)
 10. [Testing & Quality Assurance](#testing--quality-assurance)
 11. [Tech Stack](#tech-stack)
-12. [Local Development & Docker Setup](#local-development--docker-setup)
 
 ---
 
@@ -357,61 +356,6 @@ Additionally, the frontend includes **12 Vitest suites** (`1` in `apps/admin`, `
 | **Frontend Monorepo** | React 18, TypeScript, Vite, TailwindCSS 4, TanStack React Query, Zustand, React Router DOM 7, React Hook Form + Zod, Axios, Swiper, Lucide |
 | **Testing** | JUnit 5, Mockito, MockMvc, `@SpringBootTest`, Vitest, React Testing Library, MSW, Oxlint |
 | **DevOps & Hosting** | Docker (Multi-stage Maven/JRE & Nginx builds), Docker Compose, GitHub Actions, GHCR (`ghcr.io`), Render, Vercel |
-
----
-
-## Local Development & Docker Setup
-
-### Prerequisites
-- **Java 21+** and Maven (or bundled `./mvnw`)
-- **Node.js 20+** and `npm`
-- **MySQL 8.0+** (or Docker Desktop)
-
-### 1. Configure Environment Variables
-Create a `.env` file at the repository root from the template (never commit `.env`):
-```bash
-cp backend_thunderfood/.env.example .env
-```
-
-Main variables:
-- **Database:** `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`
-- **Security & Frontend:** `JWT_SECRET`, `APP_FRONTEND_URL`, `GOOGLE_CLIENT_ID`
-- **Mail & Media:** `MAIL_USERNAME`, `MAIL_PASSWORD`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`
-- **SePay Payment Gateway:** `SEPAY_ENABLED`, `SEPAY_SANDBOX`, `SEPAY_MERCHANT_ID`, `SEPAY_SECRET_KEY`, `SEPAY_CHECKOUT_URL`, `SEPAY_PG_API_URL`, `SEPAY_PG_PAYMENT_METHOD`, `SEPAY_BANK_CODE`, `SEPAY_ACCOUNT_NUMBER`, `SEPAY_ACCOUNT_NAME`, `SEPAY_WEBHOOK_API_KEY`
-
-### 2. Run Backend Locally
-```bash
-cd backend_thunderfood
-./mvnw spring-boot:run
-```
-- API base URL: `http://localhost:8080/api/v1`
-- Swagger UI: `http://localhost:8080/swagger-ui.html`
-
-Run all 298 backend tests locally (uses in-memory H2, no external MySQL needed):
-```bash
-cd backend_thunderfood
-./mvnw test
-```
-
-### 3. Run Frontend Monorepo Locally
-```bash
-cd frontend
-npm install
-
-# Run Customer Web / Staff Portal / Admin Portal
-npm run dev --workspace=@thunderfood/web
-npm run dev --workspace=@thunderfood/staff
-npm run dev --workspace=@thunderfood/admin
-```
-
-### 4. Run Full Stack with Docker Compose
-```bash
-docker compose up --build
-```
-- **Backend API:** `http://localhost:8080`
-- **Customer Web:** `http://localhost:3008`
-- **Admin Portal:** `http://localhost:3009`
-- **Staff Portal:** `http://localhost:3010`
 
 ---
 
