@@ -20,7 +20,7 @@ public class EmailServiceImpl implements EmailService {
     private final JavaMailSender mailSender;
 
     @Value("${spring.mail.username:noreply@thunderfood.com}")
-    private String fromEmail;
+    private String fromEmail = "noreply@thunderfood.com";
 
     @Override
     public void sendPasswordResetOtp(String to, String otp) {

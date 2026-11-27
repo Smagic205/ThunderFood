@@ -478,7 +478,7 @@ class OrderServiceTest {
         // 75k * 2 = 150k + 20k ship = 170k (khớp hoàn toàn với OrderItem)
         assertEquals(new BigDecimal("150000.00"), resp.getSubtotalAmount());
         assertEquals(new BigDecimal("170000.00"), resp.getTotalAmount());
-        assertEquals(new BigDecimal("75000.00"), resp.getItems().get(0).getUnitPrice());
+        assertEquals(new BigDecimal("75000.00"), resp.getItems().get(0).getProductPrice());
         assertEquals(new BigDecimal("150000.00"), resp.getItems().get(0).getLineTotal());
     }
 
