@@ -196,6 +196,11 @@ public class DashboardServiceImpl implements DashboardService {
         LocalDateTime end = endDate.atTime(LocalTime.MAX);
 
         List<DeliveryPackage> packages = deliveryPackageRepository.findByShippedByStaffIsNotNullAndCreatedAtBetween(start, end);
+        List<Long> packageIds = packages.stream().map(DeliveryPackage::getId).toList();
+        Map<Long, List<Order>> ordersByPackageId = packageIds.isEmpty()
+                ? Collections.emptyMap()
+                : orderRepository.findByDeliveryPackageIdIn(packageIds).stream()
+                        .collect(Collectors.groupingBy(o -> o.getDeliveryPackage().getId()));
 
         Map<User, List<DeliveryPackage>> byStaff = packages.stream()
                 .collect(Collectors.groupingBy(DeliveryPackage::getShippedByStaff));
@@ -214,7 +219,7 @@ public class DashboardServiceImpl implements DashboardService {
             int timedDeliveredCount = 0;
 
             for (DeliveryPackage dp : staffPackages) {
-                List<Order> orders = orderRepository.findByDeliveryPackageId(dp.getId());
+                List<Order> orders = ordersByPackageId.getOrDefault(dp.getId(), Collections.emptyList());
                 totalOrders += orders.size();
 
                 for (Order o : orders) {

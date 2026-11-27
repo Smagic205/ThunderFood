@@ -9,8 +9,13 @@ import com.thunderfood.backend.service.AdminOrderService;
 import com.thunderfood.backend.service.NotificationService;
 import com.thunderfood.backend.service.VoucherService;
 import com.thunderfood.backend.util.DateRangeUtils;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,11 +24,13 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -50,36 +57,46 @@ public class AdminOrderServiceImpl implements AdminOrderService {
     @Transactional(readOnly = true)
     public List<AdminOrderResponse> getAllOrders(String status, String search, LocalDate startDate, LocalDate endDate) {
         DateRangeUtils.validate(startDate, endDate);
-        List<Order> orders = orderRepository.findAll();
+        LocalDateTime start = DateRangeUtils.toStartOfDay(startDate);
+        LocalDateTime end = DateRangeUtils.toEndOfDay(endDate);
+
+        Specification<Order> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            if (start != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), start));
+            }
+            if (end != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("createdAt"), end));
+            }
+            if (status != null && !status.isBlank() && !"ALL".equalsIgnoreCase(status.trim())) {
+                predicates.add(cb.equal(cb.upper(root.get("status")), status.trim().toUpperCase(Locale.ROOT)));
+            }
+            if (search != null && !search.isBlank()) {
+                String pattern = "%" + search.trim().toLowerCase(Locale.ROOT) + "%";
+                Join<Order, User> userJoin = root.join("user", JoinType.LEFT);
+                predicates.add(cb.or(
+                        cb.like(cb.lower(root.get("orderCode")), pattern),
+                        cb.like(cb.lower(root.get("receiverName")), pattern),
+                        cb.like(root.get("receiverPhone"), "%" + search.trim() + "%"),
+                        cb.like(cb.lower(userJoin.get("fullName")), pattern)
+                ));
+            }
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        List<Order> orders = orderRepository.findAll(spec, Sort.by(Sort.Direction.DESC, "createdAt"));
+        if (orders.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> orderIds = orders.stream().map(Order::getId).toList();
+        Map<Long, List<OrderStatusHistory>> historyByOrderId = orderStatusHistoryRepository
+                .findByOrderIdInOrderByCreatedAtAsc(orderIds)
+                .stream()
+                .collect(Collectors.groupingBy(h -> h.getOrder().getId()));
 
         return orders.stream()
-                .filter(o -> {
-                    if (!DateRangeUtils.isWithinRange(o.getCreatedAt(), startDate, endDate)) {
-                        return false;
-                    }
-                    if (status != null && !status.isBlank() && !"ALL".equalsIgnoreCase(status.trim())) {
-                        if (!status.trim().equalsIgnoreCase(o.getStatus())) {
-                            return false;
-                        }
-                    }
-                    if (search != null && !search.isBlank()) {
-                        String q = search.trim().toLowerCase();
-                        boolean matchCode = o.getOrderCode() != null && o.getOrderCode().toLowerCase().contains(q);
-                        boolean matchReceiver = o.getReceiverName() != null && o.getReceiverName().toLowerCase().contains(q);
-                        boolean matchPhone = o.getReceiverPhone() != null && o.getReceiverPhone().contains(q);
-                        boolean matchCustomer = o.getUser() != null && o.getUser().getFullName() != null && o.getUser().getFullName().toLowerCase().contains(q);
-                        if (!matchCode && !matchReceiver && !matchPhone && !matchCustomer) {
-                            return false;
-                        }
-                    }
-                    return true;
-                })
-                .sorted((a, b) -> {
-                    LocalDateTime t1 = a.getCreatedAt() != null ? a.getCreatedAt() : LocalDateTime.MIN;
-                    LocalDateTime t2 = b.getCreatedAt() != null ? b.getCreatedAt() : LocalDateTime.MIN;
-                    return t2.compareTo(t1);
-                })
-                .map(this::mapToAdminOrderResponse)
+                .map(o -> mapToAdminOrderResponse(o, historyByOrderId.getOrDefault(o.getId(), Collections.emptyList())))
                 .toList();
     }
 
@@ -236,6 +253,11 @@ public class AdminOrderServiceImpl implements AdminOrderService {
     }
 
     private AdminOrderResponse mapToAdminOrderResponse(Order order) {
+        List<OrderStatusHistory> historyEntities = orderStatusHistoryRepository.findByOrderIdOrderByCreatedAtAsc(order.getId());
+        return mapToAdminOrderResponse(order, historyEntities);
+    }
+
+    private AdminOrderResponse mapToAdminOrderResponse(Order order, List<OrderStatusHistory> historyEntities) {
         List<AdminOrderResponse.OrderItemDto> items = new ArrayList<>();
         if (order.getItems() != null) {
             for (OrderItem item : order.getItems()) {
@@ -250,7 +272,6 @@ public class AdminOrderServiceImpl implements AdminOrderService {
         }
 
         List<AdminOrderResponse.OrderHistoryDto> history = new ArrayList<>();
-        List<OrderStatusHistory> historyEntities = orderStatusHistoryRepository.findByOrderIdOrderByCreatedAtAsc(order.getId());
         if (historyEntities != null) {
             for (OrderStatusHistory h : historyEntities) {
                 history.add(AdminOrderResponse.OrderHistoryDto.builder()

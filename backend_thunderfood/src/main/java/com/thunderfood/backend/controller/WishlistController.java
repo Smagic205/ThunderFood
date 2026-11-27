@@ -40,7 +40,7 @@ public class WishlistController {
             @RequestParam(defaultValue = "12") int size
     ) {
         Long userId = getRequiredUserId();
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = com.thunderfood.backend.util.PaginationUtils.toPageable(page, size);
         PageResponse<WishlistItemResponse> response = wishlistService.getMyWishlist(userId, pageable);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách yêu thích thành công", response));
     }

@@ -468,13 +468,23 @@ public class OrderServiceImpl implements OrderService {
             orderPage = orderRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable);
         }
 
+        List<Long> allProductIds = orderPage.getContent().stream()
+                .filter(order -> order.getItems() != null)
+                .flatMap(order -> order.getItems().stream())
+                .map(item -> item.getProduct() != null ? item.getProduct().getId() : null)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        Map<Long, String> thumbnails = loadThumbnailMap(allProductIds);
+
         List<OrderListResponse> content = orderPage.getContent().stream().map(order -> {
             List<OrderItemResponse> previewItems = new ArrayList<>();
             if (order.getItems() != null && !order.getItems().isEmpty()) {
-                List<Long> pIds = order.getItems().stream().map(i -> i.getProduct().getId()).toList();
-                Map<Long, String> thumbnails = loadThumbnailMap(pIds);
                 previewItems = order.getItems().stream()
-                        .map(i -> OrderItemResponse.fromEntity(i, thumbnails.get(i.getProduct().getId())))
+                        .map(i -> OrderItemResponse.fromEntity(
+                                i,
+                                i.getProduct() != null ? thumbnails.get(i.getProduct().getId()) : null
+                        ))
                         .toList();
             }
             return OrderListResponse.fromEntity(order, previewItems);

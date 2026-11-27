@@ -8,7 +8,13 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "voucher_usages")
+@Table(
+        name = "voucher_usages",
+        indexes = {
+                @Index(name = "idx_voucher_usages_voucher_user", columnList = "voucher_id, user_id, is_reverted"),
+                @Index(name = "idx_voucher_usages_order", columnList = "order_id")
+        }
+)
 @Getter
 @Setter
 @NoArgsConstructor

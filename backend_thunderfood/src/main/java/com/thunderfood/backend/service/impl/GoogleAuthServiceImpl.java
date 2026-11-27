@@ -5,8 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.thunderfood.backend.dto.auth.GoogleUserInfo;
 import com.thunderfood.backend.exception.UnauthorizedException;
 import com.thunderfood.backend.service.GoogleAuthService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -23,13 +23,21 @@ import java.time.Duration;
 public class GoogleAuthServiceImpl implements GoogleAuthService {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final HttpClient httpClient;
 
     @Value("${app.google.client-id:}")
     private String expectedClientId;
 
-    private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(10))
-            .build();
+    @Autowired
+    public GoogleAuthServiceImpl() {
+        this(HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(10))
+                .build());
+    }
+
+    public GoogleAuthServiceImpl(HttpClient httpClient) {
+        this.httpClient = httpClient;
+    }
 
     @Override
     public GoogleUserInfo verifyToken(String idToken) {
@@ -47,7 +55,7 @@ public class GoogleAuthServiceImpl implements GoogleAuthService {
                     .GET()
                     .build();
 
-            HttpResponse<String> httpResponse = HTTP_CLIENT.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> httpResponse = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
 
             if (httpResponse.statusCode() != 200) {
                 log.warn("Google token verification failed with status {}: {}", httpResponse.statusCode(), httpResponse.body());

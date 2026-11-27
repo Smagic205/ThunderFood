@@ -34,7 +34,7 @@ public class AdminVoucherController {
             @RequestParam(defaultValue = "desc") String direction
     ) {
         Sort sort = "asc".equalsIgnoreCase(direction) ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
-        Pageable pageable = PageRequest.of(page, size, sort);
+        Pageable pageable = com.thunderfood.backend.util.PaginationUtils.toPageable(page, size, sort);
         PageResponse<VoucherAdminResponse> vouchers = voucherService.getAllVouchersForAdmin(keyword, voucherType, status, pageable);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách voucher thành công", vouchers));
     }

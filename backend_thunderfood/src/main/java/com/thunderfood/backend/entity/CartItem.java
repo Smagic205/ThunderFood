@@ -7,7 +7,14 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "cart_items", uniqueConstraints = @UniqueConstraint(columnNames = {"cart_id", "product_id"}))
+@Table(
+        name = "cart_items",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"cart_id", "product_id"}),
+        indexes = {
+                @Index(name = "idx_cart_items_cart", columnList = "cart_id"),
+                @Index(name = "idx_cart_items_product", columnList = "product_id")
+        }
+)
 @Getter
 @Setter
 @NoArgsConstructor

@@ -95,7 +95,7 @@ public class PaymentController {
             @RequestParam(defaultValue = "10") int size
     ) {
         Long userId = getRequiredUserId();
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = com.thunderfood.backend.util.PaginationUtils.toPageable(page, size);
         PageResponse<PaymentHistoryResponse> response = paymentService.getMyPayments(userId, pageable);
         return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử giao dịch thành công", response));
     }

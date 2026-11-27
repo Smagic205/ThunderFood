@@ -523,7 +523,7 @@ class StaffOrderServiceTest {
 
         when(deliveryPackageRepository.findByStatusOrderByCreatedAtDesc("PENDING"))
                 .thenReturn(List.of(inRangePkg, outRangePkg));
-        when(orderRepository.findByDeliveryPackageIdOrderByCreatedAtAsc(11L))
+        when(orderRepository.findByDeliveryPackageIdInOrderByCreatedAtAsc(List.of(11L)))
                 .thenReturn(List.of());
 
         var result = staffOrderService.getOpenPackages(

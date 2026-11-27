@@ -34,7 +34,7 @@ public class AdminProductController {
         org.springframework.data.domain.Sort sort = "asc".equalsIgnoreCase(direction)
                 ? org.springframework.data.domain.Sort.by(sortBy).ascending()
                 : org.springframework.data.domain.Sort.by(sortBy).descending();
-        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, sort);
+        org.springframework.data.domain.Pageable pageable = com.thunderfood.backend.util.PaginationUtils.toPageable(page, size, sort);
         com.thunderfood.backend.dto.common.PageResponse<ProductAdminResponse> response =
                 productService.getAllProductsForAdmin(keyword, categoryId, isAvailable, pageable);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách món ăn cho quản trị viên thành công", response));

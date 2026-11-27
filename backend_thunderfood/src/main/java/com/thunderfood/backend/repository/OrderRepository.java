@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -36,7 +37,11 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
 
     List<Order> findByDeliveryPackageId(Long packageId);
 
+    List<Order> findByDeliveryPackageIdIn(Collection<Long> packageIds);
+
     List<Order> findByDeliveryPackageIdOrderByCreatedAtAsc(Long packageId);
+
+    List<Order> findByDeliveryPackageIdInOrderByCreatedAtAsc(Collection<Long> packageIds);
 
     long countByDeliveryPackageId(Long packageId);
 

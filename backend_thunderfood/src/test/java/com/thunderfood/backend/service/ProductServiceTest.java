@@ -222,8 +222,8 @@ class ProductServiceTest {
         ProductImage img2 = ProductImage.builder().id(2L).product(product1).imageUrl("https://cdn/img2.png").isThumbnail(false).sortOrder(1).build();
         when(productImageRepository.findByProductIdOrderByIsThumbnailDescSortOrderAsc(1L)).thenReturn(List.of(img1, img2));
 
-        when(systemSettingRepository.findBySettingKey("FREE_SHIPPING_THRESHOLD"))
-                .thenReturn(Optional.of(SystemSetting.builder().settingKey("FREE_SHIPPING_THRESHOLD").settingValue("200000").build()));
+        when(systemSettingRepository.findBySettingKeyIn(anyCollection()))
+                .thenReturn(List.of(SystemSetting.builder().settingKey("FREE_SHIPPING_THRESHOLD").settingValue("200000").build()));
 
         ProductDetailResponse detail = productService.getProductById(1L);
 

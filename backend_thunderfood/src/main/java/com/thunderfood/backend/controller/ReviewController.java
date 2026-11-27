@@ -46,7 +46,7 @@ public class ReviewController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = com.thunderfood.backend.util.PaginationUtils.toPageable(page, size);
         PageResponse<ReviewResponse> response = reviewService.getProductReviews(productId, pageable);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách đánh giá thành công", response));
     }

@@ -43,7 +43,7 @@ public class StaffOrderController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "15") int size
     ) {
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = com.thunderfood.backend.util.PaginationUtils.toPageable(page, size);
         PageResponse<StaffOrderListResponse> response = staffOrderService.getStaffOrders(
                 status, district, ward, streetKeyword, search, startDate, endDate, pageable
         );

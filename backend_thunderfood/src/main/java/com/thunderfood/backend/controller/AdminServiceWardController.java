@@ -39,7 +39,7 @@ public class AdminServiceWardController {
             @RequestParam(defaultValue = "asc") String direction
     ) {
         Sort sort = "asc".equalsIgnoreCase(direction) ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
-        Pageable pageable = PageRequest.of(page, size, sort);
+        Pageable pageable = com.thunderfood.backend.util.PaginationUtils.toPageable(page, size, sort);
         PageResponse<ServiceWardResponse> response = serviceWardService.getAllWardsForAdmin(district, keyword, isActive, pageable);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách phường/xã thành công", response));
     }

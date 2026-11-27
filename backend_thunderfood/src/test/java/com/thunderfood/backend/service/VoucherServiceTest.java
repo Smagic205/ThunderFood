@@ -116,14 +116,15 @@ class VoucherServiceTest {
 
     @Test
     @DisplayName("getAllVouchersForAdmin trả về danh sách voucher có phân trang")
+    @SuppressWarnings("unchecked")
     void testGetAllVouchersForAdmin_Success() {
         Pageable pageable = PageRequest.of(0, 10);
         Page<Voucher> paged = new PageImpl<>(List.of(productVoucher, shippingVoucher), pageable, 2);
 
-        when(voucherRepository.findAllWithFilters(isNull(), isNull(), isNull(), eq(pageable)))
+        when(voucherRepository.findAll(any(org.springframework.data.jpa.domain.Specification.class), eq(pageable)))
                 .thenReturn(paged);
 
-        com.thunderfood.backend.dto.common.PageResponse<VoucherAdminResponse> result = 
+        com.thunderfood.backend.dto.common.PageResponse<VoucherAdminResponse> result =
                 voucherService.getAllVouchersForAdmin(null, null, "ALL", pageable);
 
         assertNotNull(result);
@@ -133,14 +134,14 @@ class VoucherServiceTest {
     }
 
     @Test
-    @DisplayName("getAllVouchersForAdmin lọc đúng voucher theo trạng thái tính toán (ACTIVE/UPCOMING/EXPIRED)")
+    @DisplayName("getAllVouchersForAdmin lọc và phân trang trực tiếp trên DB kể cả với trạng thái tính toán (ACTIVE/UPCOMING/EXPIRED)")
+    @SuppressWarnings("unchecked")
     void testGetAllVouchersForAdmin_WithComputedStatusFilter() {
         Pageable pageable = PageRequest.of(0, 10);
-        // productVoucher có status ACTIVE (ngày trong khoảng), shippingVoucher cũng ACTIVE
-        Page<Voucher> unpaged = new PageImpl<>(List.of(productVoucher, shippingVoucher));
+        Page<Voucher> paged = new PageImpl<>(List.of(productVoucher, shippingVoucher), pageable, 2);
 
-        when(voucherRepository.findAllWithFilters(isNull(), isNull(), eq(true), eq(org.springframework.data.domain.Pageable.unpaged())))
-                .thenReturn(unpaged);
+        when(voucherRepository.findAll(any(org.springframework.data.jpa.domain.Specification.class), eq(pageable)))
+                .thenReturn(paged);
 
         com.thunderfood.backend.dto.common.PageResponse<VoucherAdminResponse> result =
                 voucherService.getAllVouchersForAdmin(null, null, "ACTIVE", pageable);
@@ -149,6 +150,7 @@ class VoucherServiceTest {
         assertEquals(2, result.getPagination().getTotalElements());
         assertEquals(1, result.getPagination().getTotalPages());
         assertEquals(2, result.getContent().size());
+        verify(voucherRepository).findAll(any(org.springframework.data.jpa.domain.Specification.class), eq(pageable));
     }
 
     @Test

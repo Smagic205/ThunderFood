@@ -5,6 +5,7 @@ import com.thunderfood.backend.dto.ApiResponse;
 import com.thunderfood.backend.dto.common.PageResponse;
 import com.thunderfood.backend.dto.order.*;
 import com.thunderfood.backend.service.OrderService;
+import com.thunderfood.backend.util.PaginationUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -58,7 +59,7 @@ public class OrderController {
             @RequestParam(defaultValue = "10") int size
     ) {
         Long userId = getRequiredUserId();
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PaginationUtils.toPageable(page, size);
         PageResponse<OrderListResponse> response = orderService.getUserOrders(userId, status, pageable);
         return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử đơn hàng thành công", response));
     }

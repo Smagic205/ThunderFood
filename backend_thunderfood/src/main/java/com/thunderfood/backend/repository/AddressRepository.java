@@ -36,7 +36,7 @@ public interface AddressRepository extends JpaRepository<Address, Long> {
     /**
      * Đặt lại toàn bộ địa chỉ của user về isDefault = false trước khi gán địa chỉ mặc định mới
      */
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE Address a SET a.isDefault = false WHERE a.user.id = :userId")
     void resetDefaultAddressForUser(@Param("userId") Long userId);
 }

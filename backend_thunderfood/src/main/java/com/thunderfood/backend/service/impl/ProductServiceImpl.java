@@ -26,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -404,12 +405,20 @@ public class ProductServiceImpl implements ProductService {
                 .label(inStock ? "Còn hàng" : "Hết hàng")
                 .build();
 
-        BigDecimal freeShipThreshold = systemSettingRepository.findBySettingKey("FREE_SHIPPING_THRESHOLD")
-                .map(s -> new BigDecimal(s.getSettingValue()))
-                .orElse(new BigDecimal("200000"));
-        Integer estimateMinutes = systemSettingRepository.findBySettingKey("ESTIMATE_DELIVERY_MINUTES")
-                .map(s -> Integer.parseInt(s.getSettingValue()))
-                .orElse(30);
+        Map<String, String> settingsMap = new HashMap<>();
+        for (SystemSetting setting : systemSettingRepository.findBySettingKeyIn(
+                List.of("FREE_SHIPPING_THRESHOLD", "ESTIMATE_DELIVERY_MINUTES", "KITCHEN_ADDRESS"))) {
+            if (setting.getSettingKey() != null && setting.getSettingValue() != null) {
+                settingsMap.put(setting.getSettingKey(), setting.getSettingValue());
+            }
+        }
+
+        BigDecimal freeShipThreshold = settingsMap.containsKey("FREE_SHIPPING_THRESHOLD")
+                ? new BigDecimal(settingsMap.get("FREE_SHIPPING_THRESHOLD"))
+                : new BigDecimal("200000");
+        Integer estimateMinutes = settingsMap.containsKey("ESTIMATE_DELIVERY_MINUTES")
+                ? Integer.parseInt(settingsMap.get("ESTIMATE_DELIVERY_MINUTES"))
+                : 30;
 
         DeliveryInfoDto delivery = DeliveryInfoDto.builder()
                 .estimateMinutes(estimateMinutes)
@@ -418,9 +427,7 @@ public class ProductServiceImpl implements ProductService {
 
         List<String> highlights = List.of("Nấu tươi khi có đơn", "Đóng gói giữ nhiệt");
 
-        String kitchenAddress = systemSettingRepository.findBySettingKey("KITCHEN_ADDRESS")
-                .map(SystemSetting::getSettingValue)
-                .orElse("86 Hàng Bài, Hoàn Kiếm, Hà Nội");
+        String kitchenAddress = settingsMap.getOrDefault("KITCHEN_ADDRESS", "86 Hàng Bài, Hoàn Kiếm, Hà Nội");
 
         ProductDetailsDto details = ProductDetailsDto.builder()
                 .prepTime("10 đến 15 phút")
@@ -652,8 +659,14 @@ public class ProductServiceImpl implements ProductService {
         };
 
         Page<Product> page = productRepository.findAll(spec, pageable);
+        List<Long> productIds = page.getContent().stream().map(Product::getId).toList();
+        Map<Long, List<ProductImage>> imagesByProductId = productIds.isEmpty()
+                ? Collections.emptyMap()
+                : productImageRepository.findByProductIdInOrderByPriority(productIds).stream()
+                        .collect(Collectors.groupingBy(img -> img.getProduct().getId()));
+
         List<ProductAdminResponse> items = page.getContent().stream()
-                .map(this::mapToAdminResponse)
+                .map(p -> mapToAdminResponse(p, imagesByProductId.getOrDefault(p.getId(), Collections.emptyList())))
                 .toList();
 
         com.thunderfood.backend.dto.common.PaginationInfo pagination = com.thunderfood.backend.dto.common.PaginationInfo.builder()
@@ -672,6 +685,12 @@ public class ProductServiceImpl implements ProductService {
     }
 
     private ProductAdminResponse mapToAdminResponse(Product product) {
+        List<ProductImage> imageEntities = productImageRepository
+                .findByProductIdOrderByIsThumbnailDescSortOrderAsc(product.getId());
+        return mapToAdminResponse(product, imageEntities);
+    }
+
+    private ProductAdminResponse mapToAdminResponse(Product product, List<ProductImage> imageEntities) {
         CategoryBriefDto categoryDto = null;
         if (product.getCategory() != null) {
             categoryDto = CategoryBriefDto.builder()
@@ -681,8 +700,6 @@ public class ProductServiceImpl implements ProductService {
                     .build();
         }
 
-        List<ProductImage> imageEntities = productImageRepository
-                .findByProductIdOrderByIsThumbnailDescSortOrderAsc(product.getId());
         List<ProductImageDto> images = imageEntities.stream()
                 .map(img -> ProductImageDto.builder()
                         .url(img.getImageUrl())

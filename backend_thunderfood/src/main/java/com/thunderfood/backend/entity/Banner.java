@@ -8,7 +8,12 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "banners")
+@Table(
+        name = "banners",
+        indexes = {
+                @Index(name = "idx_banners_active_sort", columnList = "is_active, sort_order")
+        }
+)
 @Getter
 @Setter
 @NoArgsConstructor

@@ -10,8 +10,11 @@ import com.thunderfood.backend.repository.OrderRepository;
 import com.thunderfood.backend.repository.UserRepository;
 import com.thunderfood.backend.service.AdminPackageService;
 import com.thunderfood.backend.util.DateRangeUtils;
+import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,7 +22,11 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -36,28 +43,40 @@ public class AdminPackageServiceImpl implements AdminPackageService {
     @Transactional(readOnly = true)
     public List<AdminPackageResponse> getAllPackages(String status, LocalDate startDate, LocalDate endDate) {
         DateRangeUtils.validate(startDate, endDate);
-        List<DeliveryPackage> packages = deliveryPackageRepository.findAll();
+        LocalDateTime start = DateRangeUtils.toStartOfDay(startDate);
+        LocalDateTime end = DateRangeUtils.toEndOfDay(endDate);
+
+        Specification<DeliveryPackage> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            if (start != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), start));
+            }
+            if (end != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("createdAt"), end));
+            }
+            if (status != null && !status.isBlank() && !"ALL".equalsIgnoreCase(status.trim())) {
+                String filterStatus = status.trim().toUpperCase(Locale.ROOT);
+                if ("UNASSIGNED".equals(filterStatus) || "PENDING".equals(filterStatus)) {
+                    predicates.add(cb.equal(cb.upper(root.get("status")), "PENDING"));
+                } else {
+                    predicates.add(cb.equal(cb.upper(root.get("status")), filterStatus));
+                }
+            }
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        List<DeliveryPackage> packages = deliveryPackageRepository.findAll(spec, Sort.by(Sort.Direction.DESC, "createdAt"));
+        if (packages.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> packageIds = packages.stream().map(DeliveryPackage::getId).toList();
+        Map<Long, List<Order>> ordersByPackageId = orderRepository.findByDeliveryPackageIdInOrderByCreatedAtAsc(packageIds)
+                .stream()
+                .collect(Collectors.groupingBy(o -> o.getDeliveryPackage().getId()));
 
         return packages.stream()
-                .filter(p -> {
-                    if (!DateRangeUtils.isWithinRange(p.getCreatedAt(), startDate, endDate)) {
-                        return false;
-                    }
-                    if (status != null && !status.isBlank() && !"ALL".equalsIgnoreCase(status.trim())) {
-                        String filterStatus = status.trim().toUpperCase();
-                        String actualStatus = "PENDING".equalsIgnoreCase(p.getStatus()) ? "UNASSIGNED" : p.getStatus().toUpperCase();
-                        if (!filterStatus.equals(actualStatus) && !filterStatus.equals(p.getStatus().toUpperCase())) {
-                            return false;
-                        }
-                    }
-                    return true;
-                })
-                .sorted((a, b) -> {
-                    LocalDateTime t1 = a.getCreatedAt() != null ? a.getCreatedAt() : LocalDateTime.MIN;
-                    LocalDateTime t2 = b.getCreatedAt() != null ? b.getCreatedAt() : LocalDateTime.MIN;
-                    return t2.compareTo(t1);
-                })
-                .map(this::mapToAdminPackageResponse)
+                .map(pkg -> mapToAdminPackageResponse(pkg, ordersByPackageId.getOrDefault(pkg.getId(), Collections.emptyList())))
                 .toList();
     }
 
@@ -134,6 +153,10 @@ public class AdminPackageServiceImpl implements AdminPackageService {
 
     private AdminPackageResponse mapToAdminPackageResponse(DeliveryPackage pkg) {
         List<Order> orders = orderRepository.findByDeliveryPackageIdOrderByCreatedAtAsc(pkg.getId());
+        return mapToAdminPackageResponse(pkg, orders);
+    }
+
+    private AdminPackageResponse mapToAdminPackageResponse(DeliveryPackage pkg, List<Order> orders) {
 
         List<String> orderCodes = new ArrayList<>();
         List<AdminPackageResponse.PackageOrderItemDto> orderDtos = new ArrayList<>();

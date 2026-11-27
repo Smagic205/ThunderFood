@@ -17,7 +17,8 @@
 | Unit Test tầng Utility (`util.*Test`) | 2 | 5 | 5 | 0 | 0 | 0 | 0.004 s |
 | **Tổng cộng** | **44** | **290** | **290** | **0** | **0** | **0** | **22.121 s** |
 
-* **Trạng thái Maven Build:** `BUILD SUCCESS` (tổng thời gian build & test: `35.753 s`).
+* **Trạng thái Maven Build (mốc 25/11/2026):** `BUILD SUCCESS` (tổng thời gian build & test: `35.753 s`).
+* **Cập nhật bổ sung (27/11/2026):** Đã thêm `SepayPaymentIntegrationTest` (`IT-06`..`IT-08`), nhóm unit test bảo mật (`RateLimitingFilterTest`, `UrlSafetyUtilsTest`, `GlobalExceptionHandlerTest`, `EmailServiceImplTest`), nhóm scheduler/concurrency/export (`AdminOrderServiceTest`, `AdminPackageServiceImplTest`, `UnpaidSepayOrderCleanupTest`, `ExcelExportHelperTest`, `PdfExportHelperTest`, `DateRangeUtilsTest`, `PaginationUtilsTest`), cùng toàn bộ các Controller/Service unit test còn thiếu (`HealthCheckControllerTest`, `CategoryControllerTest`, `AdminCategoryControllerTest`, `NotificationControllerTest`, `WishlistControllerTest`, `ReviewControllerTest`, `StaffReviewControllerTest`, `PaymentControllerTest`, `NotificationServiceImplTest`, `SystemSettingServiceImplTest`, `ServiceWardServiceImplTest`, `WishlistServiceImplTest`, `ReviewServiceImplTest`, `ReportServiceImplTest`, `DashboardServiceImplTest`, `SepayPaymentServiceImplTest`). `GoogleAuthServiceImplTest` đã chuyển sang mock `HttpClient` để không phụ thuộc kết nối mạng ngoài.
 * **Lưu ý Frontend (`frontend/`):** Dự án có 11 file test Vitest (`apps/admin/src/test/AdminRoute.test.tsx` và 10 file trong `apps/web/src/test/`). Tại máy local hiện chưa cài `frontend/node_modules` (`vitest` chưa khả dụng); các bài test này được cấu hình chạy tự động trên CI tại `.github/workflows/frontend-ci.yml`.
 
 ---

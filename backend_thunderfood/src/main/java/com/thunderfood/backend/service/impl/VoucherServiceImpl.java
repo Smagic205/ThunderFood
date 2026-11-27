@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
@@ -45,60 +46,85 @@ public class VoucherServiceImpl implements VoucherService {
     ) {
         String cleanKeyword = (keyword != null && !keyword.isBlank()) ? keyword.trim() : null;
         String cleanType = (voucherType != null && !voucherType.isBlank()) ? voucherType.trim().toUpperCase() : null;
+        String cleanStatus = (status != null && !status.isBlank()) ? status.trim().toUpperCase() : "ALL";
+        LocalDateTime now = LocalDateTime.now();
 
-        Boolean isActiveFilter = null;
-        if ("INACTIVE".equalsIgnoreCase(status)) {
-            isActiveFilter = false;
-        } else if ("ACTIVE".equalsIgnoreCase(status) || "UPCOMING".equalsIgnoreCase(status) || "EXPIRED".equalsIgnoreCase(status) || "DEPLETED".equalsIgnoreCase(status)) {
-            isActiveFilter = true;
-        }
+        org.springframework.data.jpa.domain.Specification<Voucher> spec = (root, query, cb) -> {
+            List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
 
-        // Khi lọc theo status computed (UPCOMING, EXPIRED, DEPLETED) phải fetch toàn bộ rồi filter in-memory
-        // vì đây là các trạng thái tính toán, không có column tương ứng trong DB
-        boolean needsComputedFilter = status != null && !status.isBlank()
-                && !"ALL".equalsIgnoreCase(status)
-                && !"INACTIVE".equalsIgnoreCase(status);
+            if (cleanKeyword != null) {
+                String pattern = "%" + cleanKeyword.toLowerCase() + "%";
+                predicates.add(cb.or(
+                        cb.like(cb.lower(root.get("code")), pattern),
+                        cb.like(cb.lower(root.get("name")), pattern)
+                ));
+            }
 
-        List<VoucherAdminResponse> items;
-        long totalElements;
-        int totalPages;
+            if (cleanType != null) {
+                predicates.add(cb.equal(root.get("voucherType"), cleanType));
+            }
 
-        if (needsComputedFilter) {
-            // Fetch toàn bộ trang hiện tại từ DB, rồi filter in-memory theo status computed
-            // Lấy tất cả record phù hợp không phân trang để đếm đúng totalElements
-            org.springframework.data.domain.Pageable unpagedRequest = org.springframework.data.domain.Pageable.unpaged();
-            Page<Voucher> allMatchingPage = voucherRepository.findAllWithFilters(cleanKeyword, cleanType, isActiveFilter, unpagedRequest);
-            List<VoucherAdminResponse> allFiltered = allMatchingPage.getContent().stream()
-                    .map(VoucherAdminResponse::fromEntity)
-                    .filter(res -> status.equalsIgnoreCase(res.getStatus()))
-                    .toList();
+            switch (cleanStatus) {
+                case "INACTIVE" -> predicates.add(cb.isFalse(root.get("isActive")));
+                case "UPCOMING" -> {
+                    predicates.add(cb.isTrue(root.get("isActive")));
+                    predicates.add(cb.greaterThan(root.get("startDate"), now));
+                }
+                case "EXPIRED" -> {
+                    predicates.add(cb.isTrue(root.get("isActive")));
+                    predicates.add(cb.or(
+                            cb.isNull(root.get("startDate")),
+                            cb.lessThanOrEqualTo(root.get("startDate"), now)
+                    ));
+                    predicates.add(cb.lessThan(root.get("endDate"), now));
+                }
+                case "DEPLETED" -> {
+                    predicates.add(cb.isTrue(root.get("isActive")));
+                    predicates.add(cb.or(
+                            cb.isNull(root.get("startDate")),
+                            cb.lessThanOrEqualTo(root.get("startDate"), now)
+                    ));
+                    predicates.add(cb.or(
+                            cb.isNull(root.get("endDate")),
+                            cb.greaterThanOrEqualTo(root.get("endDate"), now)
+                    ));
+                    predicates.add(cb.isNotNull(root.get("usageLimit")));
+                    predicates.add(cb.greaterThanOrEqualTo(root.get("usedCount"), root.get("usageLimit")));
+                }
+                case "ACTIVE" -> {
+                    predicates.add(cb.isTrue(root.get("isActive")));
+                    predicates.add(cb.or(
+                            cb.isNull(root.get("startDate")),
+                            cb.lessThanOrEqualTo(root.get("startDate"), now)
+                    ));
+                    predicates.add(cb.or(
+                            cb.isNull(root.get("endDate")),
+                            cb.greaterThanOrEqualTo(root.get("endDate"), now)
+                    ));
+                    predicates.add(cb.or(
+                            cb.isNull(root.get("usageLimit")),
+                            cb.lessThan(root.get("usedCount"), root.get("usageLimit"))
+                    ));
+                }
+                default -> {
+                    // ALL
+                }
+            }
 
-            totalElements = allFiltered.size();
-            int pageSize = pageable.getPageSize();
-            totalPages = totalElements == 0 ? 0 : (int) Math.ceil((double) totalElements / pageSize);
+            return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+        };
 
-            // Phân trang thủ công từ danh sách đã filter
-            int pageNumber = pageable.getPageNumber();
-            int fromIndex = pageNumber * pageSize;
-            int toIndex = Math.min(fromIndex + pageSize, (int) totalElements);
-            items = fromIndex >= totalElements
-                    ? List.of()
-                    : allFiltered.subList(fromIndex, toIndex);
-        } else {
-            Page<Voucher> voucherPage = voucherRepository.findAllWithFilters(cleanKeyword, cleanType, isActiveFilter, pageable);
-            items = voucherPage.getContent().stream()
-                    .map(VoucherAdminResponse::fromEntity)
-                    .toList();
-            totalElements = voucherPage.getTotalElements();
-            totalPages = voucherPage.getTotalPages();
-        }
+        Page<Voucher> voucherPage = voucherRepository.findAll(spec, pageable);
+        List<VoucherAdminResponse> items = voucherPage.getContent().stream()
+                .map(VoucherAdminResponse::fromEntity)
+                .toList();
 
         PaginationInfo pagination = PaginationInfo.builder()
                 .page(pageable.getPageNumber())
                 .size(pageable.getPageSize())
-                .totalElements(totalElements)
-                .totalPages(totalPages)
-                .hasNext(pageable.getPageNumber() + 1 < totalPages)
+                .totalElements(voucherPage.getTotalElements())
+                .totalPages(voucherPage.getTotalPages())
+                .hasNext(pageable.getPageNumber() + 1 < voucherPage.getTotalPages())
                 .hasPrevious(pageable.getPageNumber() > 0)
                 .build();
 

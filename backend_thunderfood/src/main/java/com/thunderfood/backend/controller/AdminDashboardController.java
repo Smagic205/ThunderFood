@@ -54,7 +54,9 @@ public class AdminDashboardController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
             @RequestParam(required = false, defaultValue = "10") int limit
     ) {
-        List<TopProductResponse> response = dashboardService.getTopProducts(startDate, endDate, limit);
+        List<TopProductResponse> response = dashboardService.getTopProducts(
+                startDate, endDate, com.thunderfood.backend.util.PaginationUtils.clampLimit(limit)
+        );
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách món bán chạy thành công", response));
     }
 

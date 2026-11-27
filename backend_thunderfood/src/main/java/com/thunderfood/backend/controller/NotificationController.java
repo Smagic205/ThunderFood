@@ -5,10 +5,10 @@ import com.thunderfood.backend.dto.ApiResponse;
 import com.thunderfood.backend.dto.common.PageResponse;
 import com.thunderfood.backend.dto.notification.NotificationResponse;
 import com.thunderfood.backend.service.NotificationService;
+import com.thunderfood.backend.util.PaginationUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -31,7 +31,7 @@ public class NotificationController {
             @RequestParam(defaultValue = "15") int size
     ) {
         Long userId = getRequiredUserId();
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PaginationUtils.toPageable(page, size);
         PageResponse<NotificationResponse> response = notificationService.getUserNotifications(userId, pageable);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách thông báo thành công", response));
     }

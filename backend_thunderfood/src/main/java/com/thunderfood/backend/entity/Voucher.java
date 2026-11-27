@@ -7,7 +7,13 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "vouchers")
+@Table(
+        name = "vouchers",
+        indexes = {
+                @Index(name = "idx_vouchers_active_dates", columnList = "is_active, start_date, end_date"),
+                @Index(name = "idx_vouchers_type", columnList = "voucher_type")
+        }
+)
 @Getter
 @Setter
 @NoArgsConstructor

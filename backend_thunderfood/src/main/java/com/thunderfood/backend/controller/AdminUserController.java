@@ -40,7 +40,7 @@ public class AdminUserController {
             @RequestParam(defaultValue = "desc") String direction
     ) {
         Sort sort = "asc".equalsIgnoreCase(direction) ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
-        Pageable pageable = PageRequest.of(page, size, sort);
+        Pageable pageable = com.thunderfood.backend.util.PaginationUtils.toPageable(page, size, sort);
         PageResponse<UserAdminResponse> response = userService.getAllUsersForAdmin(keyword, role, status, pageable);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách người dùng thành công", response));
     }

@@ -23,7 +23,7 @@ public interface UserTokenRepository extends JpaRepository<UserToken, Long> {
     void deleteByUserIdAndType(Long userId, String type);
     void deleteAllByUserId(Long userId);
 
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Transactional
     @Query("DELETE FROM UserToken t WHERE t.expiresAt < :now")
     int deleteAllExpiredTokens(@Param("now") LocalDateTime now);

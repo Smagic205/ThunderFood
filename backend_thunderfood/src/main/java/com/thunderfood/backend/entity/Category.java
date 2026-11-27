@@ -4,7 +4,12 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(name = "categories")
+@Table(
+        name = "categories",
+        indexes = {
+                @Index(name = "idx_categories_active", columnList = "is_active")
+        }
+)
 @Getter
 @Setter
 @NoArgsConstructor

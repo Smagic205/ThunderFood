@@ -32,7 +32,7 @@ public class StaffReviewController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "15") int size
     ) {
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = com.thunderfood.backend.util.PaginationUtils.toPageable(page, size);
         PageResponse<ReviewResponse> response = reviewService.getAllReviewsForStaff(pageable);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách đánh giá thành công", response));
     }

@@ -32,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -300,14 +301,24 @@ public class StaffOrderServiceImpl implements StaffOrderService {
     public List<DeliveryPackageResponse> getOpenPackages(LocalDate startDate, LocalDate endDate) {
         DateRangeUtils.validate(startDate, endDate);
         List<DeliveryPackage> openPackages = deliveryPackageRepository.findByStatusOrderByCreatedAtDesc("PENDING");
-        List<DeliveryPackageResponse> responses = new ArrayList<>();
+        List<DeliveryPackage> filteredPackages = openPackages.stream()
+                .filter(pkg -> DateRangeUtils.isWithinRange(pkg.getCreatedAt(), startDate, endDate))
+                .toList();
+        if (filteredPackages.isEmpty()) {
+            return Collections.emptyList();
+        }
 
-        for (DeliveryPackage pkg : openPackages) {
-            if (!DateRangeUtils.isWithinRange(pkg.getCreatedAt(), startDate, endDate)) {
-                continue;
-            }
-            List<Order> ordersInPkg = orderRepository.findByDeliveryPackageIdOrderByCreatedAtAsc(pkg.getId());
-            List<String> orderCodes = ordersInPkg.stream().map(Order::getOrderCode).toList();
+        List<Long> packageIds = filteredPackages.stream().map(DeliveryPackage::getId).toList();
+        Map<Long, List<String>> orderCodesByPackageId = orderRepository.findByDeliveryPackageIdInOrderByCreatedAtAsc(packageIds)
+                .stream()
+                .collect(Collectors.groupingBy(
+                        o -> o.getDeliveryPackage().getId(),
+                        Collectors.mapping(Order::getOrderCode, Collectors.toList())
+                ));
+
+        List<DeliveryPackageResponse> responses = new ArrayList<>();
+        for (DeliveryPackage pkg : filteredPackages) {
+            List<String> orderCodes = orderCodesByPackageId.getOrDefault(pkg.getId(), Collections.emptyList());
             responses.add(DeliveryPackageResponse.fromEntity(pkg, orderCodes));
         }
 

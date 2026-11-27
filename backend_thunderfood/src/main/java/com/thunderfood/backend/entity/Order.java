@@ -15,6 +15,13 @@ import java.util.List;
         name = "orders", // tên bảng "orders" vì "order" là từ khoá dành riêng trong SQL
         uniqueConstraints = {
                 @UniqueConstraint(name = "uk_orders_user_idempotency", columnNames = {"user_id", "idempotency_key"})
+        },
+        indexes = {
+                @Index(name = "idx_orders_user", columnList = "user_id"),
+                @Index(name = "idx_orders_status", columnList = "status"),
+                @Index(name = "idx_orders_created", columnList = "created_at"),
+                @Index(name = "idx_orders_package", columnList = "package_id"),
+                @Index(name = "idx_orders_payment", columnList = "payment_method, payment_status, status")
         }
 )
 @Getter
