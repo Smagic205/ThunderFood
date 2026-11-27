@@ -88,7 +88,7 @@ public class SepayPaymentServiceImpl implements PaymentService {
     @Value("${sepay.enabled:true}")
     private boolean sepayEnabled;
 
-    @Value("${sepay.sandbox:true}")
+    @Value("${sepay.sandbox:false}")
     private boolean sandboxMode;
 
     @Value("${sepay.merchant-id:}")

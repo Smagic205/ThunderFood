@@ -418,7 +418,10 @@ public class VoucherServiceImpl implements VoucherService {
             return;
         }
 
-        List<VoucherUsage> usages = voucherUsageRepository.findByOrderId(order.getId());
+        List<VoucherUsage> usages = new java.util.ArrayList<>(voucherUsageRepository.findByOrderId(order.getId()));
+        usages.sort(java.util.Comparator.comparing(
+                u -> u.getVoucher() != null && u.getVoucher().getId() != null ? u.getVoucher().getId() : Long.MAX_VALUE
+        ));
         for (VoucherUsage usage : usages) {
             if (Boolean.FALSE.equals(usage.getIsReverted())) {
                 usage.setIsReverted(true);

@@ -103,4 +103,16 @@ class JwtServiceTest {
             jwtService.extractUsername(expiredToken);
         });
     }
+
+    @Test
+    @DisplayName("validateConfiguration từ chối khi JWT_SECRET bị rỗng hoặc dưới 256-bit")
+    void testValidateConfiguration_RejectsBlankOrWeakSecret() {
+        JwtServiceImpl emptySecretService = new JwtServiceImpl();
+        ReflectionTestUtils.setField(emptySecretService, "secretKey", "");
+        assertThrows(IllegalStateException.class, emptySecretService::validateConfiguration);
+
+        JwtServiceImpl shortSecretService = new JwtServiceImpl();
+        ReflectionTestUtils.setField(shortSecretService, "secretKey", "c2hvcnQ="); // "short" -> 5 bytes
+        assertThrows(IllegalStateException.class, shortSecretService::validateConfiguration);
+    }
 }

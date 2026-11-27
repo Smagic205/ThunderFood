@@ -4,6 +4,7 @@ import com.thunderfood.backend.dto.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.FieldError;
@@ -64,9 +65,15 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(ApiResponse.error(ex.getMessage()), HttpStatus.UNAUTHORIZED);
     }
 
-    @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<ApiResponse<String>> handleRuntimeException(RuntimeException ex) {
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ApiResponse<String>> handleIllegalStateException(IllegalStateException ex) {
         return new ResponseEntity<>(ApiResponse.error(ex.getMessage()), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiResponse<String>> handleHttpMessageNotReadable(HttpMessageNotReadableException ex) {
+        log.warn("Invalid JSON request payload: {}", ex.getMessage());
+        return new ResponseEntity<>(ApiResponse.error("Dữ liệu yêu cầu không đúng định dạng"), HttpStatus.BAD_REQUEST);
     }
     
     @ExceptionHandler(Exception.class)

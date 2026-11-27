@@ -24,6 +24,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.access.AccessDeniedException;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -423,6 +424,30 @@ class StaffOrderServiceTest {
         assertNotNull(response);
         assertEquals("CANCELLED", response.getStatus());
         assertEquals("COMPLETED", deliveringPackage.getStatus()); // Đơn hủy cũng tính là đã kết thúc -> hoàn tất gói!
+    }
+
+    @Test
+    @DisplayName("Từ chối thao tác chéo: Nhân viên khác không thể deliverOrder hoặc failDelivery đơn thuộc gói shipper khác")
+    void deliverAndFailOrder_ThrowAccessDenied_WhenAssignedToOtherStaff() {
+        User otherStaff = User.builder().id(999L).email("other@thunderfood.vn").fullName("Shipper Khác").build();
+        DeliveryPackage otherPackage = DeliveryPackage.builder()
+                .id(25L)
+                .packageName("GOI-KHAC")
+                .status("DELIVERING")
+                .shippedByStaff(otherStaff)
+                .build();
+
+        deliveringOrder.setDeliveryPackage(otherPackage);
+        when(orderRepository.findByIdWithLock(3L)).thenReturn(Optional.of(deliveringOrder));
+
+        assertThrows(AccessDeniedException.class, () ->
+                staffOrderService.deliverOrder(3L, staffUser.getId())
+        );
+        assertThrows(AccessDeniedException.class, () ->
+                staffOrderService.failDelivery(3L, FailDeliveryRequest.builder().reason("Thử hủy chéo").build(), staffUser.getId())
+        );
+
+        verify(orderRepository, never()).save(any());
     }
 
     // =========================================================================

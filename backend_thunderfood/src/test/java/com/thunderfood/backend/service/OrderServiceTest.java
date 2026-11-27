@@ -423,12 +423,6 @@ class OrderServiceTest {
         when(systemSettingRepository.findBySettingKey("FREE_SHIPPING_THRESHOLD"))
                 .thenReturn(Optional.of(SystemSetting.builder().settingValue("200000").build()));
 
-        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> {
-            Order o = inv.getArgument(0);
-            o.setId(10L);
-            return o;
-        });
-
         // Khi acquire lock, phát hiện người khác vừa mua xong và chỉ còn 1 phần
         Product lockedProduct = Product.builder()
                 .id(101L)
@@ -448,6 +442,44 @@ class OrderServiceTest {
                 () -> orderService.placeOrder(1L, req));
 
         assertTrue(ex.getMessage().contains("không đủ tồn kho"));
+        verify(orderRepository, never()).save(any(Order.class));
+    }
+
+    @Test
+    @DisplayName("placeOrder tính tổng tiền từ Product đã khóa (FOR UPDATE) để tránh lệch giá khi giá thay đổi")
+    void testPlaceOrder_UsesLockedProductPriceForOrderTotals() {
+        // Giỏ hàng đang tham chiếu bản product cũ (60k), nhưng trong DB sau khi lock đã cập nhật thành 75k
+        Product updatedLockedProduct = Product.builder()
+                .id(101L)
+                .name("Cơm gà Hội An")
+                .price(new BigDecimal("75000.00"))
+                .stockQuantity(20)
+                .soldCount(10)
+                .isAvailable(true)
+                .build();
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(cartRepository.findByUserIdWithLock(1L)).thenReturn(Optional.of(cart));
+        when(cartItemRepository.findByCartId(50L)).thenReturn(List.of(cartItem1)); // qty = 2
+        when(addressRepository.findByIdAndUserId(100L, 1L)).thenReturn(Optional.of(address));
+        when(systemSettingRepository.findBySettingKey("FREE_SHIPPING_THRESHOLD"))
+                .thenReturn(Optional.of(SystemSetting.builder().settingValue("200000").build()));
+        when(productRepository.findByIdWithLock(101L)).thenReturn(Optional.of(updatedLockedProduct));
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> {
+            Order o = inv.getArgument(0);
+            o.setId(30L);
+            return o;
+        });
+        when(orderItemRepository.save(any(OrderItem.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        PlaceOrderRequest req = PlaceOrderRequest.builder().addressId(100L).paymentMethod("COD").build();
+        OrderResponse resp = orderService.placeOrder(1L, req);
+
+        // 75k * 2 = 150k + 20k ship = 170k (khớp hoàn toàn với OrderItem)
+        assertEquals(new BigDecimal("150000.00"), resp.getSubtotalAmount());
+        assertEquals(new BigDecimal("170000.00"), resp.getTotalAmount());
+        assertEquals(new BigDecimal("75000.00"), resp.getItems().get(0).getUnitPrice());
+        assertEquals(new BigDecimal("150000.00"), resp.getItems().get(0).getLineTotal());
     }
 
     @Test
@@ -637,5 +669,24 @@ class OrderServiceTest {
                 () -> orderService.cancelOrder(1L, 10L, req));
 
         assertTrue(ex.getMessage().contains("đã được cửa hàng tiếp nhận/xử lý nên không thể tự hủy"));
+    }
+
+    @Test
+    @DisplayName("cancelOrder chặn hủy lại đơn đã CANCELLED (tránh hoàn kho/voucher 2 lần)")
+    void testCancelOrder_AlreadyCancelled_ThrowsIllegalStateException() {
+        Order order = Order.builder()
+                .id(10L)
+                .orderCode("TF261101123456")
+                .user(user)
+                .status("CANCELLED")
+                .build();
+
+        when(orderRepository.findByIdWithLock(10L)).thenReturn(Optional.of(order));
+
+        CancelOrderRequest req = CancelOrderRequest.builder().reason("Thử hủy lại").build();
+
+        assertThrows(IllegalStateException.class, () -> orderService.cancelOrder(1L, 10L, req));
+        verify(orderRepository, never()).save(any());
+        verify(voucherService, never()).revertVoucherUsage(any());
     }
 }

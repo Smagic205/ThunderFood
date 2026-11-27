@@ -67,13 +67,15 @@ public class GoogleAuthServiceImpl implements GoogleAuthService {
                 throw new UnauthorizedException("Email tài khoản Google này chưa được Google xác thực.");
             }
 
-            // Kiểm tra audience (aud) nếu đã cấu hình client-id
-            if (expectedClientId != null && !expectedClientId.isBlank()) {
-                String aud = root.has("aud") ? root.get("aud").asText() : "";
-                if (!expectedClientId.equals(aud)) {
-                    log.warn("Google token aud mismatch: expected {}, got {}", expectedClientId, aud);
-                    throw new UnauthorizedException("Client ID của token Google không khớp với hệ thống");
-                }
+            // Bắt buộc cấu hình GOOGLE_CLIENT_ID và kiểm tra audience (aud) khớp với hệ thống
+            if (expectedClientId == null || expectedClientId.isBlank()) {
+                log.error("GOOGLE_CLIENT_ID chưa được cấu hình, từ chối xác thực Google ID Token.");
+                throw new UnauthorizedException("Đăng nhập Google chưa được cấu hình trên hệ thống.");
+            }
+            String aud = root.has("aud") ? root.get("aud").asText() : "";
+            if (!expectedClientId.trim().equals(aud)) {
+                log.warn("Google token aud mismatch: expected {}, got {}", expectedClientId, aud);
+                throw new UnauthorizedException("Client ID của token Google không khớp với hệ thống");
             }
 
             String sub = root.has("sub") ? root.get("sub").asText() : null;

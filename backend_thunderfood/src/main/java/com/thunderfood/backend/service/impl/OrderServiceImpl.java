@@ -228,7 +228,7 @@ public class OrderServiceImpl implements OrderService {
         }
         ServiceWard ward = validateAndGetWard(address);
 
-        // Kiểm tra tồn kho & trạng thái kinh doanh của từng món
+        // Kiểm tra sơ bộ tồn kho & trạng thái kinh doanh của từng món trước khi lấy lock
         for (CartItem item : cartItems) {
             Product product = item.getProduct();
             if (product == null || !Boolean.TRUE.equals(product.getIsAvailable())) {
@@ -240,8 +240,36 @@ public class OrderServiceImpl implements OrderService {
             }
         }
 
-        // Tính toán các khoản tiền
-        BigDecimal subtotal = calculateSubtotal(cartItems);
+        // Khóa bi quan toàn bộ Product theo thứ tự productId tăng dần TRƯỚC KHI tính tiền và tạo đơn
+        // để đảm bảo giá, tồn kho và tổng đơn hàng nhất quán tuyệt đối (chống lệch giá & race condition)
+        Map<Long, Product> lockedProducts = new LinkedHashMap<>();
+        Map<Long, Integer> requestedQtyByProduct = new HashMap<>();
+        for (CartItem item : cartItems) {
+            Long productId = item.getProduct().getId();
+            int qty = item.getQuantity() != null ? item.getQuantity() : 1;
+            int accumulatedQty = requestedQtyByProduct.merge(productId, qty, Integer::sum);
+
+            Product lockedProduct = lockedProducts.get(productId);
+            if (lockedProduct == null) {
+                lockedProduct = productRepository.findByIdWithLock(productId)
+                        .orElseThrow(() -> new ResourceNotFoundException(
+                                "Không tìm thấy sản phẩm khi xử lý đơn hàng: ID " + productId));
+                lockedProducts.put(productId, lockedProduct);
+            }
+
+            if (!Boolean.TRUE.equals(lockedProduct.getIsAvailable())) {
+                throw new IllegalArgumentException("Món '" + lockedProduct.getName() +
+                        "' hiện đã ngừng kinh doanh. Vui lòng cập nhật giỏ hàng và đặt lại.");
+            }
+            if (lockedProduct.getStockQuantity() == null || lockedProduct.getStockQuantity() < accumulatedQty) {
+                throw new IllegalArgumentException("Món '" + lockedProduct.getName() +
+                        "' không đủ tồn kho. Còn " + lockedProduct.getStockQuantity() +
+                        " phần, đơn hàng cần " + accumulatedQty + " phần.");
+            }
+        }
+
+        // Tính toán tiền hàng dựa trên các Product đã khóa (FOR UPDATE)
+        BigDecimal subtotal = calculateSubtotal(cartItems, lockedProducts);
 
         BigDecimal originalShippingFee = (ward.getShippingFee() != null && ward.getShippingFee().compareTo(BigDecimal.ZERO) >= 0)
                 ? ward.getShippingFee()
@@ -252,15 +280,25 @@ public class OrderServiceImpl implements OrderService {
 
         BigDecimal shippingAfterThreshold = isFreeShippingByThreshold ? BigDecimal.ZERO : originalShippingFee;
 
+        // Khóa các voucher theo thứ tự mã chữ cái cố định để chống deadlock khi dùng cả 2 loại voucher
+        String cleanShipVoucherCode = (request.getShippingVoucherCode() != null && !request.getShippingVoucherCode().isBlank())
+                ? request.getShippingVoucherCode().trim()
+                : null;
+        String cleanProductVoucherCode = (request.getProductVoucherCode() != null && !request.getProductVoucherCode().isBlank())
+                ? request.getProductVoucherCode().trim()
+                : null;
+
+        Map<String, Voucher> lockedVouchers = lockVouchersInDeterministicOrder(cleanShipVoucherCode, cleanProductVoucherCode);
+
         // Xử lý Voucher Ship
         Voucher shippingVoucher = null;
         BigDecimal voucherShippingDiscount = BigDecimal.ZERO;
         VoucherClientResponse shippingVoucherResp = null;
 
-        if (request.getShippingVoucherCode() != null && !request.getShippingVoucherCode().isBlank()) {
-            shippingVoucher = findVoucherByCodeWithLockOrFallback(request.getShippingVoucherCode().trim());
+        if (cleanShipVoucherCode != null) {
+            shippingVoucher = lockedVouchers.get(cleanShipVoucherCode.toUpperCase(Locale.ROOT));
             VoucherCheckResponse checkShip = voucherService.checkVoucherEligibility(
-                    request.getShippingVoucherCode(),
+                    cleanShipVoucherCode,
                     userId,
                     subtotal,
                     shippingAfterThreshold
@@ -273,7 +311,7 @@ public class OrderServiceImpl implements OrderService {
             }
 
             if (shippingVoucher == null) {
-                shippingVoucher = voucherRepository.findByCodeIgnoreCase(request.getShippingVoucherCode().trim()).orElse(null);
+                shippingVoucher = voucherRepository.findByCodeIgnoreCase(cleanShipVoucherCode).orElse(null);
             }
             voucherShippingDiscount = checkShip.getDiscountAmount();
             shippingVoucherResp = checkShip.getVoucher();
@@ -286,10 +324,10 @@ public class OrderServiceImpl implements OrderService {
         BigDecimal productDiscount = BigDecimal.ZERO;
         VoucherClientResponse productVoucherResp = null;
 
-        if (request.getProductVoucherCode() != null && !request.getProductVoucherCode().isBlank()) {
-            productVoucher = findVoucherByCodeWithLockOrFallback(request.getProductVoucherCode().trim());
+        if (cleanProductVoucherCode != null) {
+            productVoucher = lockedVouchers.get(cleanProductVoucherCode.toUpperCase(Locale.ROOT));
             VoucherCheckResponse checkProduct = voucherService.checkVoucherEligibility(
-                    request.getProductVoucherCode(),
+                    cleanProductVoucherCode,
                     userId,
                     subtotal,
                     finalShippingFee
@@ -302,7 +340,7 @@ public class OrderServiceImpl implements OrderService {
             }
 
             if (productVoucher == null) {
-                productVoucher = voucherRepository.findByCodeIgnoreCase(request.getProductVoucherCode().trim()).orElse(null);
+                productVoucher = voucherRepository.findByCodeIgnoreCase(cleanProductVoucherCode).orElse(null);
             }
             productDiscount = checkProduct.getDiscountAmount();
             productVoucherResp = checkProduct.getVoucher();
@@ -341,29 +379,13 @@ public class OrderServiceImpl implements OrderService {
 
         Order savedOrder = orderRepository.save(order);
 
-        // Snapshot từng món sang OrderItem & Trừ kho sản phẩm
+        // Snapshot từng món sang OrderItem từ các Product đã khóa & Trừ kho sản phẩm
         List<OrderItem> savedItems = new ArrayList<>();
         Map<Long, String> thumbnailMap = loadThumbnailMap(cartItems.stream().map(ci -> ci.getProduct().getId()).toList());
 
         for (CartItem item : cartItems) {
-            // Lấy lại sản phẩm với pessimistic write lock để tránh race condition
-            // khi nhiều đơn hàng cùng trừ tồn kho của cùng 1 sản phẩm đồng thời
-            Product product = productRepository.findByIdWithLock(item.getProduct().getId())
-                    .orElseThrow(() -> new ResourceNotFoundException(
-                            "Không tìm thấy sản phẩm khi xử lý đơn hàng: ID " + item.getProduct().getId()));
-
+            Product product = lockedProducts.get(item.getProduct().getId());
             int qty = item.getQuantity() != null ? item.getQuantity() : 1;
-
-            // Kiểm tra lại tồn kho sau khi đã lock (tránh oversell)
-            if (!Boolean.TRUE.equals(product.getIsAvailable())) {
-                throw new IllegalArgumentException("Món '" + product.getName() +
-                        "' hiện đã ngừng kinh doanh. Vui lòng cập nhật giỏ hàng và đặt lại.");
-            }
-            if (product.getStockQuantity() == null || product.getStockQuantity() < qty) {
-                throw new IllegalArgumentException("Món '" + product.getName() +
-                        "' không đủ tồn kho. Còn " + product.getStockQuantity() +
-                        " phần, đơn hàng cần " + qty + " phần.");
-            }
 
             BigDecimal effectivePrice = getEffectivePrice(product);
             BigDecimal lineTotal = effectivePrice.multiply(BigDecimal.valueOf(qty));
@@ -554,6 +576,14 @@ public class OrderServiceImpl implements OrderService {
             throw new ResourceNotFoundException("Không tìm thấy đơn hàng với ID: " + orderId);
         }
 
+        if ("CANCELLED".equalsIgnoreCase(order.getStatus())) {
+            throw new IllegalStateException("Đơn hàng này đã được hủy trước đó");
+        }
+
+        if ("DELIVERED".equalsIgnoreCase(order.getStatus())) {
+            throw new IllegalStateException("Không thể hủy đơn hàng đã giao thành công");
+        }
+
         if (!"PENDING".equalsIgnoreCase(order.getStatus()) && !SecurityUtils.isAdmin()) {
             throw new IllegalArgumentException("Đơn hàng đang ở trạng thái '" + order.getStatus() + 
                     "', đã được cửa hàng tiếp nhận/xử lý nên không thể tự hủy. Vui lòng liên hệ nhân viên để được hỗ trợ.");
@@ -623,6 +653,24 @@ public class OrderServiceImpl implements OrderService {
                 .orElseGet(() -> getCartOrThrow(userId));
     }
 
+    private Map<String, Voucher> lockVouchersInDeterministicOrder(String shippingCode, String productCode) {
+        TreeSet<String> sortedCodes = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+        if (shippingCode != null && !shippingCode.isBlank()) {
+            sortedCodes.add(shippingCode.trim());
+        }
+        if (productCode != null && !productCode.isBlank()) {
+            sortedCodes.add(productCode.trim());
+        }
+        Map<String, Voucher> locked = new HashMap<>();
+        for (String code : sortedCodes) {
+            Voucher v = findVoucherByCodeWithLockOrFallback(code);
+            if (v != null) {
+                locked.put(code.toUpperCase(Locale.ROOT), v);
+            }
+        }
+        return locked;
+    }
+
     private Voucher findVoucherByCodeWithLockOrFallback(String code) {
         if (code == null || code.isBlank()) {
             return null;
@@ -645,9 +693,16 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private BigDecimal calculateSubtotal(List<CartItem> cartItems) {
+        return calculateSubtotal(cartItems, Collections.emptyMap());
+    }
+
+    private BigDecimal calculateSubtotal(List<CartItem> cartItems, Map<Long, Product> lockedProducts) {
         BigDecimal subtotal = BigDecimal.ZERO;
         for (CartItem item : cartItems) {
-            Product p = item.getProduct();
+            Product rawProduct = item.getProduct();
+            Product p = (rawProduct != null && rawProduct.getId() != null && lockedProducts.containsKey(rawProduct.getId()))
+                    ? lockedProducts.get(rawProduct.getId())
+                    : rawProduct;
             if (p != null) {
                 BigDecimal effectivePrice = getEffectivePrice(p);
                 int qty = item.getQuantity() != null ? item.getQuantity() : 1;

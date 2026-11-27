@@ -6,6 +6,7 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
@@ -20,9 +21,19 @@ import java.util.function.Function;
 @Service
 public class JwtServiceImpl implements JwtService {
 
-    // Should be at least 256-bit (32 bytes) long. Using a placeholder for now, usually injected via application.properties
-    @Value("${jwt.secret:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}")
+    @Value("${jwt.secret:}")
     private String secretKey;
+
+    @PostConstruct
+    public void validateConfiguration() {
+        if (secretKey == null || secretKey.isBlank()) {
+            throw new IllegalStateException("JWT_SECRET chưa được cấu hình. Vui lòng thiết lập biến môi trường JWT_SECRET tối thiểu 256-bit.");
+        }
+        byte[] keyBytes = Decoders.BASE64.decode(secretKey.trim());
+        if (keyBytes.length < 32) {
+            throw new IllegalStateException("JWT_SECRET phải có độ dài tối thiểu 256-bit (32 bytes sau khi giải mã Base64).");
+        }
+    }
 
     @Value("${jwt.expiration:86400000}") // 1 day
     private long jwtExpiration;
@@ -90,7 +101,10 @@ public class JwtServiceImpl implements JwtService {
     }
 
     private Key getSignInKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(secretKey);
+        if (secretKey == null || secretKey.isBlank()) {
+            throw new IllegalStateException("JWT_SECRET chưa được cấu hình.");
+        }
+        byte[] keyBytes = Decoders.BASE64.decode(secretKey.trim());
         return Keys.hmacShaKeyFor(keyBytes);
     }
 }

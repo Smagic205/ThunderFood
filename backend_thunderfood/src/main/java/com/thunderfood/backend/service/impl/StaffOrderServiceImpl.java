@@ -25,6 +25,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -277,9 +278,13 @@ public class StaffOrderServiceImpl implements StaffOrderService {
                 .build();
         orderStatusHistoryRepository.save(history);
 
-        // 1. Hoàn tồn kho sản phẩm
-        if (order.getItems() != null) {
-            for (OrderItem item : order.getItems()) {
+        // 1. Hoàn tồn kho sản phẩm (khóa theo thứ tự productId tăng dần để chống deadlock)
+        if (order.getItems() != null && !order.getItems().isEmpty()) {
+            List<OrderItem> sortedItems = new ArrayList<>(order.getItems());
+            sortedItems.sort(Comparator.comparing(
+                    oi -> oi.getProduct() != null && oi.getProduct().getId() != null ? oi.getProduct().getId() : Long.MAX_VALUE
+            ));
+            for (OrderItem item : sortedItems) {
                 if (item.getProduct() != null) {
                     Product product = productRepository.findByIdWithLock(item.getProduct().getId()).orElse(null);
                     if (product != null) {
@@ -394,6 +399,8 @@ public class StaffOrderServiceImpl implements StaffOrderService {
             throw new IllegalStateException("Chỉ đơn hàng đang ở trạng thái DELIVERING (đang giao) mới có thể xác nhận đã giao");
         }
 
+        verifyAssignedShipper(order, staffId);
+
         User staffUser = userRepository.findById(staffId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy nhân viên với ID: " + staffId));
 
@@ -441,6 +448,8 @@ public class StaffOrderServiceImpl implements StaffOrderService {
         if (!"DELIVERING".equalsIgnoreCase(order.getStatus())) {
             throw new IllegalStateException("Chỉ đơn hàng đang ở trạng thái DELIVERING mới có thể báo giao thất bại");
         }
+
+        verifyAssignedShipper(order, staffId);
 
         User staffUser = userRepository.findById(staffId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy nhân viên với ID: " + staffId));
@@ -495,6 +504,13 @@ public class StaffOrderServiceImpl implements StaffOrderService {
     // =========================================================================
     // HELPER METHODS
     // =========================================================================
+
+    private void verifyAssignedShipper(Order order, Long staffId) {
+        DeliveryPackage pkg = order.getDeliveryPackage();
+        if (pkg == null || pkg.getShippedByStaff() == null || !Objects.equals(pkg.getShippedByStaff().getId(), staffId)) {
+            throw new AccessDeniedException("Bạn không có quyền thao tác trên đơn hàng thuộc gói giao hàng của nhân viên khác");
+        }
+    }
 
     private void checkAndAutoCompletePackage(DeliveryPackage pkg) {
         if (pkg == null) {

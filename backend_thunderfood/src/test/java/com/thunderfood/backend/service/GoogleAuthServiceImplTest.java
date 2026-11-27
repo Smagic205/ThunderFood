@@ -42,4 +42,11 @@ class GoogleAuthServiceImplTest {
         UnauthorizedException ex = assertThrows(UnauthorizedException.class, () -> googleAuthService.verifyToken("invalid-dummy-token"));
         assertNotNull(ex.getMessage());
     }
+
+    @Test
+    @DisplayName("Từ chối đăng nhập Google nếu GOOGLE_CLIENT_ID bị rỗng")
+    void testVerifyToken_BlankClientId_ThrowsUnauthorized() {
+        ReflectionTestUtils.setField(googleAuthService, "expectedClientId", "");
+        assertThrows(UnauthorizedException.class, () -> googleAuthService.verifyToken("some-token"));
+    }
 }

@@ -51,7 +51,7 @@ spring:
             enable: true
 
 jwt:
-  secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+  secret: ${JWT_SECRET:}
   expiration: ${JWT_EXPIRATION:900000}       # 15 phút (ms) cho Access Token trong RAM
   refresh-token:
     expiration: ${JWT_REFRESH_EXPIRATION:604800000}    # 7 ngày (ms) trong HttpOnly Cookie
@@ -78,7 +78,7 @@ app:
 
 sepay:
   enabled: ${SEPAY_ENABLED:true}
-  sandbox: ${SEPAY_SANDBOX:true}
+  sandbox: ${SEPAY_SANDBOX:false}
   merchant-id: ${SEPAY_MERCHANT_ID:}
   secret-key: ${SEPAY_SECRET_KEY:}
   checkout-url: ${SEPAY_CHECKOUT_URL:https://pay-sandbox.sepay.vn/v1/checkout/init}
