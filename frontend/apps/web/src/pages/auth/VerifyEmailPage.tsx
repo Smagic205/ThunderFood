@@ -36,10 +36,24 @@ export const VerifyEmailPage = () => {
               phone: response.user.phone || '',
               role: response.user.role as any,
               avatarUrl: response.user.avatarUrl,
+              authProvider: response.user.authProvider || 'LOCAL',
+              status: response.user.status || 'ACTIVE',
             },
             response.token,
             response.refreshToken
           );
+
+          import('@/shared/api/userApi').then(({ userApi }) => {
+            userApi.getProfile().then((profile) => {
+              useAuthStore.getState().updateUser({
+                authProvider: profile.authProvider as 'LOCAL' | 'GOOGLE',
+                status: profile.status as 'ACTIVE' | 'LOCKED',
+                phone: profile.phone || '',
+                createdAt: profile.createdAt || undefined,
+                updatedAt: profile.updatedAt || undefined,
+              });
+            }).catch(() => { /* silent */ });
+          });
         }
 
         setState('success');

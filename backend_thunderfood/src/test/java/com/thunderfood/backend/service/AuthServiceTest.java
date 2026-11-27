@@ -569,6 +569,33 @@ class AuthServiceTest {
     }
 
     @Test
+    @DisplayName("Đăng nhập với Google bị từ chối nếu tài khoản có role ADMIN hoặc STAFF")
+    void testLoginWithGoogle_NonCustomerRoleRejected() {
+        GoogleAuthRequest request = new GoogleAuthRequest("google-id-token-staff");
+        GoogleUserInfo googleInfo = GoogleUserInfo.builder()
+                .sub("google-staff-123")
+                .email("staff@thunderfood.vn")
+                .name("Staff User")
+                .emailVerified(true)
+                .build();
+
+        User staffUser = User.builder()
+                .id(5L)
+                .email("staff@thunderfood.vn")
+                .role(staffRole)
+                .status("ACTIVE")
+                .build();
+
+        when(googleAuthService.verifyToken("google-id-token-staff")).thenReturn(googleInfo);
+        when(userRepository.findByEmail("staff@thunderfood.vn")).thenReturn(Optional.of(staffUser));
+
+        AccessDeniedException ex = assertThrows(AccessDeniedException.class,
+                () -> authService.loginWithGoogle(request));
+        assertTrue(ex.getMessage().contains("STAFF"));
+        verify(userTokenRepository, never()).save(any(UserToken.class));
+    }
+
+    @Test
     @DisplayName("Kích hoạt tài khoản bằng token thành công")
     void testVerifyEmail_Success() {
         User unverifiedUser = User.builder()

@@ -208,7 +208,7 @@ export const LoginPage = () => {
         <p className="login-footer">
           Trang quản trị dành riêng cho Admin. <br />
           Nhân viên vui lòng sử dụng{' '}
-          <a href="http://localhost:5175" target="_blank" rel="noreferrer">
+          <a href={import.meta.env.VITE_STAFF_APP_URL || 'http://localhost:5175'} target="_blank" rel="noreferrer">
             ứng dụng Staff
           </a>
           .

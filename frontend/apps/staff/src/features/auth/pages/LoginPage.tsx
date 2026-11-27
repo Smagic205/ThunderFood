@@ -27,8 +27,13 @@ export const LoginPage = () => {
     e.preventDefault();
     setError('');
 
-    if (!email) {
+    const cleanEmail = email.trim();
+    if (!cleanEmail) {
       setError('Vui lòng nhập email');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      setError('Email chưa đúng định dạng');
       return;
     }
     if (!password) {
@@ -39,7 +44,7 @@ export const LoginPage = () => {
     setLoading(true);
     try {
       // Backend expects: { email, password }
-      const res = await authApi.login({ email, password });
+      const res = await authApi.login({ email: cleanEmail, password });
       
       // res is ApiResponse<AuthResponse>, so data is in res.data
       const authData = res.data;

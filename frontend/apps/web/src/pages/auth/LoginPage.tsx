@@ -43,7 +43,6 @@ export const LoginPage = () => {
   const {
     register,
     handleSubmit,
-    setError,
     formState: { errors },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -144,7 +143,9 @@ export const LoginPage = () => {
           fullName: response.user.fullName,
           phone: response.user.phone || '',
           role: response.user.role as 'CUSTOMER' | 'ADMIN' | 'STAFF' | 'SHIPPER',
-          avatarUrl: response.user.avatarUrl
+          avatarUrl: response.user.avatarUrl,
+          authProvider: response.user.authProvider || 'LOCAL',
+          status: response.user.status || 'ACTIVE',
         },
         response.token,
         response.refreshToken
@@ -171,9 +172,6 @@ export const LoginPage = () => {
       // Nếu tài khoản chưa kích hoạt, lưu email để hỗ trợ gửi lại ngay tại chỗ
       if (errorMsg.toLowerCase().includes('chưa được kích hoạt') || errorMsg.toLowerCase().includes('kích hoạt')) {
         setUnverifiedEmail(data.email);
-      } else {
-        setError('email', { type: 'manual', message: errorMsg });
-        setError('password', { type: 'manual', message: errorMsg });
       }
     } finally {
       setIsLoading(false);

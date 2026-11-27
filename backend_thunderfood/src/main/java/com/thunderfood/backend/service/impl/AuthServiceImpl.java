@@ -223,6 +223,12 @@ public class AuthServiceImpl implements AuthService {
                 throw new AccessDeniedException("Tài khoản của bạn đã bị khóa bởi quản trị viên.");
             }
 
+            if (user.getRole() != null && !"CUSTOMER".equalsIgnoreCase(user.getRole().getName())) {
+                throw new AccessDeniedException(
+                        "Tài khoản " + user.getRole().getName() + " không được phép đăng nhập qua Google tại cổng khách hàng."
+                );
+            }
+
             // Nếu tài khoản trước đó là UNVERIFIED thì qua Google đã xác nhận email thật -> Kích hoạt luôn
             if ("UNVERIFIED".equalsIgnoreCase(user.getStatus())) {
                 user.setStatus("ACTIVE");
