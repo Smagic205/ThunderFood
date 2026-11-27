@@ -7,6 +7,7 @@ import com.thunderfood.backend.config.security.JwtAuthenticationEntryPoint;
 import com.thunderfood.backend.config.security.JwtAuthenticationFilter;
 import com.thunderfood.backend.config.security.RateLimitingFilter;
 import com.thunderfood.backend.dto.ApiResponse;
+import jakarta.servlet.Filter;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -116,7 +117,14 @@ public class SecurityConfig {
                 .addFilterBefore(new RateLimitingFilter(rateLimitEnabled), CsrfFilter.class)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
-        return http.build();
+        SecurityFilterChain chain = http.build();
+        AccessDeniedHandler deniedHandler = jsonAccessDeniedHandler();
+        for (Filter filter : chain.getFilters()) {
+            if (filter instanceof CsrfFilter csrfFilter) {
+                csrfFilter.setAccessDeniedHandler(deniedHandler);
+            }
+        }
+        return chain;
     }
 
     @Bean

@@ -34,9 +34,15 @@ public class AuthController {
 
     @GetMapping("/csrf")
     public ResponseEntity<ApiResponse<Map<String, String>>> getCsrfToken(
-            CsrfToken csrfToken,
+            HttpServletRequest httpRequest,
             HttpServletResponse httpResponse
     ) {
+        Object attr = httpRequest.getAttribute(CsrfToken.class.getName());
+        if (!(attr instanceof CsrfToken)) {
+            attr = httpRequest.getAttribute(DynamicCookieCsrfTokenRepository.CSRF_PARAMETER_NAME);
+        }
+        CsrfToken csrfToken = attr instanceof CsrfToken ? (CsrfToken) attr : null;
+
         String tokenValue = csrfToken != null ? csrfToken.getToken() : "";
         String headerName = csrfToken != null
                 ? csrfToken.getHeaderName()
