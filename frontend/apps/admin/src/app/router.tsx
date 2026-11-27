@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { AdminLayout } from '@/shared/components/layout/AdminLayout';
 import { AdminRoute } from '@/shared/components/layout/AdminRoute';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
+import { ForgotPage } from '@/features/auth/pages/ForgotPage';
 
 import { DashboardPage } from '@/features/dashboard/pages/DashboardPage';
 import { OrdersPage } from '@/features/orders/pages/OrdersPage';
@@ -20,6 +21,10 @@ export const router = createBrowserRouter([
   {
     path: '/login',
     element: <LoginPage />,
+  },
+  {
+    path: '/forgot',
+    element: <ForgotPage />,
   },
   {
     path: '/',

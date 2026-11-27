@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { StaffLayout } from '@/shared/components/layout/StaffLayout';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
+import { ForgotPage } from '@/features/auth/pages/ForgotPage';
 import { OrdersPage } from '@/features/orders/pages/OrdersPage';
 import { PackagesPage } from '@/features/packages/pages/PackagesPage';
 import { MyPackagePage } from '@/features/packages/pages/MyPackagePage';
@@ -13,6 +14,10 @@ export const router = createBrowserRouter([
   {
     path: '/login',
     element: <LoginPage />,
+  },
+  {
+    path: '/forgot',
+    element: <ForgotPage />,
   },
   {
     path: '/register',

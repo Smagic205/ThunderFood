@@ -2,6 +2,8 @@ import axios from 'axios';
 import { useAuthStore } from '@/app/store/authStore';
 import { useForbiddenNoticeStore } from '@/shared/stores/forbiddenNoticeStore';
 
+export const LOCKED_ACCOUNT_NOTICE_KEY = 'thunderfood_admin_locked_notice';
+
 const getBaseUrl = (): string => {
   const url = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL;
   if (!url) return 'http://localhost:8080/api/v1';
@@ -84,9 +86,24 @@ axiosClient.interceptors.response.use(
     }
 
     if (error.response?.status === 403) {
-      useForbiddenNoticeStore.getState().showForbidden(
-        error.response?.data?.message || 'Bạn không có quyền thực hiện thao tác này'
-      );
+      const message = error.response?.data?.message || 'Bạn không có quyền thực hiện thao tác này';
+      const isLockedError =
+        message.toLowerCase().includes('khóa') || error.response?.data?.code === 'ACCOUNT_LOCKED';
+
+      if (isLockedError && !isAuthRoute) {
+        try {
+          sessionStorage.setItem(LOCKED_ACCOUNT_NOTICE_KEY, message);
+        } catch {
+          // ignore storage errors
+        }
+        useAuthStore.getState().logout();
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
+        return Promise.reject(error);
+      }
+
+      useForbiddenNoticeStore.getState().showForbidden(message);
     }
 
     return Promise.reject(error);

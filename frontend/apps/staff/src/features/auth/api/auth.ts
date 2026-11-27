@@ -43,5 +43,13 @@ export const authApi = {
     await authAxios.post<ApiResponse<null>>('/v1/auth/logout', {
       refreshToken,
     }, { timeout: 5000 });
-  }
+  },
+  forgotPassword: async (email: string) => {
+    const res = await authAxios.post<ApiResponse<string>>('/v1/auth/forgot-password', { email });
+    return res.data;
+  },
+  resetPassword: async (data: { email: string; otp: string; newPassword: string }) => {
+    const res = await authAxios.post<ApiResponse<string>>('/v1/auth/reset-password', data);
+    return res.data;
+  },
 };

@@ -2,13 +2,22 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { authApi } from '../api/auth';
+import { LOCKED_ACCOUNT_NOTICE_KEY } from '@/shared/api/axiosClient';
 import { Zap, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 
 export const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(() => {
+    try {
+      const notice = sessionStorage.getItem(LOCKED_ACCOUNT_NOTICE_KEY) || '';
+      if (notice) sessionStorage.removeItem(LOCKED_ACCOUNT_NOTICE_KEY);
+      return notice;
+    } catch {
+      return '';
+    }
+  });
   const [loading, setLoading] = useState(false);
   
   const navigate = useNavigate();
@@ -135,6 +144,11 @@ export const LoginPage = () => {
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
+                <Link to="/forgot" className="tlink" style={{ fontSize: '13.5px' }}>
+                  Quên mật khẩu?
+                </Link>
               </div>
             </label>
             

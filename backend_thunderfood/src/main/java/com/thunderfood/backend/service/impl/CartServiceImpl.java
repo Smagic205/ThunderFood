@@ -81,7 +81,7 @@ public class CartServiceImpl implements CartService {
             throw new IllegalArgumentException("Món ăn '" + product.getName() + "' hiện đang tạm ngừng kinh doanh");
         }
 
-        Cart cart = getOrCreateCart(userId);
+        Cart cart = getOrCreateCartWithLock(userId);
         Optional<CartItem> existingItemOpt = cartItemRepository.findByCartIdAndProductId(cart.getId(), product.getId());
 
         if (existingItemOpt.isPresent()) {
@@ -128,6 +128,9 @@ public class CartServiceImpl implements CartService {
             throw new IllegalArgumentException("Số lượng món tối thiểu phải là 1. Nếu muốn xóa món ăn khỏi giỏ hàng, vui lòng sử dụng chức năng xóa.");
         }
 
+        // Khóa Cart (FOR UPDATE) để tuần tự hóa thao tác cập nhật/thêm/xóa giỏ hàng của cùng user
+        Optional<Cart> lockedCart = cartRepository.findByUserIdWithLock(userId);
+
         CartItem item = cartItemRepository.findByIdAndCartUserId(itemId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy món ăn trong giỏ hàng hoặc bạn không có quyền thao tác"));
 
@@ -144,7 +147,7 @@ public class CartServiceImpl implements CartService {
         cartItemRepository.save(item);
         log.info("Cập nhật số lượng món trong giỏ: userId={}, itemId={}, quantity={}", userId, itemId, request.getQuantity());
 
-        Cart cart = getOrCreateCart(userId);
+        Cart cart = lockedCart.orElseGet(() -> getOrCreateCart(userId));
         return buildCartResponse(cart);
     }
 
@@ -154,13 +157,15 @@ public class CartServiceImpl implements CartService {
     @Override
     @Transactional
     public CartResponse removeCartItem(Long userId, Long itemId) {
+        Optional<Cart> lockedCart = cartRepository.findByUserIdWithLock(userId);
+
         CartItem item = cartItemRepository.findByIdAndCartUserId(itemId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy món ăn trong giỏ hàng hoặc bạn không có quyền thao tác"));
 
         cartItemRepository.delete(item);
         log.info("Xóa món khỏi giỏ hàng: userId={}, itemId={}", userId, itemId);
 
-        Cart cart = getOrCreateCart(userId);
+        Cart cart = lockedCart.orElseGet(() -> getOrCreateCart(userId));
         return buildCartResponse(cart);
     }
 
@@ -170,11 +175,16 @@ public class CartServiceImpl implements CartService {
     @Override
     @Transactional
     public CartResponse clearCart(Long userId) {
-        Cart cart = getOrCreateCart(userId);
+        Cart cart = getOrCreateCartWithLock(userId);
         cartItemRepository.deleteByCartId(cart.getId());
         log.info("Xóa toàn bộ món trong giỏ hàng: userId={}", userId);
 
         return buildCartResponse(cart);
+    }
+
+    private Cart getOrCreateCartWithLock(Long userId) {
+        return cartRepository.findByUserIdWithLock(userId)
+                .orElseGet(() -> getOrCreateCart(userId));
     }
 
     /**

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -12,7 +12,11 @@ const step1Schema = z.object({
 
 const step2Schema = z.object({
   otp: z.string().min(1, 'Vui lòng nhập mã OTP'),
-  newPassword: z.string().regex(/^(?=.*[A-Z])(?=.*[@#$%^&+=!_]).{8,12}$/, 'Mật khẩu 8-12 ký tự, ít nhất 1 hoa & 1 đặc biệt')
+  newPassword: z.string().regex(/^(?=.*[A-Z])(?=.*[@#$%^&+=!_]).{8,12}$/, 'Mật khẩu 8-12 ký tự, ít nhất 1 hoa & 1 đặc biệt'),
+  confirmNewPassword: z.string().min(1, 'Vui lòng xác nhận mật khẩu mới')
+}).refine((data) => data.newPassword === data.confirmNewPassword, {
+  message: 'Mật khẩu xác nhận không khớp',
+  path: ['confirmNewPassword']
 });
 
 type Step1Values = z.infer<typeof step1Schema>;
@@ -25,6 +29,17 @@ export const ForgotPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resendMessage, setResendMessage] = useState('');
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => prev - 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
 
   const form1 = useForm<Step1Values>({
     resolver: zodResolver(step1Schema)
@@ -38,11 +53,29 @@ export const ForgotPage = () => {
     try {
       setIsLoading(true);
       setApiError('');
-      await authApi.forgotPassword(data.email);
-      setEmail(data.email);
+      setResendMessage('');
+      await authApi.forgotPassword(data.email.trim());
+      setEmail(data.email.trim());
+      setResendCooldown(60);
       setStep(2);
     } catch (error: any) {
       setApiError(error.response?.data?.message || 'Có lỗi xảy ra, vui lòng thử lại');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (resendCooldown > 0 || isLoading || !email) return;
+    try {
+      setIsLoading(true);
+      setApiError('');
+      setResendMessage('');
+      await authApi.forgotPassword(email);
+      setResendCooldown(60);
+      setResendMessage('Đã gửi lại mã OTP mới đến email của bạn.');
+    } catch (error: any) {
+      setApiError(error.response?.data?.message || 'Không thể gửi lại mã OTP, vui lòng thử lại');
     } finally {
       setIsLoading(false);
     }
@@ -54,7 +87,7 @@ export const ForgotPage = () => {
       setApiError('');
       await authApi.resetPassword({
         email,
-        otp: data.otp,
+        otp: data.otp.trim(),
         newPassword: data.newPassword
       });
       setStep(3);
@@ -98,6 +131,7 @@ export const ForgotPage = () => {
       </p>
 
       {apiError && <div className="p-3 bg-red-50 text-red-600 rounded-xl mb-4 text-sm">{apiError}</div>}
+      {resendMessage && <div className="p-3 bg-emerald-50 text-emerald-700 rounded-xl mb-4 text-sm">{resendMessage}</div>}
 
       {step === 1 && (
         <form className="form-grid" onSubmit={form1.handleSubmit(onStep1Submit)} noValidate>
@@ -157,8 +191,34 @@ export const ForgotPage = () => {
             {form2.formState.errors.newPassword && <small className="faint" style={{ color: 'var(--c-red)' }}>{form2.formState.errors.newPassword.message}</small>}
           </label>
 
+          <label className="field">
+            <span>Xác nhận mật khẩu mới</span>
+            <div className="input-ic">
+              <Lock className="ic" size={18} />
+              <button type="button" className="ibtn peek" onClick={() => setShowConfirmPassword(!showConfirmPassword)} aria-label={showConfirmPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}>
+                {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+              <input 
+                className="input"
+                type={showConfirmPassword ? "text" : "password"} 
+                placeholder="Nhập lại mật khẩu mới"
+                {...form2.register('confirmNewPassword')}
+              />
+            </div>
+            {form2.formState.errors.confirmNewPassword && <small className="faint" style={{ color: 'var(--c-red)' }}>{form2.formState.errors.confirmNewPassword.message}</small>}
+          </label>
+
           <button type="submit" className="btn btn-primary btn-lg btn-block" disabled={isLoading} style={{ marginTop: 12 }}>
             {isLoading ? 'Đang xử lý...' : 'Đổi mật khẩu'}
+          </button>
+
+          <button
+            type="button"
+            className="btn btn-ghost btn-block"
+            disabled={resendCooldown > 0 || isLoading}
+            onClick={handleResendOtp}
+          >
+            {resendCooldown > 0 ? `Gửi lại mã OTP sau ${resendCooldown}s` : 'Gửi lại mã OTP'}
           </button>
         </form>
       )}

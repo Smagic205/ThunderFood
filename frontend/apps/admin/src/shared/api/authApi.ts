@@ -42,4 +42,14 @@ export const authApi = {
       refreshToken,
     }, { timeout: 5000 });
   },
+
+  forgotPassword: async (email: string): Promise<string> => {
+    const response = await axiosClient.post<ApiResponse<string>>('/auth/forgot-password', { email });
+    return response.data.message;
+  },
+
+  resetPassword: async (data: { email: string; otp: string; newPassword: string }): Promise<string> => {
+    const response = await axiosClient.post<ApiResponse<string>>('/auth/reset-password', data);
+    return response.data.message;
+  },
 };

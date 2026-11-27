@@ -396,4 +396,20 @@ class CartServiceTest {
         assertEquals(0, response.getTotalItems());
         verify(cartItemRepository, times(1)).deleteByCartId(10L);
     }
+
+    @Test
+    @DisplayName("addToCart & updateCartItem ưu tiên khóa Cart bằng findByUserIdWithLock để chống race condition")
+    void cartMutations_shouldUseLockedCartWhenPresent() {
+        AddToCartRequest addReq = AddToCartRequest.builder().productId(101L).quantity(1).build();
+        when(productRepository.findById(101L)).thenReturn(Optional.of(mockProduct1));
+        when(cartRepository.findByUserIdWithLock(1L)).thenReturn(Optional.of(mockCart));
+        when(cartItemRepository.findByCartIdAndProductId(10L, 101L)).thenReturn(Optional.of(mockCartItem1));
+        when(cartItemRepository.findByCartId(10L)).thenReturn(List.of(mockCartItem1));
+
+        cartService.addToCart(1L, addReq);
+
+        verify(cartRepository).findByUserIdWithLock(1L);
+        verify(cartRepository, never()).findByUserId(1L);
+        assertEquals(3, mockCartItem1.getQuantity());
+    }
 }
