@@ -60,13 +60,13 @@ public final class ExcelExportHelper {
                 Row row = sheet.createRow(rowIdx++);
 
                 row.createCell(0).setCellValue(i + 1);
-                row.createCell(1).setCellValue(order.getOrderCode() != null ? order.getOrderCode() : "");
+                row.createCell(1).setCellValue(sanitizeFormulaCell(order.getOrderCode()));
                 row.createCell(2).setCellValue(order.getCreatedAt() != null ? order.getCreatedAt().format(DATE_FORMATTER) : "");
-                row.createCell(3).setCellValue(order.getReceiverName() != null ? order.getReceiverName() : "");
-                row.createCell(4).setCellValue(order.getReceiverPhone() != null ? order.getReceiverPhone() : "");
-                row.createCell(5).setCellValue(order.getShippingAddress() != null ? order.getShippingAddress() : "");
-                row.createCell(6).setCellValue(order.getPaymentMethod() != null ? order.getPaymentMethod() : "");
-                row.createCell(7).setCellValue(order.getPaymentStatus() != null ? order.getPaymentStatus() : "");
+                row.createCell(3).setCellValue(sanitizeFormulaCell(order.getReceiverName()));
+                row.createCell(4).setCellValue(sanitizeFormulaCell(order.getReceiverPhone()));
+                row.createCell(5).setCellValue(sanitizeFormulaCell(order.getShippingAddress()));
+                row.createCell(6).setCellValue(sanitizeFormulaCell(order.getPaymentMethod()));
+                row.createCell(7).setCellValue(sanitizeFormulaCell(order.getPaymentStatus()));
 
                 Cell shipCell = row.createCell(8);
                 shipCell.setCellValue(order.getShippingFee() != null ? order.getShippingFee().doubleValue() : 0.0);
@@ -84,7 +84,7 @@ public final class ExcelExportHelper {
                     grandTotal = grandTotal.add(order.getTotalAmount());
                 }
 
-                row.createCell(11).setCellValue(order.getStatus() != null ? order.getStatus() : "");
+                row.createCell(11).setCellValue(sanitizeFormulaCell(order.getStatus()));
             }
 
             // Summary Row
@@ -114,6 +114,27 @@ public final class ExcelExportHelper {
         } catch (IOException e) {
             throw new RuntimeException("Lỗi tạo file Excel: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * Ngăn chặn Excel Formula Injection (CSV/XLSX injection) khi chuỗi bắt đầu bằng ký tự công thức.
+     */
+    static String sanitizeFormulaCell(String value) {
+        if (value == null || value.isEmpty()) {
+            return "";
+        }
+        String trimmedStart = value.stripLeading();
+        if (!trimmedStart.isEmpty()) {
+            char first = trimmedStart.charAt(0);
+            if (first == '=' || first == '+' || first == '-' || first == '@') {
+                return "'" + value;
+            }
+        }
+        char rawFirst = value.charAt(0);
+        if (rawFirst == '\t' || rawFirst == '\r' || rawFirst == '\n') {
+            return "'" + value;
+        }
+        return value;
     }
 }
 

@@ -351,9 +351,10 @@ public class VoucherServiceImpl implements VoucherService {
 
         BigDecimal discount;
         if (voucher.isPercentDiscount()) {
-            // rawDiscount = baseAmount * (discountValue / 100)
+            // Làm tròn tới đơn vị đồng (VND không có xu) để khớp hoàn toàn với số tiền gửi sang SePay
             BigDecimal rawDiscount = baseAmount.multiply(voucher.getDiscountValue())
-                    .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+                    .divide(BigDecimal.valueOf(100), 0, RoundingMode.HALF_UP)
+                    .setScale(2, RoundingMode.UNNECESSARY);
 
             if (voucher.getMaxDiscountAmount() != null && voucher.getMaxDiscountAmount().compareTo(BigDecimal.ZERO) > 0) {
                 discount = rawDiscount.min(voucher.getMaxDiscountAmount());

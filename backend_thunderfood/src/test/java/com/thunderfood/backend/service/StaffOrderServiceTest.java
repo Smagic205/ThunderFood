@@ -534,4 +534,53 @@ class StaffOrderServiceTest {
         assertEquals(1, result.size());
         assertEquals("GOI-TRONG-NGAY", result.get(0).getPackageName());
     }
+
+    @Test
+    @DisplayName("claimPackage từ chối nhận gói hàng rỗng để tránh shipper bị kẹt trạng thái DELIVERING")
+    void claimPackage_ThrowException_WhenPackageIsEmpty() {
+        when(deliveryPackageRepository.existsByShippedByStaffIdAndStatus(staffUser.getId(), "DELIVERING")).thenReturn(false);
+        when(deliveryPackageRepository.findByIdWithLock(10L)).thenReturn(Optional.of(pendingPackage));
+        when(orderRepository.findByDeliveryPackageIdOrderByCreatedAtAsc(10L)).thenReturn(List.of());
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class, () ->
+                staffOrderService.claimPackage(10L, staffUser.getId())
+        );
+
+        assertTrue(ex.getMessage().contains("đang trống"));
+        verify(deliveryPackageRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("failDelivery hoàn tồn kho, giảm soldCount và hoàn lượt sử dụng voucher")
+    void failDelivery_RestocksProductsAndRevertsVouchers() {
+        Product orderedProduct = Product.builder()
+                .id(50L)
+                .name("Bún bò")
+                .stockQuantity(8)
+                .soldCount(4)
+                .build();
+        deliveringOrder.setItems(List.of(OrderItem.builder().product(orderedProduct).quantity(2).build()));
+
+        DeliveryPackage deliveringPackage = DeliveryPackage.builder()
+                .id(20L)
+                .packageName("GOI-DELIVERING-01")
+                .status("DELIVERING")
+                .shippedByStaff(staffUser)
+                .build();
+        deliveringOrder.setDeliveryPackage(deliveringPackage);
+
+        when(orderRepository.findByIdWithLock(3L)).thenReturn(Optional.of(deliveringOrder));
+        when(userRepository.findById(staffUser.getId())).thenReturn(Optional.of(staffUser));
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(productRepository.findByIdWithLock(50L)).thenReturn(Optional.of(orderedProduct));
+        when(deliveryPackageRepository.findByIdWithLock(20L)).thenReturn(Optional.of(deliveringPackage));
+        when(orderRepository.findByDeliveryPackageId(20L)).thenReturn(List.of(deliveringOrder));
+
+        staffOrderService.failDelivery(3L, FailDeliveryRequest.builder().reason("Khách không nghe máy").build(), staffUser.getId());
+
+        assertEquals(10, orderedProduct.getStockQuantity());
+        assertEquals(2, orderedProduct.getSoldCount());
+        verify(productRepository).save(orderedProduct);
+        verify(voucherService).revertVoucherUsage(deliveringOrder);
+    }
 }

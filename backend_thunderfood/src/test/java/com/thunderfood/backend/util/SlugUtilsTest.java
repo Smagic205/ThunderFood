@@ -29,6 +29,8 @@ class SlugUtilsTest {
         assertEquals("combo-ga-ran-120k", SlugUtils.toSlug("Combo Gà Rán @#! 120k!"));
         assertEquals("pizza-hai-san", SlugUtils.toSlug("   Pizza    Hải   Sản   "));
         assertEquals("mon-ngon-so-1", SlugUtils.toSlug("---Món--Ngon---Số--1---"));
+        assertEquals("com-ga", SlugUtils.toSlug("Cơm + Gà"));
+        assertEquals("ab", SlugUtils.toSlug("a+b"));
     }
 
     @Test

@@ -175,6 +175,13 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public OrderResponse placeOrder(Long userId, PlaceOrderRequest request) {
+        String normalizedPaymentMethod = request.getPaymentMethod() != null
+                ? request.getPaymentMethod().trim().toUpperCase(Locale.ROOT)
+                : "";
+        if (!"COD".equals(normalizedPaymentMethod) && !"SEPAY".equals(normalizedPaymentMethod)) {
+            throw new IllegalArgumentException("Phương thức thanh toán không hợp lệ. Chỉ hỗ trợ COD hoặc SEPAY");
+        }
+
         String cleanIdempotencyKey = (request.getIdempotencyKey() != null && !request.getIdempotencyKey().isBlank())
                 ? request.getIdempotencyKey().trim()
                 : null;

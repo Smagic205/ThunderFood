@@ -19,7 +19,11 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 
 @Slf4j
 @Service
@@ -34,6 +38,13 @@ public class AdminOrderServiceImpl implements AdminOrderService {
     private final UserRepository userRepository;
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final Map<String, Set<String>> ALLOWED_STATUS_TRANSITIONS = Map.of(
+            "PENDING", Set.of("CONFIRMED", "DELIVERING", "CANCELLED"),
+            "CONFIRMED", Set.of("DELIVERING", "CANCELLED"),
+            "DELIVERING", Set.of("DELIVERED", "CANCELLED"),
+            "DELIVERED", Set.of(),
+            "CANCELLED", Set.of()
+    );
 
     @Override
     @Transactional(readOnly = true)
@@ -95,14 +106,24 @@ public class AdminOrderServiceImpl implements AdminOrderService {
     @Override
     @Transactional
     public AdminOrderResponse updateOrderStatus(Long orderId, UpdateOrderStatusRequest request, Long adminId) {
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với ID: " + orderId));
+        Order order = lockOrderForAdminOrThrow(orderId);
 
-        String oldStatus = order.getStatus();
-        String newStatus = request.getStatus().trim().toUpperCase();
+        String oldStatus = order.getStatus() != null ? order.getStatus().trim().toUpperCase(Locale.ROOT) : "";
+        String newStatus = request.getStatus() != null ? request.getStatus().trim().toUpperCase(Locale.ROOT) : "";
+
+        if (!ALLOWED_STATUS_TRANSITIONS.containsKey(newStatus)) {
+            throw new IllegalArgumentException("Trạng thái đơn hàng không hợp lệ: " + request.getStatus());
+        }
 
         if (oldStatus.equalsIgnoreCase(newStatus)) {
             return mapToAdminOrderResponse(order);
+        }
+
+        Set<String> allowedNext = ALLOWED_STATUS_TRANSITIONS.getOrDefault(oldStatus, Set.of());
+        if (!allowedNext.contains(newStatus)) {
+            throw new IllegalStateException(
+                    "Không thể chuyển trạng thái đơn hàng từ '" + oldStatus + "' sang '" + newStatus + "'"
+            );
         }
 
         User adminUser = adminId != null ? userRepository.findById(adminId).orElse(null) : null;
@@ -146,8 +167,7 @@ public class AdminOrderServiceImpl implements AdminOrderService {
     @Override
     @Transactional
     public AdminOrderResponse cancelOrder(Long orderId, String reason, Long adminId) {
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với ID: " + orderId));
+        Order order = lockOrderForAdminOrThrow(orderId);
 
         if ("CANCELLED".equalsIgnoreCase(order.getStatus())) {
             throw new IllegalStateException("Đơn hàng này đã được hủy trước đó");
@@ -185,13 +205,27 @@ public class AdminOrderServiceImpl implements AdminOrderService {
         return mapToAdminOrderResponse(savedOrder);
     }
 
+    private Order lockOrderForAdminOrThrow(Long orderId) {
+        return orderRepository.findByIdWithLock(orderId)
+                .orElseGet(() -> orderRepository.findById(orderId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với ID: " + orderId)));
+    }
+
     private void revertStockAndVoucher(Order order) {
-        if (order.getItems() != null) {
-            for (OrderItem item : order.getItems()) {
-                Product product = item.getProduct();
-                if (product != null) {
+        if (order.getItems() != null && !order.getItems().isEmpty()) {
+            List<OrderItem> sortedItems = new ArrayList<>(order.getItems());
+            sortedItems.sort(Comparator.comparing(
+                    oi -> oi.getProduct() != null && oi.getProduct().getId() != null ? oi.getProduct().getId() : Long.MAX_VALUE
+            ));
+            for (OrderItem item : sortedItems) {
+                Product rawProduct = item.getProduct();
+                if (rawProduct != null) {
+                    Product product = (rawProduct.getId() != null)
+                            ? productRepository.findByIdWithLock(rawProduct.getId()).orElse(rawProduct)
+                            : rawProduct;
                     int qty = item.getQuantity() != null ? item.getQuantity() : 0;
-                    product.setStockQuantity(product.getStockQuantity() + qty);
+                    int currentStock = product.getStockQuantity() != null ? product.getStockQuantity() : 0;
+                    product.setStockQuantity(currentStock + qty);
                     int currentSold = product.getSoldCount() != null ? product.getSoldCount() : 0;
                     product.setSoldCount(Math.max(0, currentSold - qty));
                     productRepository.save(product);

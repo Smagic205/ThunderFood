@@ -7,7 +7,7 @@ import java.util.regex.Pattern;
 public class SlugUtils {
 
     private static final Pattern NON_LATIN = Pattern.compile("[^\\w-]");
-    private static final Pattern WHITESPACE = Pattern.compile("[\\s+]");
+    private static final Pattern WHITESPACE = Pattern.compile("\\s+");
     private static final Pattern MULTI_HYPHEN = Pattern.compile("-+");
 
     private SlugUtils() {

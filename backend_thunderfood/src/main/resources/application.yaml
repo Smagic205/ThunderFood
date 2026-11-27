@@ -89,3 +89,4 @@ sepay:
   account-name: ${SEPAY_ACCOUNT_NAME:}
   webhook-api-key: ${SEPAY_WEBHOOK_API_KEY:}
   qr-base-url: ${SEPAY_QR_BASE_URL:https://qr.sepay.vn/img}
+  unpaid-expiration-minutes: ${SEPAY_UNPAID_EXPIRATION_MINUTES:15}

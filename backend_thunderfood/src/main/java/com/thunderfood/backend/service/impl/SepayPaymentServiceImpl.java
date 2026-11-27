@@ -461,9 +461,12 @@ public class SepayPaymentServiceImpl implements PaymentService {
         }
 
         BigDecimal effectiveAmount = paidAmount != null ? paidAmount : BigDecimal.ZERO;
-        if (effectiveAmount.compareTo(order.getTotalAmount()) < 0) {
+        BigDecimal expectedAmount = order.getTotalAmount() != null
+                ? order.getTotalAmount().setScale(0, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
+        if (effectiveAmount.compareTo(expectedAmount) < 0) {
             log.warn("Số tiền thanh toán SePay không đủ cho đơn {}: nhận={}, cần={}",
-                    orderCode, effectiveAmount, order.getTotalAmount());
+                    orderCode, effectiveAmount, expectedAmount);
             savePaymentRecord(order, txCode, effectiveAmount, "FAILED", rawJson, null);
             return;
         }

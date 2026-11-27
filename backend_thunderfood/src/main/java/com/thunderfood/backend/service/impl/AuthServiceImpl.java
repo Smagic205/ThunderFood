@@ -79,30 +79,26 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public AuthResponse register(RegisterRequest request) {
-        if (isDisposableEmail(request.getEmail())) {
+        String normalizedEmail = request.getEmail() != null
+                ? request.getEmail().trim().toLowerCase(java.util.Locale.ROOT)
+                : "";
+
+        if (isDisposableEmail(normalizedEmail)) {
             throw new ConflictException("Hệ thống không chấp nhận địa chỉ email tạm thời / rác. Vui lòng sử dụng email thực.");
         }
 
-        if (request.getPhone() != null && !request.getPhone().isBlank()) {
-            String cleanPhone = request.getPhone().trim();
-            if (userRepository.existsByPhoneAndStatus(cleanPhone, "LOCKED")) {
-                throw new ConflictException("Số điện thoại này đã bị khóa do vi phạm chính sách của ThunderFood. Không thể tạo tài khoản mới.");
-            }
-            if (userRepository.existsByPhone(cleanPhone)) {
-                throw new ConflictException("Số điện thoại này đã được sử dụng cho một tài khoản khác");
-            }
-        }
-
-        Optional<User> existingUserOpt = userRepository.findByEmail(request.getEmail().trim());
+        // Kiểm tra email trước kiểm tra trùng SĐT để người dùng UNVERIFIED không bị báo trùng SĐT của chính mình
+        Optional<User> existingUserOpt = userRepository.findByEmail(normalizedEmail);
         if (existingUserOpt.isPresent()) {
             User existingUser = existingUserOpt.get();
             if ("UNVERIFIED".equalsIgnoreCase(existingUser.getStatus())) {
-                existingUser.setFullName(request.getFullName().trim());
-                existingUser.setPasswordHash(passwordEncoder.encode(request.getPassword()));
-                if (request.getPhone() != null && !request.getPhone().isBlank()) {
-                    existingUser.setPhone(request.getPhone().trim());
+                // Tuyệt đối không ghi đè fullName/passwordHash/phone khi chưa xác thực chủ sở hữu;
+                // chỉ cho phép gửi lại liên kết kích hoạt nếu khớp đúng mật khẩu đã đăng ký trước đó.
+                if (request.getPassword() == null
+                        || existingUser.getPasswordHash() == null
+                        || !passwordEncoder.matches(request.getPassword(), existingUser.getPasswordHash())) {
+                    throw new ConflictException("Email này đã được đăng ký nhưng chưa kích hoạt. Vui lòng kiểm tra email hoặc sử dụng chức năng gửi lại liên kết kích hoạt.");
                 }
-                userRepository.save(existingUser);
 
                 userTokenRepository.deleteByUserIdAndType(existingUser.getId(), "ACTIVATION");
 
@@ -135,12 +131,22 @@ public class AuthServiceImpl implements AuthService {
             }
         }
 
+        if (request.getPhone() != null && !request.getPhone().isBlank()) {
+            String cleanPhone = request.getPhone().trim();
+            if (userRepository.existsByPhoneAndStatus(cleanPhone, "LOCKED")) {
+                throw new ConflictException("Số điện thoại này đã bị khóa do vi phạm chính sách của ThunderFood. Không thể tạo tài khoản mới.");
+            }
+            if (userRepository.existsByPhone(cleanPhone)) {
+                throw new ConflictException("Số điện thoại này đã được sử dụng cho một tài khoản khác");
+            }
+        }
+
         Role userRole = roleRepository.findByName("CUSTOMER")
                 .orElseThrow(() -> new RuntimeException("Role CUSTOMER không tồn tại trong hệ thống"));
 
         User user = User.builder()
                 .fullName(request.getFullName().trim())
-                .email(request.getEmail().trim())
+                .email(normalizedEmail)
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .phone(request.getPhone() != null ? request.getPhone().trim() : null)
                 .role(userRole)
@@ -180,9 +186,10 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public AuthResponse login(LoginRequest request) {
-        authenticateCredentials(request.getEmail().trim(), request.getPassword());
+        String normalizedEmail = request.getEmail().trim().toLowerCase(java.util.Locale.ROOT);
+        authenticateCredentials(normalizedEmail, request.getPassword());
 
-        User user = userRepository.findByEmail(request.getEmail().trim())
+        User user = userRepository.findByEmail(normalizedEmail)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
 
         if ("LOCKED".equalsIgnoreCase(user.getStatus())) {

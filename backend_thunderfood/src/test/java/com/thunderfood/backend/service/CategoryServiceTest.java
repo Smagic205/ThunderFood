@@ -6,6 +6,7 @@ import com.thunderfood.backend.dto.category.CategoryResponse;
 import com.thunderfood.backend.entity.Category;
 import com.thunderfood.backend.exception.ConflictException;
 import com.thunderfood.backend.exception.ResourceNotFoundException;
+import com.thunderfood.backend.repository.CartItemRepository;
 import com.thunderfood.backend.repository.CategoryRepository;
 import com.thunderfood.backend.service.impl.CategoryServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,6 +29,9 @@ class CategoryServiceTest {
 
     @Mock
     private CategoryRepository categoryRepository;
+
+    @Mock
+    private CartItemRepository cartItemRepository;
 
     @InjectMocks
     private CategoryServiceImpl categoryService;
@@ -204,5 +208,6 @@ class CategoryServiceTest {
 
         assertFalse(category1.getIsActive());
         verify(categoryRepository).save(category1);
+        verify(cartItemRepository).deleteByProductCategoryId(1);
     }
 }

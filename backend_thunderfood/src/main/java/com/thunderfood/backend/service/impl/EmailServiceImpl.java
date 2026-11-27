@@ -41,7 +41,7 @@ public class EmailServiceImpl implements EmailService {
                     + "<div style='background-color: #f8f9fa; padding: 15px; text-align: center; font-size: 24px; letter-spacing: 5px; font-weight: bold; border-radius: 5px; margin: 20px 0;'>"
                     + safeOtp
                     + "</div>"
-                    + "<p style='color: #6c757d; font-size: 14px;'>Mã OTP này sẽ hết hạn sau 15 phút.</p>"
+                    + "<p style='color: #6c757d; font-size: 14px;'>Mã OTP này sẽ hết hạn sau 5 phút.</p>"
                     + "<p>Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email này.</p>"
                     + "<br>"
                     + "<p>Trân trọng,<br>Đội ngũ ThunderFood</p>"

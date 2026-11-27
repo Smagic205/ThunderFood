@@ -2,6 +2,7 @@ package com.thunderfood.backend.dto.order;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 
@@ -19,7 +20,8 @@ public class PlaceOrderRequest {
     private String shippingVoucherCode;
 
     @NotBlank(message = "Vui lòng chọn phương thức thanh toán")
-    private String paymentMethod; // COD, VNPAY, MOMO, STRIPE
+    @Pattern(regexp = "^(?i)(COD|SEPAY)$", message = "Phương thức thanh toán không hợp lệ. Chỉ hỗ trợ COD hoặc SEPAY")
+    private String paymentMethod; // COD, SEPAY
 
     private String note;
 

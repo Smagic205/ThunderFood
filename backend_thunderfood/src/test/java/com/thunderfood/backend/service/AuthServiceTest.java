@@ -686,4 +686,76 @@ class AuthServiceTest {
         AccessDeniedException ex = assertThrows(AccessDeniedException.class, () -> authService.login(request));
         assertTrue(ex.getMessage().contains("chưa được kích hoạt"));
     }
+
+    @Test
+    @DisplayName("register chuẩn hóa email về chữ thường")
+    void testRegister_NormalizesEmailToLowercase() {
+        RegisterRequest request = new RegisterRequest("Nguyễn Văn B", "  User.Upper@GMAIL.COM ", "12345678", "0988887777");
+
+        when(userRepository.findByEmail("user.upper@gmail.com")).thenReturn(Optional.empty());
+        when(roleRepository.findByName("CUSTOMER")).thenReturn(Optional.of(customerRole));
+        when(passwordEncoder.encode("12345678")).thenReturn("encodedPassword");
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> {
+            User u = inv.getArgument(0);
+            u.setId(99L);
+            return u;
+        });
+
+        AuthResponse response = authService.register(request);
+
+        assertEquals("user.upper@gmail.com", response.getUser().getEmail());
+        verify(emailService).sendAccountActivationEmail(eq("user.upper@gmail.com"), eq("Nguyễn Văn B"), anyString());
+    }
+
+    @Test
+    @DisplayName("register lại tài khoản UNVERIFIED với đúng mật khẩu không bị báo trùng SĐT và không ghi đè dữ liệu")
+    void testRegister_UnverifiedMatchingPassword_ResendsWithoutOverwriteOrPhoneConflict() {
+        User unverifiedUser = User.builder()
+                .id(15L)
+                .fullName("Tên Ban Đầu")
+                .email("unverified@gmail.com")
+                .passwordHash("encodedOriginal")
+                .phone("0911223344")
+                .role(customerRole)
+                .status("UNVERIFIED")
+                .build();
+
+        RegisterRequest request = new RegisterRequest("Tên Mới", "UNVERIFIED@gmail.com", "OriginalPass1@", "0911223344");
+
+        when(userRepository.findByEmail("unverified@gmail.com")).thenReturn(Optional.of(unverifiedUser));
+        when(passwordEncoder.matches("OriginalPass1@", "encodedOriginal")).thenReturn(true);
+
+        AuthResponse response = authService.register(request);
+
+        assertTrue(response.getRequiresVerification());
+        assertEquals("Tên Ban Đầu", unverifiedUser.getFullName());
+        assertEquals("0911223344", unverifiedUser.getPhone());
+        verify(userRepository, never()).existsByPhone(anyString());
+        verify(userRepository, never()).save(any());
+        verify(emailService).sendAccountActivationEmail(eq("unverified@gmail.com"), eq("Tên Ban Đầu"), anyString());
+    }
+
+    @Test
+    @DisplayName("register đè lên email UNVERIFIED với mật khẩu khác bị từ chối để chống chiếm đoạt tài khoản")
+    void testRegister_UnverifiedWrongPassword_RejectsOverwrite() {
+        User unverifiedUser = User.builder()
+                .id(15L)
+                .fullName("Nạn Nhân")
+                .email("victim@gmail.com")
+                .passwordHash("encodedVictim")
+                .phone("0911223344")
+                .role(customerRole)
+                .status("UNVERIFIED")
+                .build();
+
+        RegisterRequest attackerReq = new RegisterRequest("Kẻ Xấu", "victim@gmail.com", "AttackerPass1@", "0999888777");
+
+        when(userRepository.findByEmail("victim@gmail.com")).thenReturn(Optional.of(unverifiedUser));
+        when(passwordEncoder.matches("AttackerPass1@", "encodedVictim")).thenReturn(false);
+
+        assertThrows(ConflictException.class, () -> authService.register(attackerReq));
+        assertEquals("Nạn Nhân", unverifiedUser.getFullName());
+        assertEquals("0911223344", unverifiedUser.getPhone());
+        verify(emailService, never()).sendAccountActivationEmail(anyString(), anyString(), anyString());
+    }
 }

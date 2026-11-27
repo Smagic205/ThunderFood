@@ -54,4 +54,11 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
     List<Order> findByStatusAndCreatedAtBetweenOrderByCreatedAtAsc(String status, LocalDateTime start, LocalDateTime end);
 
     List<Order> findByCreatedAtBetweenOrderByCreatedAtDesc(LocalDateTime start, LocalDateTime end);
+
+    List<Order> findByPaymentMethodAndPaymentStatusAndStatusAndCreatedAtBefore(
+            String paymentMethod,
+            String paymentStatus,
+            String status,
+            LocalDateTime cutoff
+    );
 }

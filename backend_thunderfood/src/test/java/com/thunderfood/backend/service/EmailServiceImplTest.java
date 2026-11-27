@@ -62,6 +62,22 @@ class EmailServiceImplTest {
         verify(mailSender, never()).send(any(MimeMessage.class));
     }
 
+    @Test
+    @DisplayName("sendPasswordResetOtp ghi đúng thời hạn 5 phút khớp với logic AuthService")
+    void sendPasswordResetOtp_MentionsFiveMinutes() throws Exception {
+        MimeMessage mimeMessage = new MimeMessage((Session) null);
+        when(mailSender.createMimeMessage()).thenReturn(mimeMessage);
+
+        emailService.sendPasswordResetOtp("user@example.com", "123456");
+
+        ArgumentCaptor<MimeMessage> captor = ArgumentCaptor.forClass(MimeMessage.class);
+        verify(mailSender).send(captor.capture());
+
+        String body = extractText(captor.getValue().getContent());
+        assertTrue(body.contains("5 phút"));
+        assertFalse(body.contains("15 phút"));
+    }
+
     private String extractText(Object content) throws Exception {
         if (content instanceof String str) {
             return str;

@@ -6,6 +6,7 @@ import com.thunderfood.backend.dto.category.CategoryResponse;
 import com.thunderfood.backend.entity.Category;
 import com.thunderfood.backend.exception.ConflictException;
 import com.thunderfood.backend.exception.ResourceNotFoundException;
+import com.thunderfood.backend.repository.CartItemRepository;
 import com.thunderfood.backend.repository.CategoryRepository;
 import com.thunderfood.backend.service.CategoryService;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +20,7 @@ import java.util.List;
 public class CategoryServiceImpl implements CategoryService {
 
     private final CategoryRepository categoryRepository;
+    private final CartItemRepository cartItemRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -93,8 +95,9 @@ public class CategoryServiceImpl implements CategoryService {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy danh mục với ID: " + id));
 
-        // Xóa mềm: Chuyển isActive sang false
+        // Xóa mềm: Chuyển isActive sang false và dọn các món thuộc danh mục khỏi giỏ hàng
         category.setIsActive(false);
         categoryRepository.save(category);
+        cartItemRepository.deleteByProductCategoryId(id);
     }
 }

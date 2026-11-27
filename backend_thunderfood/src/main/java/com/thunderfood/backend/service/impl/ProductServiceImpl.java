@@ -568,7 +568,11 @@ public class ProductServiceImpl implements ProductService {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy món ăn với ID: " + id));
         product.setIsAvailable(isAvailable);
-        return mapToAdminResponse(productRepository.save(product));
+        Product saved = productRepository.save(product);
+        if (Boolean.FALSE.equals(isAvailable)) {
+            cartItemRepository.deleteByProductId(id);
+        }
+        return mapToAdminResponse(saved);
     }
 
     @Override

@@ -254,6 +254,19 @@ class ProductAdminServiceTest {
     }
 
     @Test
+    @DisplayName("updateProductAvailability(false) dọn món tương ứng khỏi giỏ hàng của người dùng")
+    void testUpdateProductAvailabilityFalseCleansCart() {
+        when(productRepository.findById(10L)).thenReturn(Optional.of(product));
+        when(productRepository.save(any(Product.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(productImageRepository.findByProductIdOrderByIsThumbnailDescSortOrderAsc(10L)).thenReturn(List.of());
+
+        ProductAdminResponse response = productService.updateProductAvailability(10L, false);
+
+        assertFalse(response.getIsAvailable());
+        verify(cartItemRepository).deleteByProductId(10L);
+    }
+
+    @Test
     @DisplayName("getProductDetailForAdmin trả về chi tiết món ăn")
     void testGetProductDetailForAdmin() {
         when(productRepository.findById(10L)).thenReturn(Optional.of(product));

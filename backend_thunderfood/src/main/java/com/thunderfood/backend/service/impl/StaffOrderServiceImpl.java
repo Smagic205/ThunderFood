@@ -278,28 +278,8 @@ public class StaffOrderServiceImpl implements StaffOrderService {
                 .build();
         orderStatusHistoryRepository.save(history);
 
-        // 1. Hoàn tồn kho sản phẩm (khóa theo thứ tự productId tăng dần để chống deadlock)
-        if (order.getItems() != null && !order.getItems().isEmpty()) {
-            List<OrderItem> sortedItems = new ArrayList<>(order.getItems());
-            sortedItems.sort(Comparator.comparing(
-                    oi -> oi.getProduct() != null && oi.getProduct().getId() != null ? oi.getProduct().getId() : Long.MAX_VALUE
-            ));
-            for (OrderItem item : sortedItems) {
-                if (item.getProduct() != null) {
-                    Product product = productRepository.findByIdWithLock(item.getProduct().getId()).orElse(null);
-                    if (product != null) {
-                        int qty = item.getQuantity() != null ? item.getQuantity() : 0;
-                        product.setStockQuantity(product.getStockQuantity() + qty);
-                        int currentSold = product.getSoldCount() != null ? product.getSoldCount() : 0;
-                        product.setSoldCount(Math.max(0, currentSold - qty));
-                        productRepository.save(product);
-                    }
-                }
-            }
-        }
-
-        // 2. Hoàn lại lượt sử dụng voucher (nếu có)
-        voucherService.revertVoucherUsage(order);
+        // 1. Hoàn tồn kho sản phẩm và lượt sử dụng voucher
+        restockOrderItemsAndRevertVouchers(order);
 
         // Bắn thông báo đơn bị hủy cho khách hàng
         notificationService.sendNotification(
@@ -349,6 +329,12 @@ public class StaffOrderServiceImpl implements StaffOrderService {
             throw new IllegalStateException("Gói hàng này đã được nhân viên khác nhận hoặc không còn khả dụng.");
         }
 
+        // Chặn nhận gói hàng rỗng để tránh shipper bị kẹt trạng thái DELIVERING
+        List<Order> orders = orderRepository.findByDeliveryPackageIdOrderByCreatedAtAsc(packageId);
+        if (orders.isEmpty()) {
+            throw new IllegalStateException("Gói hàng đang trống, không thể nhận giao gói chưa có đơn hàng nào.");
+        }
+
         User staffUser = userRepository.findById(staffId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy nhân viên giao hàng với ID: " + staffId));
 
@@ -357,7 +343,6 @@ public class StaffOrderServiceImpl implements StaffOrderService {
         DeliveryPackage savedPkg = deliveryPackageRepository.save(pkg);
 
         // Chuyển toàn bộ đơn CONFIRMED trong gói sang DELIVERING
-        List<Order> orders = orderRepository.findByDeliveryPackageIdOrderByCreatedAtAsc(packageId);
         List<String> orderCodes = new ArrayList<>();
 
         for (Order o : orders) {
@@ -457,6 +442,9 @@ public class StaffOrderServiceImpl implements StaffOrderService {
         order.setStatus("CANCELLED");
         Order savedOrder = orderRepository.save(order);
 
+        // Hoàn tồn kho sản phẩm và lượt sử dụng voucher khi giao hàng thất bại
+        restockOrderItemsAndRevertVouchers(savedOrder);
+
         OrderStatusHistory history = OrderStatusHistory.builder()
                 .order(savedOrder)
                 .status("CANCELLED")
@@ -504,6 +492,30 @@ public class StaffOrderServiceImpl implements StaffOrderService {
     // =========================================================================
     // HELPER METHODS
     // =========================================================================
+
+    private void restockOrderItemsAndRevertVouchers(Order order) {
+        if (order.getItems() != null && !order.getItems().isEmpty()) {
+            List<OrderItem> sortedItems = new ArrayList<>(order.getItems());
+            sortedItems.sort(Comparator.comparing(
+                    oi -> oi.getProduct() != null && oi.getProduct().getId() != null ? oi.getProduct().getId() : Long.MAX_VALUE
+            ));
+            for (OrderItem item : sortedItems) {
+                Product rawProduct = item.getProduct();
+                if (rawProduct != null) {
+                    Product product = (rawProduct.getId() != null)
+                            ? productRepository.findByIdWithLock(rawProduct.getId()).orElse(rawProduct)
+                            : rawProduct;
+                    int qty = item.getQuantity() != null ? item.getQuantity() : 0;
+                    int currentStock = product.getStockQuantity() != null ? product.getStockQuantity() : 0;
+                    product.setStockQuantity(currentStock + qty);
+                    int currentSold = product.getSoldCount() != null ? product.getSoldCount() : 0;
+                    product.setSoldCount(Math.max(0, currentSold - qty));
+                    productRepository.save(product);
+                }
+            }
+        }
+        voucherService.revertVoucherUsage(order);
+    }
 
     private void verifyAssignedShipper(Order order, Long staffId) {
         DeliveryPackage pkg = order.getDeliveryPackage();

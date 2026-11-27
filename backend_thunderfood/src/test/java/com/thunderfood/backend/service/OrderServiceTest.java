@@ -689,4 +689,19 @@ class OrderServiceTest {
         verify(orderRepository, never()).save(any());
         verify(voucherService, never()).revertVoucherUsage(any());
     }
+
+    @Test
+    @DisplayName("placeOrder ném ngoại lệ khi paymentMethod không phải COD hoặc SEPAY")
+    void testPlaceOrder_InvalidPaymentMethod_ThrowsException() {
+        PlaceOrderRequest req = PlaceOrderRequest.builder()
+                .addressId(100L)
+                .paymentMethod("BITCOIN")
+                .build();
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> orderService.placeOrder(1L, req));
+
+        assertTrue(ex.getMessage().contains("Chỉ hỗ trợ COD hoặc SEPAY"));
+        verify(orderRepository, never()).save(any());
+    }
 }

@@ -606,4 +606,21 @@ class VoucherServiceTest {
         verify(voucherUsageRepository).save(usage);
         verify(voucherRepository).save(productVoucher);
     }
+
+    @Test
+    @DisplayName("calculateDiscount làm tròn voucher phần trăm về đơn vị đồng (không còn số lẻ thập phân gây lệch SePay)")
+    void testCalculateDiscount_PercentRoundedToWholeVnd() {
+        Voucher percent15 = Voucher.builder()
+                .voucherType("PRODUCT")
+                .discountType("PERCENT")
+                .discountValue(new BigDecimal("15.00"))
+                .maxDiscountAmount(null)
+                .build();
+
+        // 12345 * 15% = 1851.75 -> HALF_UP làm tròn thành 1852.00
+        BigDecimal discount = voucherService.calculateDiscount(percent15, new BigDecimal("12345.00"), BigDecimal.ZERO);
+
+        assertEquals(0, new BigDecimal("1852.00").compareTo(discount));
+        assertEquals(new BigDecimal("1852.00"), discount);
+    }
 }
