@@ -17,4 +17,12 @@ public class LoginRequest {
 
     @NotBlank(message = "Mật khẩu không được để trống")
     private String password;
+
+    private Boolean rememberMe = Boolean.TRUE;
+
+    public LoginRequest(String email, String password) {
+        this.email = email;
+        this.password = password;
+        this.rememberMe = Boolean.TRUE;
+    }
 }

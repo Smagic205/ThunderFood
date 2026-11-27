@@ -2,6 +2,7 @@ import { useState, type CSSProperties, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertCircle, Bolt, ChevronLeft, ChevronRight, Image, Loader2, MessageSquare, Send, Star, X } from 'lucide-react';
 import { staffReviewApi, type ReviewResponse } from '@/features/reviews/api/staffReviewApi';
+import { isSafeUrl, sanitizeUrl } from '@/shared/utils/security';
 
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : 'Đã xảy ra lỗi, vui lòng thử lại.';
 
@@ -134,8 +135,8 @@ export const ReviewsPage = () => {
                 <p style={{ margin: '12px 0 8px', color: review.isHidden ? 'var(--ink-3)' : 'var(--ink)', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'break-word', lineHeight: 1.6 }}>
                   {review.comment || 'Khách không để lại nhận xét.'}
                 </p>
-                {review.imageUrl && (
-                  <a className="tlink" href={review.imageUrl} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+                {isSafeUrl(review.imageUrl) && (
+                  <a className="tlink" href={sanitizeUrl(review.imageUrl, { fallback: '#' })} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
                     <Image size={15} /> Xem ảnh khách gửi
                   </a>
                 )}

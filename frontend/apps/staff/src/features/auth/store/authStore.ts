@@ -6,13 +6,16 @@ interface User {
   email: string;
   fullName: string;
   role: string;
+  avatarUrl?: string | null;
 }
 
 interface AuthState {
   user: User | null;
   token: string | null;
-  refreshToken: string | null;
-  setAuth: (user: User, token: string, refreshToken: string | null) => void;
+  isAuthenticated: boolean;
+  isHydrating: boolean;
+  setAuth: (user: User, token: string) => void;
+  setHydrating: (isHydrating: boolean) => void;
   logout: () => void;
 }
 
@@ -21,10 +24,26 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       user: null,
       token: null,
-      refreshToken: null,
-      setAuth: (user, token, refreshToken) => set({ user, token, refreshToken }),
-      logout: () => set({ user: null, token: null, refreshToken: null }),
+      isAuthenticated: false,
+      isHydrating: false,
+      setAuth: (user, token) =>
+        set({ user, token, isAuthenticated: true, isHydrating: false }),
+      setHydrating: (isHydrating) => set({ isHydrating }),
+      logout: () =>
+        set({ user: null, token: null, isAuthenticated: false, isHydrating: false }),
     }),
-    { name: 'staff-auth' }
+    {
+      name: 'staff-auth',
+      version: 1,
+      partialize: (state) => ({
+        isAuthenticated: state.isAuthenticated,
+      }),
+      migrate: (persistedState: unknown) => {
+        const raw = (persistedState || {}) as { isAuthenticated?: boolean; token?: string | null };
+        return {
+          isAuthenticated: Boolean(raw.isAuthenticated ?? raw.token),
+        };
+      },
+    }
   )
 );

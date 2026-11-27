@@ -1,5 +1,6 @@
 package com.thunderfood.backend.dto.auth;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.thunderfood.backend.dto.address.AddressResponse;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -14,7 +15,10 @@ import java.util.List;
 @AllArgsConstructor
 public class AuthResponse {
     private String token;
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private String refreshToken;
+
     private UserDto user;
     private String message;
     private Boolean requiresVerification;

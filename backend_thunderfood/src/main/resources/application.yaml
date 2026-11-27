@@ -1,3 +1,6 @@
+server:
+  forward-headers-strategy: ${SERVER_FORWARD_HEADERS_STRATEGY:native}
+
 spring:
   application:
     name: backend_thunderfood
@@ -49,9 +52,9 @@ spring:
 
 jwt:
   secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
-  expiration: ${JWT_EXPIRATION:86400000}       # 1 ngày (ms)
+  expiration: ${JWT_EXPIRATION:900000}       # 15 phút (ms) cho Access Token trong RAM
   refresh-token:
-    expiration: ${JWT_REFRESH_EXPIRATION:604800000}    # 7 ngày (ms)
+    expiration: ${JWT_REFRESH_EXPIRATION:604800000}    # 7 ngày (ms) trong HttpOnly Cookie
 
 cloudinary:
   cloud-name: ${CLOUDINARY_CLOUD_NAME:your_cloudinary_cloud_name}
@@ -60,6 +63,16 @@ cloudinary:
 
 app:
   frontend-url: "${APP_FRONTEND_URL:http://localhost:5173}"
+  cors:
+    allowed-origins: "${APP_CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:3008,http://localhost:3009,http://localhost:3010,https://thunderfoods.vercel.app,https://thunderfoods-admin.vercel.app,https://thunderfoods-staff.vercel.app}"
+  rate-limit:
+    enabled: ${RATE_LIMIT_ENABLED:true}
+  auth:
+    cookie-name: "${AUTH_REFRESH_COOKIE_NAME:tf_refresh_token}"
+    cookie-secure: "${AUTH_COOKIE_SECURE:auto}"
+    cookie-same-site: "${AUTH_COOKIE_SAME_SITE:auto}"
+    cookie-domain: "${AUTH_COOKIE_DOMAIN:}"
+    expose-refresh-token-in-body: ${AUTH_EXPOSE_REFRESH_TOKEN_IN_BODY:false}
   google:
     client-id: "${GOOGLE_CLIENT_ID:}"
 

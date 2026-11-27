@@ -55,7 +55,7 @@ export const LoginPage = () => {
         return;
       }
       
-      setAuth(authData.user, authData.token, authData.refreshToken);
+      setAuth(authData.user, authData.token);
       navigate('/orders'); // Redirect to orders dashboard for staff
     } catch (err: any) {
       setError(err.response?.data?.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');

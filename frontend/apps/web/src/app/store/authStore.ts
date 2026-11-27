@@ -1,6 +1,15 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+// Clean up any legacy raw accessToken key if present from older builds
+if (typeof window !== 'undefined') {
+  try {
+    localStorage.removeItem('accessToken');
+  } catch {
+    // ignore storage errors
+  }
+}
+
 export interface User {
   id: number;
   email: string;
@@ -19,9 +28,11 @@ export interface User {
 interface AuthState {
   user: User | null;
   accessToken: string | null;
-  refreshToken: string | null;
   isAuthenticated: boolean;
-  login: (user: User, accessToken: string, refreshToken: string) => void;
+  rememberSession: boolean;
+  isHydrating: boolean;
+  login: (user: User, accessToken: string, rememberSession?: boolean) => void;
+  setHydrating: (isHydrating: boolean) => void;
   updateUser: (updatedUser: Partial<User>) => void;
   logout: () => void;
 }
@@ -31,10 +42,10 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       user: null,
       accessToken: null,
-      refreshToken: null,
       isAuthenticated: false,
-      login: (user, accessToken, refreshToken) => {
-        // Đồng bộ fullName và name
+      rememberSession: true,
+      isHydrating: false,
+      login: (user, accessToken, rememberSession) => {
         const normalizedUser = {
           ...user,
           fullName: user.fullName || user.name,
@@ -42,8 +53,15 @@ export const useAuthStore = create<AuthState>()(
           authProvider: user.authProvider || 'LOCAL',
           status: user.status || 'ACTIVE',
         };
-        set({ user: normalizedUser, accessToken, refreshToken, isAuthenticated: true });
+        set((state) => ({
+          user: normalizedUser,
+          accessToken,
+          isAuthenticated: true,
+          rememberSession: rememberSession ?? state.rememberSession,
+          isHydrating: false,
+        }));
       },
+      setHydrating: (isHydrating) => set({ isHydrating }),
       updateUser: (updatedUser) =>
         set((state) => ({
           user: state.user
@@ -56,11 +74,29 @@ export const useAuthStore = create<AuthState>()(
             : null,
         })),
       logout: () => {
-        set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false });
+        set({
+          user: null,
+          accessToken: null,
+          isAuthenticated: false,
+          rememberSession: true,
+          isHydrating: false,
+        });
       },
     }),
     {
       name: 'thunderfood-auth',
+      version: 1,
+      partialize: (state) => ({
+        isAuthenticated: state.isAuthenticated,
+        rememberSession: state.rememberSession,
+      }),
+      migrate: (persistedState: unknown) => {
+        const raw = (persistedState || {}) as { isAuthenticated?: boolean; rememberSession?: boolean };
+        return {
+          isAuthenticated: Boolean(raw.isAuthenticated),
+          rememberSession: raw.rememberSession ?? true,
+        };
+      },
     }
   )
 );

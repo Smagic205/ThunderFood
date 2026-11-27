@@ -40,6 +40,25 @@ export const mockProductsData = [
 ]
 
 export const handlers = [
+  // 0. Mock API CSRF token: GET /v1/auth/csrf
+  http.get('*/v1/auth/csrf', () => {
+    return HttpResponse.json(
+      {
+        success: true,
+        message: 'CSRF token ready',
+        data: {
+          token: 'mock-csrf-token',
+          headerName: 'X-XSRF-TOKEN',
+        },
+      },
+      {
+        headers: {
+          'X-CSRF-TOKEN': 'mock-csrf-token',
+        },
+      }
+    )
+  }),
+
   // 1. Mock API lấy thông tin giỏ hàng: GET /v1/cart
   http.get('*/v1/cart', () => {
     return HttpResponse.json({
@@ -108,8 +127,6 @@ export const handlers = [
             avatarUrl: null,
           },
           token: 'mock-admin-token',
-          accessToken: 'mock-admin-token',
-          refreshToken: 'mock-refresh-token',
         },
       })
     }
@@ -128,8 +145,6 @@ export const handlers = [
             avatarUrl: null,
           },
           token: 'mock-customer-token',
-          accessToken: 'mock-customer-token',
-          refreshToken: 'mock-refresh-token',
         },
       })
     }
@@ -141,5 +156,33 @@ export const handlers = [
       },
       { status: 400 }
     )
+  }),
+
+  // 5. Mock API refresh token: POST /v1/auth/refresh-token
+  http.post('*/v1/auth/refresh-token', () => {
+    return HttpResponse.json({
+      success: true,
+      message: 'Làm mới token thành công',
+      data: {
+        user: {
+          id: 1,
+          email: 'khach@thunderfood.vn',
+          name: 'Khách Hàng Thân Thiết',
+          fullName: 'Khách Hàng Thân Thiết',
+          role: 'CUSTOMER',
+          avatarUrl: null,
+        },
+        token: 'mock-refreshed-customer-token',
+      },
+    })
+  }),
+
+  // 6. Mock API logout: POST /v1/auth/logout
+  http.post('*/v1/auth/logout', () => {
+    return HttpResponse.json({
+      success: true,
+      message: 'Đăng xuất thành công',
+      data: null,
+    })
   }),
 ]

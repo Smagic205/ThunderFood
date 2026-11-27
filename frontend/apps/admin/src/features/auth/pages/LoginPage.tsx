@@ -4,6 +4,7 @@ import { Zap, Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/app/store/authStore';
 import { authApi } from '@/shared/api/authApi';
 import { LOCKED_ACCOUNT_NOTICE_KEY } from '@/shared/api/axiosClient';
+import { sanitizeUrl } from '@/shared/utils/security';
 
 export const LoginPage = () => {
   const navigate = useNavigate();
@@ -78,7 +79,7 @@ export const LoginPage = () => {
         return;
       }
 
-      login(data.user, data.token, data.refreshToken);
+      login(data.user, data.token);
       navigate('/admin', { replace: true });
     } catch (err: any) {
       const message =
@@ -208,7 +209,7 @@ export const LoginPage = () => {
         <p className="login-footer">
           Trang quản trị dành riêng cho Admin. <br />
           Nhân viên vui lòng sử dụng{' '}
-          <a href={import.meta.env.VITE_STAFF_APP_URL || 'http://localhost:5175'} target="_blank" rel="noreferrer">
+          <a href={sanitizeUrl(import.meta.env.VITE_STAFF_APP_URL || 'http://localhost:5175', { fallback: 'http://localhost:5175' })} target="_blank" rel="noopener noreferrer">
             ứng dụng Staff
           </a>
           .

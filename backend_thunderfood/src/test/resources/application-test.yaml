@@ -31,6 +31,16 @@ jwt:
 
 app:
   frontend-url: "http://localhost:5173"
+  cors:
+    allowed-origins: "http://localhost:5173,http://localhost:5174,http://localhost:5175,https://thunderfoods.vercel.app"
+  rate-limit:
+    enabled: false
+  auth:
+    cookie-name: "tf_refresh_token"
+    cookie-secure: "auto"
+    cookie-same-site: "auto"
+    cookie-domain: ""
+    expose-refresh-token-in-body: false
   google:
     client-id: "test-google-client-id"
 

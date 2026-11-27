@@ -20,6 +20,15 @@ services:
       CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-your_cloudinary_api_key}
       CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-your_cloudinary_api_secret}
       APP_FRONTEND_URL: ${APP_FRONTEND_URL:-http://localhost:5173}
+      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:3008,http://localhost:3009,http://localhost:3010,https://thunderfoods.vercel.app,https://thunderfoods-admin.vercel.app,https://thunderfoods-staff.vercel.app}
+      RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-900000}
+      JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION:-604800000}
+      AUTH_REFRESH_COOKIE_NAME: ${AUTH_REFRESH_COOKIE_NAME:-tf_refresh_token}
+      AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-auto}
+      AUTH_COOKIE_SAME_SITE: ${AUTH_COOKIE_SAME_SITE:-auto}
+      AUTH_COOKIE_DOMAIN: ${AUTH_COOKIE_DOMAIN:-}
+      AUTH_EXPOSE_REFRESH_TOKEN_IN_BODY: ${AUTH_EXPOSE_REFRESH_TOKEN_IN_BODY:-false}
       SEPAY_ENABLED: ${SEPAY_ENABLED:-true}
       SEPAY_SANDBOX: ${SEPAY_SANDBOX:-true}
       SEPAY_MERCHANT_ID: ${SEPAY_MERCHANT_ID:-}

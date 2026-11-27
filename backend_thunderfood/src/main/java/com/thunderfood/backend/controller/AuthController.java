@@ -1,5 +1,7 @@
 package com.thunderfood.backend.controller;
 
+import com.thunderfood.backend.config.security.AuthCookieService;
+import com.thunderfood.backend.config.security.DynamicCookieCsrfTokenRepository;
 import com.thunderfood.backend.dto.ApiResponse;
 import com.thunderfood.backend.dto.auth.AuthResponse;
 import com.thunderfood.backend.dto.auth.ForgotPasswordRequest;
@@ -9,11 +11,18 @@ import com.thunderfood.backend.dto.auth.RefreshTokenRequest;
 import com.thunderfood.backend.dto.auth.RegisterRequest;
 import com.thunderfood.backend.dto.auth.ResendActivationRequest;
 import com.thunderfood.backend.dto.auth.ResetPasswordRequest;
+import com.thunderfood.backend.exception.UnauthorizedException;
 import com.thunderfood.backend.service.AuthService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -21,40 +30,82 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final AuthCookieService authCookieService;
+
+    @GetMapping("/csrf")
+    public ResponseEntity<ApiResponse<Map<String, String>>> getCsrfToken(
+            CsrfToken csrfToken,
+            HttpServletResponse httpResponse
+    ) {
+        String tokenValue = csrfToken != null ? csrfToken.getToken() : "";
+        String headerName = csrfToken != null
+                ? csrfToken.getHeaderName()
+                : DynamicCookieCsrfTokenRepository.CSRF_HEADER_NAME;
+
+        if (!tokenValue.isBlank()) {
+            httpResponse.setHeader(DynamicCookieCsrfTokenRepository.CSRF_RESPONSE_HEADER_NAME, tokenValue);
+        }
+
+        return ResponseEntity.ok(ApiResponse.success(
+                "CSRF token ready",
+                Map.of("token", tokenValue, "headerName", headerName)
+        ));
+    }
 
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<AuthResponse>> register(
-            @Valid @RequestBody RegisterRequest request
+            @Valid @RequestBody RegisterRequest request,
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse
     ) {
-        return ResponseEntity.ok(ApiResponse.success("Đăng ký thành công", authService.register(request)));
+        AuthResponse response = authService.register(request);
+        attachRefreshCookieAndSanitizeBody(httpRequest, httpResponse, response, true);
+        return ResponseEntity.ok(ApiResponse.success("Đăng ký thành công", response));
     }
 
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<AuthResponse>> login(
-            @Valid @RequestBody LoginRequest request
+            @Valid @RequestBody LoginRequest request,
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse
     ) {
-        return ResponseEntity.ok(ApiResponse.success("Đăng nhập thành công", authService.login(request)));
+        AuthResponse response = authService.login(request);
+        boolean persistent = !Boolean.FALSE.equals(request.getRememberMe());
+        attachRefreshCookieAndSanitizeBody(httpRequest, httpResponse, response, persistent);
+        return ResponseEntity.ok(ApiResponse.success("Đăng nhập thành công", response));
     }
 
     @PostMapping("/google")
     public ResponseEntity<ApiResponse<AuthResponse>> loginWithGoogle(
-            @Valid @RequestBody GoogleAuthRequest request
+            @Valid @RequestBody GoogleAuthRequest request,
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse
     ) {
-        return ResponseEntity.ok(ApiResponse.success("Đăng nhập Google thành công", authService.loginWithGoogle(request)));
+        AuthResponse response = authService.loginWithGoogle(request);
+        attachRefreshCookieAndSanitizeBody(httpRequest, httpResponse, response, true);
+        return ResponseEntity.ok(ApiResponse.success("Đăng nhập Google thành công", response));
     }
 
     @PostMapping("/verify-email")
     public ResponseEntity<ApiResponse<AuthResponse>> verifyEmail(
-            @RequestParam("token") String token
+            @RequestParam("token") String token,
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse
     ) {
-        return ResponseEntity.ok(ApiResponse.success("Kích hoạt tài khoản thành công!", authService.verifyEmail(token)));
+        AuthResponse response = authService.verifyEmail(token);
+        attachRefreshCookieAndSanitizeBody(httpRequest, httpResponse, response, true);
+        return ResponseEntity.ok(ApiResponse.success("Kích hoạt tài khoản thành công!", response));
     }
 
     @GetMapping("/verify-email")
     public ResponseEntity<ApiResponse<AuthResponse>> verifyEmailGet(
-            @RequestParam("token") String token
+            @RequestParam("token") String token,
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse
     ) {
-        return ResponseEntity.ok(ApiResponse.success("Kích hoạt tài khoản thành công!", authService.verifyEmail(token)));
+        AuthResponse response = authService.verifyEmail(token);
+        attachRefreshCookieAndSanitizeBody(httpRequest, httpResponse, response, true);
+        return ResponseEntity.ok(ApiResponse.success("Kích hoạt tài khoản thành công!", response));
     }
 
     @PostMapping("/resend-activation")
@@ -67,16 +118,38 @@ public class AuthController {
 
     @PostMapping("/refresh-token")
     public ResponseEntity<ApiResponse<AuthResponse>> refreshToken(
-            @Valid @RequestBody RefreshTokenRequest request
+            @RequestBody(required = false) RefreshTokenRequest request,
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse
     ) {
-        return ResponseEntity.ok(ApiResponse.success("Làm mới token thành công", authService.refreshToken(request.getRefreshToken())));
+        String refreshToken = resolveRefreshToken(httpRequest, request);
+        if (refreshToken == null) {
+            authCookieService.clearRefreshTokenCookie(httpRequest, httpResponse);
+            throw new UnauthorizedException("Refresh token không tồn tại hoặc đã hết hạn");
+        }
+
+        try {
+            AuthResponse response = authService.refreshToken(refreshToken);
+            boolean persistent = request == null || !Boolean.FALSE.equals(request.getRememberMe());
+            attachRefreshCookieAndSanitizeBody(httpRequest, httpResponse, response, persistent);
+            return ResponseEntity.ok(ApiResponse.success("Làm mới token thành công", response));
+        } catch (UnauthorizedException | AccessDeniedException ex) {
+            authCookieService.clearRefreshTokenCookie(httpRequest, httpResponse);
+            throw ex;
+        }
     }
 
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<String>> logout(
-            @Valid @RequestBody RefreshTokenRequest request
+            @RequestBody(required = false) RefreshTokenRequest request,
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse
     ) {
-        authService.logout(request.getRefreshToken());
+        String refreshToken = resolveRefreshToken(httpRequest, request);
+        if (refreshToken != null) {
+            authService.logout(refreshToken);
+        }
+        authCookieService.clearRefreshTokenCookie(httpRequest, httpResponse);
         return ResponseEntity.ok(ApiResponse.success("Đăng xuất thành công", null));
     }
 
@@ -105,8 +178,39 @@ public class AuthController {
 
     @PostMapping("/staff/login")
     public ResponseEntity<ApiResponse<AuthResponse>> loginStaff(
-            @Valid @RequestBody LoginRequest request
+            @Valid @RequestBody LoginRequest request,
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse
     ) {
-        return ResponseEntity.ok(ApiResponse.success("Đăng nhập nhân viên thành công", authService.loginStaff(request)));
+        AuthResponse response = authService.loginStaff(request);
+        boolean persistent = !Boolean.FALSE.equals(request.getRememberMe());
+        attachRefreshCookieAndSanitizeBody(httpRequest, httpResponse, response, persistent);
+        return ResponseEntity.ok(ApiResponse.success("Đăng nhập nhân viên thành công", response));
+    }
+
+    private String resolveRefreshToken(HttpServletRequest httpRequest, RefreshTokenRequest body) {
+        String cookieToken = authCookieService.extractRefreshTokenFromCookie(httpRequest);
+        if (cookieToken != null && !cookieToken.isBlank()) {
+            return cookieToken;
+        }
+        if (body != null && body.getRefreshToken() != null && !body.getRefreshToken().isBlank()) {
+            return body.getRefreshToken().trim();
+        }
+        return null;
+    }
+
+    private void attachRefreshCookieAndSanitizeBody(
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse,
+            AuthResponse response,
+            boolean persistent
+    ) {
+        if (response == null || response.getRefreshToken() == null || response.getRefreshToken().isBlank()) {
+            return;
+        }
+        authCookieService.addRefreshTokenCookie(httpRequest, httpResponse, response.getRefreshToken(), persistent);
+        if (!authCookieService.isExposeRefreshTokenInBody()) {
+            response.setRefreshToken(null);
+        }
     }
 }

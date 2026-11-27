@@ -1,5 +1,6 @@
 package com.thunderfood.backend.dto.review;
 
+import com.thunderfood.backend.validation.SafeUrl;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
@@ -26,6 +27,7 @@ public class CreateReviewRequest {
     @Size(max = 1000, message = "Nội dung nhận xét tối đa 1000 ký tự")
     private String comment;
 
+    @SafeUrl(message = "Đường dẫn ảnh đánh giá không hợp lệ hoặc không an toàn")
     private String imageUrl;
 }
 

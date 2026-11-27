@@ -1,4 +1,6 @@
 import axios from 'axios';
+import { isMutatingHttpMethod } from '@thunderfood/api';
+import { csrfCoordinator, getBaseApiUrl } from '../../../shared/api/axiosClient';
 
 export interface StaffUser {
   id: number;
@@ -10,7 +12,7 @@ export interface StaffUser {
 
 export interface StaffAuthResponse {
   token: string;
-  refreshToken: string;
+  refreshToken?: string | null;
   user: StaffUser;
 }
 
@@ -20,29 +22,63 @@ export interface ApiResponse<T> {
   data: T;
 }
 
-// Keep auth calls outside axiosClient so a failed refresh cannot recurse through its interceptor.
+// Keep auth calls outside axiosClient so a failed refresh cannot recurse through its 401 interceptor.
 const authAxios = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8080/api',
+  baseURL: getBaseApiUrl(),
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
 });
+
+authAxios.interceptors.request.use(async (config) => {
+  config.withCredentials = true;
+  if (isMutatingHttpMethod(config.method)) {
+    const csrfToken = await csrfCoordinator.ensureToken();
+    if (csrfToken) {
+      config.headers['X-XSRF-TOKEN'] = csrfToken;
+    }
+  }
+  return config;
+});
+
+authAxios.interceptors.response.use(
+  (res) => {
+    csrfCoordinator.captureFromHeaders(res.headers as Record<string, unknown>);
+    return res;
+  },
+  async (error) => {
+    csrfCoordinator.captureFromHeaders(error.response?.headers as Record<string, unknown>);
+    const originalRequest = error.config;
+    if (
+      error.response?.status === 403 &&
+      error.response?.data?.data === 'CSRF_INVALID' &&
+      originalRequest &&
+      !originalRequest._csrfRetry
+    ) {
+      originalRequest._csrfRetry = true;
+      const freshCsrf = await csrfCoordinator.ensureToken(true);
+      if (freshCsrf) {
+        originalRequest.headers = originalRequest.headers || {};
+        originalRequest.headers['X-XSRF-TOKEN'] = freshCsrf;
+        return authAxios(originalRequest);
+      }
+    }
+    return Promise.reject(error);
+  }
+);
 
 export const authApi = {
   login: async (credentials: { email: string; password: string }) => {
     const res = await authAxios.post<ApiResponse<StaffAuthResponse>>('/v1/auth/staff/login', credentials);
     return res.data;
   },
-  refreshToken: async (refreshToken: string) => {
-    const res = await authAxios.post<ApiResponse<StaffAuthResponse>>('/v1/auth/refresh-token', {
-      refreshToken,
-    });
+  refreshToken: async () => {
+    const res = await authAxios.post<ApiResponse<StaffAuthResponse>>('/v1/auth/refresh-token', {});
     return res.data;
   },
-  logout: async (refreshToken: string): Promise<void> => {
-    await authAxios.post<ApiResponse<null>>('/v1/auth/logout', {
-      refreshToken,
-    }, { timeout: 5000 });
+  logout: async (): Promise<void> => {
+    await authAxios.post<ApiResponse<null>>('/v1/auth/logout', {}, { timeout: 5000 });
   },
   forgotPassword: async (email: string) => {
     const res = await authAxios.post<ApiResponse<string>>('/v1/auth/forgot-password', { email });

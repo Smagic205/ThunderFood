@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertCircle, Bolt, ChevronLeft, ChevronRight, Eye, EyeOff, Image, Loader2, MessageSquare, Send, Star, X } from 'lucide-react';
 import { reviewsApi, type AdminReview } from '@/features/reviews/api/reviewsApi';
+import { isSafeUrl, sanitizeUrl } from '@/shared/utils/security';
 
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : 'Đã xảy ra lỗi, vui lòng thử lại.';
 
@@ -137,7 +138,11 @@ export const ReviewsPage = () => {
                   )}
                 </div>
                 <p style={{ margin: '14px 0 10px', color: review.isHidden ? 'var(--ink-3)' : 'var(--ink)', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'break-word', lineHeight: 1.6 }}>{review.comment || 'Khách không để lại nhận xét.'}</p>
-                {review.imageUrl && <a href={review.imageUrl} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13 }} className="tlink"><Image size={15} /> Xem ảnh khách gửi</a>}
+                {isSafeUrl(review.imageUrl) && (
+                  <a href={sanitizeUrl(review.imageUrl, { fallback: '#' })} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13 }} className="tlink">
+                    <Image size={15} /> Xem ảnh khách gửi
+                  </a>
+                )}
                 {review.isHidden && <div><span className="pill s-CANCELLED nodot" style={{ margin: '10px 0 0' }}>Đang ẩn khỏi cửa hàng</span></div>}
                 {review.staffReply && (
                   <div className="reply" style={{ marginTop: 16, padding: 14, background: 'var(--surface-2)', borderRadius: 12 }}>

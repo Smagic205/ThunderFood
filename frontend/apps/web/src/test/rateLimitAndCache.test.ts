@@ -6,7 +6,7 @@ import { axiosClient } from '@/shared/api/axiosClient';
 import { useToastStore } from '@/shared/stores/toastStore';
 import { appQueryClient, CACHE_TIME } from '@/shared/config/queryClient';
 import { useDebounce } from '@/shared/hooks/useDebounce';
-import { escapeHtml, stripHtml } from '@/shared/utils/security';
+import { escapeHtml, isSafeUrl, sanitizeUrl, stripHtml } from '@/shared/utils/security';
 
 describe('Giai đoạn 1: Rate Limit 429, Client Cache & Tiện ích bảo mật', () => {
   beforeEach(() => {
@@ -131,6 +131,37 @@ describe('Giai đoạn 1: Rate Limit 429, Client Cache & Tiện ích bảo mật
     it('stripHtml loại bỏ hoàn toàn các thẻ HTML', () => {
       const htmlText = '<b>Trà sữa</b> <i>trân châu</i>';
       expect(stripHtml(htmlText)).toBe('Trà sữa trân châu');
+    });
+
+    it('sanitizeUrl chặn javascript:, data:, protocol-relative và giữ URL hợp lệ', () => {
+      expect(isSafeUrl('javascript:alert(1)')).toBe(false);
+      expect(sanitizeUrl('javascript:alert(1)')).toBe('#');
+      expect(sanitizeUrl('//evil.example.com')).toBe('#');
+      expect(sanitizeUrl('https://res.cloudinary.com/demo/banner.jpg')).toBe('https://res.cloudinary.com/demo/banner.jpg');
+      expect(sanitizeUrl('/menu?sort=best')).toBe('/menu?sort=best');
+    });
+
+    it('axiosClient đính kèm X-XSRF-TOKEN và tự động làm mới CSRF khi gặp lỗi CSRF_INVALID', async () => {
+      let attempt = 0;
+      let seenCsrfHeader: string | null = null;
+      server.use(
+        http.post('*/v1/test-csrf-protected', ({ request }) => {
+          attempt += 1;
+          seenCsrfHeader = request.headers.get('X-XSRF-TOKEN');
+          if (attempt === 1) {
+            return HttpResponse.json(
+              { success: false, message: 'CSRF không hợp lệ', data: 'CSRF_INVALID' },
+              { status: 403 }
+            );
+          }
+          return HttpResponse.json({ success: true, message: 'OK', data: 'done' });
+        })
+      );
+
+      const res = await axiosClient.post('/v1/test-csrf-protected', { test: true });
+      expect(res.data.data).toBe('done');
+      expect(attempt).toBe(2);
+      expect(seenCsrfHeader).toBe('mock-csrf-token');
     });
   });
 });

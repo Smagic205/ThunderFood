@@ -1,5 +1,6 @@
 package com.thunderfood.backend.dto.user;
 
+import com.thunderfood.backend.validation.SafeUrl;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -30,6 +31,7 @@ public class UpdateCustomerProfileRequest {
     private String phone;
 
     @Size(max = 500, message = "URL ảnh đại diện không được vượt quá 500 ký tự")
+    @SafeUrl(message = "URL ảnh đại diện không hợp lệ hoặc không an toàn")
     @Schema(description = "URL ảnh đại diện (tùy chọn)", example = "https://example.com/avatar.jpg")
     private String avatarUrl;
 }

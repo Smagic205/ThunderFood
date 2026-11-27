@@ -1,23 +1,27 @@
 package com.thunderfood.backend.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.thunderfood.backend.config.security.AuthCookieService;
 import com.thunderfood.backend.dto.auth.*;
 import com.thunderfood.backend.exception.GlobalExceptionHandler;
 import com.thunderfood.backend.service.AuthService;
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.is;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -30,13 +34,15 @@ class AuthControllerTest {
     @Mock
     private AuthService authService;
 
-    @InjectMocks
+    private AuthCookieService authCookieService;
     private AuthController authController;
 
     private AuthResponse authResponse;
 
     @BeforeEach
     void setUp() {
+        authCookieService = new AuthCookieService();
+        authController = new AuthController(authService, authCookieService);
         mockMvc = MockMvcBuilders.standaloneSetup(authController)
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
@@ -117,7 +123,7 @@ class AuthControllerTest {
     }
 
     @Test
-    @DisplayName("POST /api/v1/auth/login thành công trả về 200 và AuthResponse")
+    @DisplayName("POST /api/v1/auth/login thành công trả về 200, đặt HttpOnly cookie và ẩn refreshToken khỏi JSON")
     void testLogin_Success() throws Exception {
         LoginRequest request = new LoginRequest("user@gmail.com", "Pass1234@");
 
@@ -129,7 +135,11 @@ class AuthControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success", is(true)))
                 .andExpect(jsonPath("$.message", is("Đăng nhập thành công")))
-                .andExpect(jsonPath("$.data.token", is("jwt-token-123")));
+                .andExpect(jsonPath("$.data.token", is("jwt-token-123")))
+                .andExpect(jsonPath("$.data.refreshToken").doesNotExist())
+                .andExpect(cookie().exists("tf_refresh_token"))
+                .andExpect(cookie().httpOnly("tf_refresh_token", true))
+                .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("tf_refresh_token=refresh-token-123")));
     }
 
     @Test
@@ -147,37 +157,40 @@ class AuthControllerTest {
     }
 
     @Test
-    @DisplayName("POST /api/v1/auth/refresh-token thành công trả về 200")
+    @DisplayName("POST /api/v1/auth/refresh-token thành công khi gửi từ HttpOnly cookie hoặc body")
     void testRefreshToken_Success() throws Exception {
-        RefreshTokenRequest request = new RefreshTokenRequest();
-        request.setRefreshToken("valid-refresh-token");
-
         when(authService.refreshToken("valid-refresh-token")).thenReturn(authResponse);
 
         mockMvc.perform(post("/api/v1/auth/refresh-token")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .cookie(new Cookie("tf_refresh_token", "valid-refresh-token")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success", is(true)))
-                .andExpect(jsonPath("$.data.token", is("jwt-token-123")));
+                .andExpect(jsonPath("$.data.token", is("jwt-token-123")))
+                .andExpect(jsonPath("$.data.refreshToken").doesNotExist())
+                .andExpect(cookie().httpOnly("tf_refresh_token", true));
     }
 
     @Test
-    @DisplayName("POST /api/v1/auth/logout thành công trả về 200")
+    @DisplayName("POST /api/v1/auth/logout thành công, thu hồi token và xóa HttpOnly cookie")
     void testLogout_Success() throws Exception {
-        RefreshTokenRequest request = new RefreshTokenRequest();
-        request.setRefreshToken("valid-refresh-token");
-
         doNothing().when(authService).logout("valid-refresh-token");
 
         mockMvc.perform(post("/api/v1/auth/logout")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .cookie(new Cookie("tf_refresh_token", "valid-refresh-token")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success", is(true)))
-                .andExpect(jsonPath("$.message", is("Đăng xuất thành công")));
+                .andExpect(jsonPath("$.message", is("Đăng xuất thành công")))
+                .andExpect(cookie().maxAge("tf_refresh_token", 0));
 
         verify(authService).logout("valid-refresh-token");
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/auth/csrf trả về 200")
+    void testGetCsrfEndpoint_ReturnsOk() throws Exception {
+        mockMvc.perform(get("/api/v1/auth/csrf"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success", is(true)));
     }
 
     @Test

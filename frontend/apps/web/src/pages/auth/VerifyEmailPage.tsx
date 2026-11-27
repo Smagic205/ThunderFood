@@ -40,7 +40,7 @@ export const VerifyEmailPage = () => {
               status: response.user.status || 'ACTIVE',
             },
             response.token,
-            response.refreshToken
+            true
           );
 
           import('@/shared/api/userApi').then(({ userApi }) => {

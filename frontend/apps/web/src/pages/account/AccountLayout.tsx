@@ -15,6 +15,7 @@ import {
 import { useAuthStore } from '@/app/store/authStore';
 import { useToastStore } from '@/shared/stores/toastStore';
 import { authApi } from '@/shared/api/authApi';
+import { sanitizeUrl } from '@/shared/utils/security';
 
 export const AccountLayout = () => {
   const { user, logout } = useAuthStore();
@@ -22,9 +23,8 @@ export const AccountLayout = () => {
   const navigate = useNavigate();
 
   const handleLogout = async () => {
-    const refreshToken = useAuthStore.getState().refreshToken;
     try {
-      if (refreshToken) await authApi.logout(refreshToken);
+      await authApi.logout();
     } catch {
       // Always clear the local session even when the backend is unavailable.
     } finally {
@@ -74,9 +74,9 @@ export const AccountLayout = () => {
               className="avatar lg overflow-hidden" 
               style={{ width: 52, height: 52, fontSize: 19 }}
             >
-              {user.avatarUrl ? (
+              {user.avatarUrl && sanitizeUrl(user.avatarUrl, { fallback: '' }) ? (
                 <img 
-                  src={user.avatarUrl} 
+                  src={sanitizeUrl(user.avatarUrl, { fallback: '' })} 
                   alt={user.name} 
                   className="w-full h-full object-cover" 
                 />

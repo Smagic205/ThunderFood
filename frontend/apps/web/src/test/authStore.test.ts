@@ -14,14 +14,15 @@ describe('useAuthStore', () => {
     useAuthStore.setState({
       user: null,
       accessToken: null,
-      refreshToken: null,
       isAuthenticated: false,
+      rememberSession: true,
+      isHydrating: false,
     });
     localStorage.clear();
   });
 
-  it('normalizes user fields and persists a successful login', () => {
-    useAuthStore.getState().login(user, 'access-token', 'refresh-token');
+  it('normalizes user fields, keeps tokens in memory only, and stores non-sensitive session flag', () => {
+    useAuthStore.getState().login(user, 'access-token', true);
 
     expect(useAuthStore.getState()).toMatchObject({
       user: {
@@ -32,14 +33,22 @@ describe('useAuthStore', () => {
         status: 'ACTIVE',
       },
       accessToken: 'access-token',
-      refreshToken: 'refresh-token',
       isAuthenticated: true,
+      rememberSession: true,
     });
-    expect(JSON.parse(localStorage.getItem('thunderfood-auth') || '{}').state.isAuthenticated).toBe(true);
+
+    const persisted = JSON.parse(localStorage.getItem('thunderfood-auth') || '{}');
+    expect(persisted.state).toEqual({
+      isAuthenticated: true,
+      rememberSession: true,
+    });
+    expect(persisted.state.accessToken).toBeUndefined();
+    expect(persisted.state.refreshToken).toBeUndefined();
+    expect(persisted.state.user).toBeUndefined();
   });
 
   it('keeps name and fullName in sync when updating the profile', () => {
-    useAuthStore.getState().login(user, 'access-token', 'refresh-token');
+    useAuthStore.getState().login(user, 'access-token');
     useAuthStore.getState().updateUser({ fullName: 'Nguyễn An' });
 
     expect(useAuthStore.getState().user).toMatchObject({
@@ -49,18 +58,15 @@ describe('useAuthStore', () => {
   });
 
   it('clears the active session on logout', () => {
-    useAuthStore.getState().login(user, 'access-token', 'refresh-token');
+    useAuthStore.getState().login(user, 'access-token');
     useAuthStore.getState().logout();
 
     expect(useAuthStore.getState()).toMatchObject({
       user: null,
       accessToken: null,
-      refreshToken: null,
       isAuthenticated: false,
     });
     expect(JSON.parse(localStorage.getItem('thunderfood-auth') || '{}').state).toMatchObject({
-      accessToken: null,
-      refreshToken: null,
       isAuthenticated: false,
     });
   });

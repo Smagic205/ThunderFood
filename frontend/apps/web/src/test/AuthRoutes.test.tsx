@@ -10,8 +10,8 @@ const setAuthenticatedUser = (role: User['role']) => {
   useAuthStore.setState({
     user: { id: 1, email: 'user@example.com', name: 'Test User', role },
     accessToken: 'access-token',
-    refreshToken: 'refresh-token',
     isAuthenticated: true,
+    isHydrating: false,
   });
 };
 
@@ -29,7 +29,7 @@ const renderProtectedRoute = (guard: ReactNode, path = '/protected') =>
 
 describe('customer portal route guards', () => {
   beforeEach(() => {
-    useAuthStore.setState({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false });
+    useAuthStore.setState({ user: null, accessToken: null, isAuthenticated: false, isHydrating: false });
   });
 
   it('redirects guests to login on private routes', () => {

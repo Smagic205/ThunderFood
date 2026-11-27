@@ -1,4 +1,4 @@
-import { axiosClient } from './axiosClient';
+import { axiosClient, ensureCsrfToken } from './axiosClient';
 
 export interface User {
   id: number;
@@ -13,7 +13,7 @@ export interface User {
 
 export interface AuthResponse {
   token: string;
-  refreshToken: string;
+  refreshToken?: string | null;
   user: User;
   message?: string;
   requiresVerification?: boolean;
@@ -26,11 +26,13 @@ export interface ApiResponse<T> {
 }
 
 export const authApi = {
-  login: async (data: any): Promise<AuthResponse> => {
+  ensureCsrf: ensureCsrfToken,
+
+  login: async (data: { email: string; password: string; rememberMe?: boolean }): Promise<AuthResponse> => {
     const response = await axiosClient.post<ApiResponse<AuthResponse>>('/v1/auth/login', data);
     return response.data.data;
   },
-  
+
   register: async (data: any): Promise<AuthResponse> => {
     const response = await axiosClient.post<ApiResponse<AuthResponse>>('/v1/auth/register', data);
     return response.data.data;
@@ -50,23 +52,23 @@ export const authApi = {
     const response = await axiosClient.post<ApiResponse<string>>('/v1/auth/resend-activation', { email });
     return response.data.message;
   },
-  
+
   forgotPassword: async (email: string): Promise<string> => {
     const response = await axiosClient.post<ApiResponse<string>>('/v1/auth/forgot-password', { email });
     return response.data.message;
   },
-  
+
   resetPassword: async (data: any): Promise<string> => {
     const response = await axiosClient.post<ApiResponse<string>>('/v1/auth/reset-password', data);
     return response.data.message;
   },
-  
-  refreshToken: async (refreshToken: string): Promise<AuthResponse> => {
-    const response = await axiosClient.post<ApiResponse<AuthResponse>>('/v1/auth/refresh-token', { refreshToken });
+
+  refreshToken: async (rememberMe = true): Promise<AuthResponse> => {
+    const response = await axiosClient.post<ApiResponse<AuthResponse>>('/v1/auth/refresh-token', { rememberMe });
     return response.data.data;
   },
 
-  logout: async (refreshToken: string): Promise<void> => {
-    await axiosClient.post<ApiResponse<null>>('/v1/auth/logout', { refreshToken }, { timeout: 5000 });
-  }
+  logout: async (): Promise<void> => {
+    await axiosClient.post<ApiResponse<null>>('/v1/auth/logout', {}, { timeout: 5000 });
+  },
 };

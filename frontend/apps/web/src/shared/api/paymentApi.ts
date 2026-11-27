@@ -1,4 +1,5 @@
 import { axiosClient } from './axiosClient';
+import { isSafeUrl } from '@/shared/utils/security';
 
 export interface SepayPaymentInfo {
   orderId: number;
@@ -96,6 +97,9 @@ export const paymentApi = {
   },
 
   submitSepayCheckoutForm: (checkoutUrl: string, fields: Record<string, string>) => {
+    if (!isSafeUrl(checkoutUrl, { allowRelative: false })) {
+      throw new Error('URL cổng thanh toán không hợp lệ');
+    }
     const form = document.createElement('form');
     form.method = 'POST';
     form.action = checkoutUrl;

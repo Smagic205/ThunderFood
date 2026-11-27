@@ -6,7 +6,15 @@ import { useAuthStore } from '@/app/store/authStore';
  * Nếu chưa đăng nhập hoặc role không hợp lệ -> redirect về /login.
  */
 export const AdminRoute = () => {
-  const { isAuthenticated, user } = useAuthStore();
+  const { isAuthenticated, user, isHydrating } = useAuthStore();
+
+  if (isHydrating) {
+    return (
+      <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }} role="status">
+        <span>Đang khôi phục phiên quản trị...</span>
+      </div>
+    );
+  }
 
   if (!isAuthenticated || !user) {
     return <Navigate to="/login" replace />;

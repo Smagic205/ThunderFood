@@ -77,7 +77,7 @@ export const LoginPage = () => {
           status: response.user.status || 'ACTIVE',
         },
         response.token,
-        response.refreshToken
+        true
       );
 
       // Fetch thêm profile đầy đủ (nếu có thêm thông tin bổ trợ)
@@ -124,7 +124,8 @@ export const LoginPage = () => {
       
       const response = await authApi.login({
         email: data.email,
-        password: data.password
+        password: data.password,
+        rememberMe: data.remember,
       });
       
       // Ngăn chặn STAFF và ADMIN đăng nhập ở cổng Khách hàng
@@ -134,7 +135,7 @@ export const LoginPage = () => {
         return;
       }
       
-      // Lưu thông tin cơ bản vào store trước để có token
+      // Lưu thông tin cơ bản vào store (RAM) trước để có token
       login(
         {
           id: response.user.id,
@@ -148,7 +149,7 @@ export const LoginPage = () => {
           status: response.user.status || 'ACTIVE',
         },
         response.token,
-        response.refreshToken
+        data.remember
       );
 
       // Fetch thêm profile đầy đủ (authProvider, status, createdAt, v.v.) ngay sau login

@@ -1,49 +1,95 @@
 import axios from 'axios';
+import { createCsrfCoordinator, extractRateLimitMessage, isMutatingHttpMethod } from '@thunderfood/api';
 import { useAuthStore } from '@/app/store/authStore';
 import { useToastStore } from '@/shared/stores/toastStore';
-import { authApi } from './authApi';
 
 export const LOCKED_ACCOUNT_NOTICE_KEY = 'thunderfood_locked_account_notice';
 
+const baseURL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+
+const csrfCoordinator = createCsrfCoordinator({
+  fetchToken: async () => {
+    const res = await axios.get<{ data?: { token?: string } }>(`${baseURL}/v1/auth/csrf`, {
+      withCredentials: true,
+    });
+    const headerToken = res.headers?.['x-csrf-token'] || res.headers?.['X-CSRF-TOKEN'];
+    if (typeof headerToken === 'string' && headerToken.trim()) {
+      return headerToken.trim();
+    }
+    return res.data?.data?.token || null;
+  },
+});
+
+export const ensureCsrfToken = (forceRefresh = false) => csrfCoordinator.ensureToken(forceRefresh);
+
 export const axiosClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api',
+  baseURL,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Interceptor Request: Gắn token vào header
+// Interceptor Request: Đính kèm Access Token (RAM) & CSRF Token (Double-Submit)
 axiosClient.interceptors.request.use(
-  (config) => {
+  async (config) => {
+    config.withCredentials = true;
+
     const token = useAuthStore.getState().accessToken;
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    const url = config.url || '';
+    if (isMutatingHttpMethod(config.method) && !url.includes('/v1/auth/csrf')) {
+      const csrfToken = await csrfCoordinator.ensureToken();
+      if (csrfToken) {
+        config.headers['X-XSRF-TOKEN'] = csrfToken;
+      }
+    }
+
     return config;
   },
   (error) => Promise.reject(error)
 );
 
 // Keep track of refresh promise to prevent multiple simultaneous calls
-let refreshTokenPromise: Promise<any> | null = null;
+let refreshTokenPromise: Promise<{ token: string; user: any }> | null = null;
 
-// Interceptor Response: Xử lý lỗi chung (vd: 401 Unauthorized)
+// Interceptor Response: Xử lý 401 refresh qua HttpOnly Cookie, 403 CSRF/khóa tài khoản & 429 Rate Limit
 axiosClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    csrfCoordinator.captureFromHeaders(response.headers as Record<string, unknown>);
+    return response;
+  },
   async (error) => {
+    csrfCoordinator.captureFromHeaders(error.response?.headers as Record<string, unknown>);
     const originalRequest = error.config;
 
-    // Bỏ qua các URL auth (login, register, refresh, forgot, reset) vì 401 ở đây là do sai thông tin chứ không phải token hết hạn
-    const isAuthRoute = originalRequest.url?.includes('/v1/auth/');
+    // Tự động lấy lại CSRF token mới và thử lại 1 lần nếu CSRF cookie/memory bị lệch
+    if (
+      error.response?.status === 403 &&
+      error.response?.data?.data === 'CSRF_INVALID' &&
+      originalRequest &&
+      !originalRequest._csrfRetry
+    ) {
+      originalRequest._csrfRetry = true;
+      const freshCsrf = await csrfCoordinator.ensureToken(true);
+      if (freshCsrf) {
+        originalRequest.headers = originalRequest.headers || {};
+        originalRequest.headers['X-XSRF-TOKEN'] = freshCsrf;
+        return axiosClient(originalRequest);
+      }
+    }
 
-    // Tránh loop vô hạn nếu api refresh token bị lỗi 401
-    if (error.response?.status === 401 && !originalRequest._retry && !isAuthRoute) {
+    // Bỏ qua các URL auth (login, register, refresh, forgot, reset) vì 401 ở đây là do sai thông tin chứ không phải token hết hạn
+    const isAuthRoute = originalRequest?.url?.includes('/v1/auth/');
+
+    if (error.response?.status === 401 && originalRequest && !originalRequest._retry && !isAuthRoute) {
       originalRequest._retry = true;
 
       const store = useAuthStore.getState();
-      const currentRefreshToken = store.refreshToken;
-
-      if (!currentRefreshToken) {
+      if (!store.isAuthenticated) {
         store.logout();
         window.location.href = '/login';
         return Promise.reject(error);
@@ -51,23 +97,35 @@ axiosClient.interceptors.response.use(
 
       try {
         if (!refreshTokenPromise) {
-          refreshTokenPromise = authApi.refreshToken(currentRefreshToken);
+          refreshTokenPromise = (async () => {
+            const csrfToken = await csrfCoordinator.ensureToken();
+            const res = await axios.post<{ data: { token: string; user: any } }>(
+              `${baseURL}/v1/auth/refresh-token`,
+              { rememberMe: store.rememberSession },
+              {
+                withCredentials: true,
+                headers: {
+                  'Content-Type': 'application/json',
+                  ...(csrfToken ? { 'X-XSRF-TOKEN': csrfToken } : {}),
+                },
+              }
+            );
+            csrfCoordinator.captureFromHeaders(res.headers as Record<string, unknown>);
+            return res.data.data;
+          })().finally(() => {
+            refreshTokenPromise = null;
+          });
         }
 
         const data = await refreshTokenPromise;
-        store.login(data.user, data.token, data.refreshToken);
-        
-        // Gắn lại token mới cho request cũ
+        store.login(data.user, data.token, store.rememberSession);
+
         originalRequest.headers.Authorization = `Bearer ${data.token}`;
         return axiosClient(originalRequest);
-        
       } catch (refreshError) {
-        // Lỗi refresh -> phải login lại
         store.logout();
         window.location.href = '/login';
         return Promise.reject(refreshError);
-      } finally {
-        refreshTokenPromise = null;
       }
     }
 
@@ -102,22 +160,10 @@ axiosClient.interceptors.response.use(
     }
 
     // Xử lý mã lỗi Rate Limit (HTTP 429 Too Many Requests)
-    if (error.response?.status === 429) {
-      const retryAfter =
-        error.response.headers?.['retry-after'] ||
-        error.response.headers?.['Retry-After'];
-
-      let message = error.response.data?.message;
-      if (!message) {
-        if (retryAfter) {
-          message = `Bạn thao tác quá nhanh. Vui lòng thử lại sau ${retryAfter} giây.`;
-        } else {
-          message = 'Bạn thao tác quá nhanh, vui lòng thử lại sau ít giây.';
-        }
-      }
-
-      error.message = message;
-      useToastStore.getState().showToast(message, 'error');
+    const rateLimitMsg = extractRateLimitMessage(error);
+    if (rateLimitMsg) {
+      error.message = rateLimitMsg;
+      useToastStore.getState().showToast(rateLimitMsg, 'error');
     }
 
     return Promise.reject(error);

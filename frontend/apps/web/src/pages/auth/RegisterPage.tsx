@@ -82,7 +82,7 @@ export const RegisterPage = () => {
           status: response.user.status || 'ACTIVE',
         },
         response.token,
-        response.refreshToken
+        true
       );
 
       // Fetch thêm profile
@@ -142,7 +142,7 @@ export const RegisterPage = () => {
           avatarUrl: response.user.avatarUrl
         },
         response.token,
-        response.refreshToken
+        true
       );
       
       navigate('/');

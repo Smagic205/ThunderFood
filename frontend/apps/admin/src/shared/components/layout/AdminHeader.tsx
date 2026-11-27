@@ -5,6 +5,7 @@ import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '@/app/store/authStore';
 import { notificationApi } from '@/shared/api/notificationApi';
+import { sanitizeUrl } from '@/shared/utils/security';
 
 export const AdminHeader = () => {
   const { theme, toggleTheme, initTheme } = useThemeStore();
@@ -47,7 +48,12 @@ export const AdminHeader = () => {
           </span>
         )}
       </Link>
-      <a className="btn btn-ghost btn-sm hide-sm" href="http://localhost:5173" target="_blank" rel="noreferrer">
+      <a
+        className="btn btn-ghost btn-sm hide-sm"
+        href={sanitizeUrl(import.meta.env.VITE_WEB_APP_URL || 'http://localhost:5173', { fallback: 'http://localhost:5173' })}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
         <Store size={18} />
         Xem cửa hàng
       </a>

@@ -1,6 +1,4 @@
-import { axiosClient } from './axiosClient';
-
-// === Interfaces bám sát entity Backend ===
+import { axiosClient, ensureCsrfToken } from './axiosClient';
 
 export interface User {
   id: number;
@@ -12,7 +10,7 @@ export interface User {
 
 export interface AuthResponse {
   token: string;
-  refreshToken: string;
+  refreshToken?: string | null;
   user: User;
 }
 
@@ -22,25 +20,27 @@ export interface ApiResponse<T> {
   data: T;
 }
 
-// === Auth API functions ===
-
 export const authApi = {
-  login: async (data: { email: string; password: string }): Promise<AuthResponse> => {
-    const response = await axiosClient.post<ApiResponse<AuthResponse>>('/auth/login', data);
-    return response.data.data;
-  },
+  ensureCsrf: ensureCsrfToken,
 
-  refreshToken: async (refreshToken: string): Promise<AuthResponse> => {
-    const response = await axiosClient.post<ApiResponse<AuthResponse>>('/auth/refresh-token', {
-      refreshToken,
+  login: async (data: { email: string; password: string }): Promise<AuthResponse> => {
+    // Admin luôn dùng phiên tạm thời (session cookie), không lưu cookie dài hạn qua lần đóng trình duyệt
+    const response = await axiosClient.post<ApiResponse<AuthResponse>>('/auth/login', {
+      ...data,
+      rememberMe: false,
     });
     return response.data.data;
   },
 
-  logout: async (refreshToken: string): Promise<void> => {
-    await axiosClient.post<ApiResponse<null>>('/auth/logout', {
-      refreshToken,
-    }, { timeout: 5000 });
+  refreshToken: async (): Promise<AuthResponse> => {
+    const response = await axiosClient.post<ApiResponse<AuthResponse>>('/auth/refresh-token', {
+      rememberMe: false,
+    });
+    return response.data.data;
+  },
+
+  logout: async (): Promise<void> => {
+    await axiosClient.post<ApiResponse<null>>('/auth/logout', {}, { timeout: 5000 });
   },
 
   forgotPassword: async (email: string): Promise<string> => {

@@ -7,9 +7,8 @@ export const StaffSidebar = () => {
   const { user, logout } = useAuthStore();
 
   const handleLogout = async () => {
-    const refreshToken = useAuthStore.getState().refreshToken;
     try {
-      if (refreshToken) await authApi.logout(refreshToken);
+      await authApi.logout();
     } catch {
       // Always clear the local session even when the backend is unavailable.
     } finally {

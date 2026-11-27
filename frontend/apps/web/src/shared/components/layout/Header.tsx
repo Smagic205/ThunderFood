@@ -4,6 +4,7 @@ import { useThemeStore } from '@/shared/stores/themeStore';
 import { useAuthStore } from '@/app/store/authStore';
 import { useCartStore } from '@/shared/stores/cartStore';
 import { authApi } from '@/shared/api/authApi';
+import { sanitizeUrl } from '@/shared/utils/security';
 import { notificationApi } from '@/shared/api/notificationApi';
 import { productApi } from '@/shared/api/productApi';
 import type { ProductListItem } from '@/shared/types';
@@ -262,9 +263,8 @@ export const Header = () => {
   }, []);
 
   const handleLogout = async () => {
-    const refreshToken = useAuthStore.getState().refreshToken;
     try {
-      if (refreshToken) await authApi.logout(refreshToken);
+      await authApi.logout();
     } catch {
       // Always clear the local session even when the backend is unavailable.
     } finally {
@@ -350,8 +350,8 @@ export const Header = () => {
                     onClick={() => setShowMenu(!showMenu)}
                   >
                     <span className="avatar overflow-hidden">
-                      {user.avatarUrl ? (
-                        <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" />
+                      {user.avatarUrl && sanitizeUrl(user.avatarUrl, { fallback: '' }) ? (
+                        <img src={sanitizeUrl(user.avatarUrl, { fallback: '' })} alt={user.name} className="w-full h-full object-cover" />
                       ) : (
                         getInitials(user.name)
                       )}

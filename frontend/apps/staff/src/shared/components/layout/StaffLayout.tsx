@@ -5,7 +5,7 @@ import { useAuthStore } from '@/features/auth/store/authStore';
 import { useEffect } from 'react';
 
 export const StaffLayout = () => {
-  const { user, token } = useAuthStore();
+  const { user, token, isHydrating } = useAuthStore();
 
   // Basic mobile drawer toggle logic for side menu
   useEffect(() => {
@@ -21,6 +21,14 @@ export const StaffLayout = () => {
     document.addEventListener('click', handleSideOpen);
     return () => document.removeEventListener('click', handleSideOpen);
   }, []);
+
+  if (isHydrating) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }} role="status">
+        <span>Đang khôi phục phiên nhân viên...</span>
+      </div>
+    );
+  }
 
   if (!token || !user) {
     return <Navigate to="/login" replace />;

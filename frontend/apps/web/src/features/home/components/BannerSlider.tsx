@@ -4,6 +4,7 @@ import 'swiper/css';
 import 'swiper/css/pagination';
 import 'swiper/css/navigation';
 import type { Banner } from '@/shared/types';
+import { isSafeUrl, sanitizeUrl } from '@/shared/utils/security';
 
 interface BannerSliderProps {
   banners: Banner[];
@@ -30,22 +31,28 @@ export function BannerSlider({ banners }: BannerSliderProps) {
         loop={true}
         className="w-full"
       >
-        {banners.map((banner) => (
-          <SwiperSlide key={banner.id}>
-            <a 
-              href={banner.linkUrl || '#'} 
-              className="block w-full h-[250px] md:h-[400px]"
-            >
-              <img 
-                src={banner.imageUrl} 
-                alt="Promo Banner" 
-                loading="lazy"
-                decoding="async"
-                className="w-full h-full object-cover"
-              />
-            </a>
-          </SwiperSlide>
-        ))}
+        {banners.map((banner) => {
+          const safeLink = sanitizeUrl(banner.linkUrl, { fallback: '#' });
+          const safeImage = sanitizeUrl(banner.imageUrl, { fallback: '' });
+          const isExternal = isSafeUrl(banner.linkUrl, { allowRelative: false });
+          return (
+            <SwiperSlide key={banner.id}>
+              <a
+                href={safeLink}
+                rel={isExternal ? 'noopener noreferrer' : undefined}
+                className="block w-full h-[250px] md:h-[400px]"
+              >
+                <img
+                  src={safeImage}
+                  alt="Promo Banner"
+                  loading="lazy"
+                  decoding="async"
+                  className="w-full h-full object-cover"
+                />
+              </a>
+            </SwiperSlide>
+          );
+        })}
         
         {/* Custom Navigation Buttons (Hidden on mobile, visible on hover on desktop) */}
         <div className="swiper-button-prev !text-white !hidden md:group-hover:!flex after:!text-2xl !bg-black/20 hover:!bg-black/50 !w-12 !h-12 !rounded-full transition-all"></div>

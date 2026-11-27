@@ -1,11 +1,13 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
-// Xóa sạch phiên cũ trong localStorage (nếu có từ trước) để luôn bắt đăng nhập lại
+// Xóa sạch token cũ nếu từng lưu trong localStorage
 if (typeof window !== 'undefined') {
   try {
     localStorage.removeItem('thunderfood-admin-auth');
-  } catch {}
+  } catch {
+    // ignore storage errors
+  }
 }
 
 export interface User {
@@ -19,9 +21,10 @@ export interface User {
 interface AuthState {
   user: User | null;
   accessToken: string | null;
-  refreshToken: string | null;
   isAuthenticated: boolean;
-  login: (user: User, accessToken: string, refreshToken: string) => void;
+  isHydrating: boolean;
+  login: (user: User, accessToken: string) => void;
+  setHydrating: (isHydrating: boolean) => void;
   logout: () => void;
 }
 
@@ -30,25 +33,37 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       user: null,
       accessToken: null,
-      refreshToken: null,
       isAuthenticated: false,
-      login: (user, accessToken, refreshToken) =>
-        set({ user, accessToken, refreshToken, isAuthenticated: true }),
+      isHydrating: false,
+      login: (user, accessToken) =>
+        set({ user, accessToken, isAuthenticated: true, isHydrating: false }),
+      setHydrating: (isHydrating) => set({ isHydrating }),
       logout: () => {
         if (typeof window !== 'undefined') {
           try {
             sessionStorage.removeItem('thunderfood-admin-auth');
             localStorage.removeItem('thunderfood-admin-auth');
-          } catch {}
+          } catch {
+            // ignore storage errors
+          }
         }
-        set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false });
+        set({ user: null, accessToken: null, isAuthenticated: false, isHydrating: false });
       },
     }),
     {
       name: 'thunderfood-admin-auth',
-      // Dùng sessionStorage: Chỉ duy trì trong phiên mở tab hiện tại.
-      // Mỗi khi đóng trình duyệt hoặc mở link chạy mới luôn phải đăng nhập lại từ đầu.
+      version: 1,
+      // Chỉ giữ cờ non-sensitive trong sessionStorage của tab hiện tại; token và hồ sơ chỉ giữ trong RAM.
       storage: createJSONStorage(() => sessionStorage),
+      partialize: (state) => ({
+        isAuthenticated: state.isAuthenticated,
+      }),
+      migrate: (persistedState: unknown) => {
+        const raw = (persistedState || {}) as { isAuthenticated?: boolean };
+        return {
+          isAuthenticated: Boolean(raw.isAuthenticated),
+        };
+      },
     }
   )
 );
