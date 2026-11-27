@@ -80,7 +80,7 @@ class AdminPackageServiceImplTest {
         when(orderRepository.findByDeliveryPackageId(1L)).thenReturn(List.of(delivering));
 
         assertThrows(IllegalStateException.class, () -> adminPackageService.deletePackage(1L));
-        verify(deliveryPackageRepository, never()).delete(any());
+        verify(deliveryPackageRepository, never()).delete(any(DeliveryPackage.class));
     }
 
     @Test

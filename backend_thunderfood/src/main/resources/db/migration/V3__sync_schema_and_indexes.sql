@@ -18,30 +18,29 @@ CREATE TABLE IF NOT EXISTS voucher_usages (
     INDEX idx_voucher_usages_order (order_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 2. Đồng bộ các cột còn thiếu so với JPA Entities
+-- 2. Đồng bộ các cột còn thiếu so với JPA Entities (tương thích MySQL 8.0)
 ALTER TABLE service_wards
-    ADD COLUMN IF NOT EXISTS district VARCHAR(100) AFTER ward_name,
+    ADD COLUMN district VARCHAR(100) AFTER ward_name,
     ADD INDEX idx_service_wards_district (district);
 
 ALTER TABLE user_tokens
-    ADD COLUMN IF NOT EXISTS failed_attempts INT NOT NULL DEFAULT 0 AFTER expires_at,
-    ADD COLUMN IF NOT EXISTS device_info     VARCHAR(255) AFTER failed_attempts,
-    ADD COLUMN IF NOT EXISTS ip_address      VARCHAR(50) AFTER device_info,
+    ADD COLUMN failed_attempts INT NOT NULL DEFAULT 0 AFTER expires_at,
+    ADD COLUMN device_info     VARCHAR(255) AFTER failed_attempts,
+    ADD COLUMN ip_address      VARCHAR(50) AFTER device_info,
     ADD INDEX idx_user_tokens_user_type (user_id, type),
     ADD INDEX idx_user_tokens_expires (expires_at);
 
 ALTER TABLE vouchers
-    ADD COLUMN IF NOT EXISTS usage_limit_per_user INT DEFAULT 1 AFTER end_date,
-    ADD COLUMN IF NOT EXISTS created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    ADD COLUMN IF NOT EXISTS updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    ADD COLUMN usage_limit_per_user INT DEFAULT 1 AFTER end_date,
+    ADD COLUMN created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ADD COLUMN updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     ADD INDEX idx_vouchers_active_dates (is_active, start_date, end_date),
     ADD INDEX idx_vouchers_type (voucher_type);
 
 ALTER TABLE orders
-    ADD COLUMN IF NOT EXISTS idempotency_key VARCHAR(100) AFTER order_code,
-    ADD COLUMN IF NOT EXISTS version BIGINT DEFAULT 0,
+    ADD COLUMN idempotency_key VARCHAR(100) AFTER order_code,
+    ADD COLUMN version BIGINT DEFAULT 0,
     ADD UNIQUE KEY uk_orders_user_idempotency (user_id, idempotency_key),
-    ADD INDEX idx_orders_status (status),
     ADD INDEX idx_orders_created (created_at),
     ADD INDEX idx_orders_payment (payment_method, payment_status, status);
 

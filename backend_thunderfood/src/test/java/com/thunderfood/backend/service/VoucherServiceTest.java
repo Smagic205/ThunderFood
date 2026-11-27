@@ -394,7 +394,7 @@ class VoucherServiceTest {
 
         assertFalse(productVoucher.getIsActive());
         verify(voucherRepository).save(productVoucher);
-        verify(voucherRepository, never()).delete(any());
+        verify(voucherRepository, never()).delete(any(Voucher.class));
     }
 
     // =========================================================================
