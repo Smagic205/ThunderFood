@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { 
   MapPin, 
@@ -49,6 +49,18 @@ export const CheckoutPage: React.FC = () => {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const createIdempotencyKey = () =>
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `tf-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+
+  const idempotencyKeyRef = useRef<string>(createIdempotencyKey());
+
+  // Cấp lại Idempotency-Key mới khi thông tin đơn hàng thay đổi
+  useEffect(() => {
+    idempotencyKeyRef.current = createIdempotencyKey();
+  }, [selectedAddressId, productVoucherCode, shippingVoucherCode, paymentMethod, note, cart]);
 
   // 1. Tải giỏ hàng & địa chỉ ban đầu
   useEffect(() => {
@@ -121,6 +133,8 @@ export const CheckoutPage: React.FC = () => {
 
   // Đặt hàng
   const handlePlaceOrder = async () => {
+    if (isSubmitting) return;
+
     if (!selectedAddressId) {
       showToast('Vui lòng chọn địa chỉ nhận hàng', 'error');
       return;
@@ -140,11 +154,13 @@ export const CheckoutPage: React.FC = () => {
         shippingVoucherCode: shippingVoucherCode.trim() || undefined,
         paymentMethod,
         note: note.trim() || undefined,
+        idempotencyKey: idempotencyKeyRef.current,
       };
 
       const order = await orderApi.placeOrder(payload);
 
-      // Xóa giỏ hàng trên store
+      // Xóa giỏ hàng trên store & đổi key mới sau khi đặt thành công
+      idempotencyKeyRef.current = createIdempotencyKey();
       resetCart();
       fetchCartCount();
 
@@ -164,6 +180,10 @@ export const CheckoutPage: React.FC = () => {
       // Chuyển hướng sang trang quản lý đơn hàng
       navigate('/account/orders');
     } catch (err: any) {
+      // Nếu lỗi 4xx nghiệp vụ (chưa tạo đơn), đổi key mới; giữ nguyên key nếu lỗi mạng/5xx để retry an toàn
+      if (err?.response?.status && err.response.status >= 400 && err.response.status < 500) {
+        idempotencyKeyRef.current = createIdempotencyKey();
+      }
       showToast(err?.message || 'Đặt hàng thất bại, vui lòng thử lại', 'error');
     } finally {
       setIsSubmitting(false);

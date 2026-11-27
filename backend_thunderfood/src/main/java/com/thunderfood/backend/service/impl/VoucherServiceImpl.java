@@ -376,12 +376,30 @@ public class VoucherServiceImpl implements VoucherService {
             return;
         }
 
-        int currentUsed = (voucher.getUsedCount() != null) ? voucher.getUsedCount() : 0;
-        voucher.setUsedCount(currentUsed + 1);
-        voucherRepository.save(voucher);
+        // Khóa bi quan (FOR UPDATE) dòng voucher để chống race condition vượt giới hạn lượt dùng
+        Voucher lockedVoucher = (voucher.getId() != null)
+                ? voucherRepository.findByIdWithLock(voucher.getId()).orElse(voucher)
+                : voucher;
+
+        int currentUsed = (lockedVoucher.getUsedCount() != null) ? lockedVoucher.getUsedCount() : 0;
+        if (lockedVoucher.getUsageLimit() != null && currentUsed >= lockedVoucher.getUsageLimit()) {
+            throw new IllegalArgumentException("Voucher '" + lockedVoucher.getCode() + "' đã hết lượt sử dụng trong hệ thống");
+        }
+
+        if (lockedVoucher.getId() != null && lockedVoucher.getUsageLimitPerUser() != null) {
+            long userUsedCount = voucherUsageRepository.countByVoucherIdAndUserIdAndIsRevertedFalse(
+                    lockedVoucher.getId(), user.getId()
+            );
+            if (userUsedCount >= lockedVoucher.getUsageLimitPerUser()) {
+                throw new IllegalArgumentException("Bạn đã sử dụng hết số lượt cho phép của voucher '" + lockedVoucher.getCode() + "'");
+            }
+        }
+
+        lockedVoucher.setUsedCount(currentUsed + 1);
+        voucherRepository.save(lockedVoucher);
 
         VoucherUsage usage = VoucherUsage.builder()
-                .voucher(voucher)
+                .voucher(lockedVoucher)
                 .user(user)
                 .order(order)
                 .discountAmount(discountAmount != null ? discountAmount : BigDecimal.ZERO)
@@ -390,7 +408,7 @@ public class VoucherServiceImpl implements VoucherService {
 
         voucherUsageRepository.save(usage);
         log.info("Ghi nhận lượt sử dụng voucher: voucherId={}, userId={}, orderId={}, discount={}", 
-                voucher.getId(), user.getId(), (order != null ? order.getId() : null), discountAmount);
+                lockedVoucher.getId(), user.getId(), (order != null ? order.getId() : null), discountAmount);
     }
 
     @Override
@@ -406,7 +424,10 @@ public class VoucherServiceImpl implements VoucherService {
                 usage.setIsReverted(true);
                 voucherUsageRepository.save(usage);
 
-                Voucher voucher = usage.getVoucher();
+                Voucher rawVoucher = usage.getVoucher();
+                Voucher voucher = (rawVoucher != null && rawVoucher.getId() != null)
+                        ? voucherRepository.findByIdWithLock(rawVoucher.getId()).orElse(rawVoucher)
+                        : rawVoucher;
                 if (voucher != null && voucher.getUsedCount() != null && voucher.getUsedCount() > 0) {
                     voucher.setUsedCount(voucher.getUsedCount() - 1);
                     voucherRepository.save(voucher);

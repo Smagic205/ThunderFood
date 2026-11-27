@@ -37,8 +37,13 @@ public class OrderController {
     @PostMapping("/checkout")
     @Operation(summary = "Đặt hàng chính thức từ giỏ hàng")
     public ResponseEntity<ApiResponse<OrderResponse>> placeOrder(
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKeyHeader,
             @Valid @RequestBody PlaceOrderRequest request
     ) {
+        if ((request.getIdempotencyKey() == null || request.getIdempotencyKey().isBlank())
+                && idempotencyKeyHeader != null && !idempotencyKeyHeader.isBlank()) {
+            request.setIdempotencyKey(idempotencyKeyHeader.trim());
+        }
         Long userId = getRequiredUserId();
         OrderResponse response = orderService.placeOrder(userId, request);
         return ResponseEntity.status(HttpStatus.CREATED)

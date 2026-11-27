@@ -32,6 +32,7 @@ export interface PlaceOrderRequest {
   shippingVoucherCode?: string;
   paymentMethod: 'COD' | 'SEPAY' | 'VNPAY' | 'MOMO' | 'STRIPE' | string;
   note?: string;
+  idempotencyKey?: string;
 }
 
 export interface OrderItemResponse {
@@ -143,7 +144,9 @@ export const orderApi = {
    * Đặt hàng chính thức từ giỏ hàng hiện tại
    */
   placeOrder: async (request: PlaceOrderRequest): Promise<OrderResponse> => {
-    const res = await axiosClient.post<ApiResponse<OrderResponse>>('/v1/orders/checkout', request);
+    const res = await axiosClient.post<ApiResponse<OrderResponse>>('/v1/orders/checkout', request, {
+      headers: request.idempotencyKey ? { 'Idempotency-Key': request.idempotencyKey } : undefined,
+    });
     if (!res.data.success) {
       throw new Error(res.data.message || 'Không thể đặt hàng, vui lòng thử lại');
     }

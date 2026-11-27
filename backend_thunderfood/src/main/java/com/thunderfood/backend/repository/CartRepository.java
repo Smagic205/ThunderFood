@@ -13,6 +13,9 @@ public interface CartRepository extends JpaRepository<Cart, Long> {
 
     Optional<Cart> findByUserId(Long userId);
 
+    @Query(value = "SELECT * FROM carts WHERE user_id = :userId FOR UPDATE", nativeQuery = true)
+    Optional<Cart> findByUserIdWithLock(@Param("userId") Long userId);
+
     @Query("SELECT c FROM Cart c " +
            "LEFT JOIN FETCH c.items i " +
            "LEFT JOIN FETCH i.product " +

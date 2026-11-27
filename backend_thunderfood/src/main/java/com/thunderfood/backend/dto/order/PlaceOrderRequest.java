@@ -2,6 +2,7 @@ package com.thunderfood.backend.dto.order;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.*;
 
 @Data
@@ -21,4 +22,7 @@ public class PlaceOrderRequest {
     private String paymentMethod; // COD, VNPAY, MOMO, STRIPE
 
     private String note;
+
+    @Size(max = 100, message = "Idempotency key tối đa 100 ký tự")
+    private String idempotencyKey;
 }

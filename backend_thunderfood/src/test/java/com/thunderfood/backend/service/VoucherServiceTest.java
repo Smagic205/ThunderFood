@@ -547,6 +547,45 @@ class VoucherServiceTest {
     }
 
     @Test
+    @DisplayName("recordVoucherUsage ném ngoại lệ khi voucher vừa hết lượt sau khi lock FOR UPDATE")
+    void testRecordVoucherUsage_DepletedAfterLock() {
+        User user = User.builder().id(10L).build();
+        Order order = Order.builder().id(20L).build();
+
+        Voucher lockedVoucher = Voucher.builder()
+                .id(1L)
+                .code("THUNDER20")
+                .usageLimit(5)
+                .usedCount(5) // Đã hết lượt khi lock được bản ghi mới nhất
+                .usageLimitPerUser(1)
+                .build();
+
+        when(voucherRepository.findByIdWithLock(1L)).thenReturn(Optional.of(lockedVoucher));
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> voucherService.recordVoucherUsage(productVoucher, user, order, new BigDecimal("30000.00")));
+        assertTrue(ex.getMessage().contains("đã hết lượt sử dụng"));
+        verify(voucherRepository, never()).save(any());
+        verify(voucherUsageRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("recordVoucherUsage ném ngoại lệ khi user vừa dùng hết lượt cho phép sau khi lock FOR UPDATE")
+    void testRecordVoucherUsage_UserLimitExceededAfterLock() {
+        User user = User.builder().id(10L).build();
+        Order order = Order.builder().id(20L).build();
+
+        when(voucherRepository.findByIdWithLock(1L)).thenReturn(Optional.of(productVoucher));
+        when(voucherUsageRepository.countByVoucherIdAndUserIdAndIsRevertedFalse(1L, 10L)).thenReturn(1L);
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> voucherService.recordVoucherUsage(productVoucher, user, order, new BigDecimal("30000.00")));
+        assertTrue(ex.getMessage().contains("hết số lượt cho phép"));
+        verify(voucherRepository, never()).save(any());
+        verify(voucherUsageRepository, never()).save(any());
+    }
+
+    @Test
     @DisplayName("revertVoucherUsage đánh dấu hoàn lượt và giảm usedCount khi đơn bị hủy")
     void testRevertVoucherUsage() {
         Order order = Order.builder().id(50L).build();

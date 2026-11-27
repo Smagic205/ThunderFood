@@ -8,7 +8,12 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "payments")
+@Table(
+        name = "payments",
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_payments_provider_tx", columnNames = {"provider", "transaction_code"})
+        }
+)
 @Getter
 @Setter
 @NoArgsConstructor

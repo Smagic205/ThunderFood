@@ -450,6 +450,71 @@ class OrderServiceTest {
         assertTrue(ex.getMessage().contains("không đủ tồn kho"));
     }
 
+    @Test
+    @DisplayName("placeOrder trả về đơn hàng hiện có khi trùng Idempotency-Key (không trừ kho hoặc tạo đơn mới)")
+    void testPlaceOrder_IdempotentReplay() {
+        Order existingOrder = Order.builder()
+                .id(77L)
+                .orderCode("TF261127000077")
+                .idempotencyKey("idem-uuid-123")
+                .user(user)
+                .status("PENDING")
+                .paymentMethod("COD")
+                .paymentStatus("UNPAID")
+                .totalAmount(new BigDecimal("140000.00"))
+                .items(Collections.emptyList())
+                .build();
+
+        when(orderRepository.findByUserIdAndIdempotencyKey(1L, "idem-uuid-123"))
+                .thenReturn(Optional.of(existingOrder));
+
+        PlaceOrderRequest req = PlaceOrderRequest.builder()
+                .addressId(100L)
+                .paymentMethod("COD")
+                .idempotencyKey("idem-uuid-123")
+                .build();
+
+        OrderResponse resp = orderService.placeOrder(1L, req);
+
+        assertNotNull(resp);
+        assertEquals(77L, resp.getId());
+        assertEquals("TF261127000077", resp.getOrderCode());
+        verify(orderRepository, never()).save(any(Order.class));
+        verify(productRepository, never()).findByIdWithLock(anyLong());
+        verify(cartItemRepository, never()).deleteByCartId(anyLong());
+    }
+
+    @Test
+    @DisplayName("placeOrder luôn khóa Product theo thứ tự productId tăng dần để chống Deadlock")
+    void testPlaceOrder_LocksProductsInAscendingIdOrder() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(cartRepository.findByUserIdWithLock(1L)).thenReturn(Optional.of(cart));
+        // Cố tình truyền cartItem2 (id=102) trước cartItem1 (id=101)
+        when(cartItemRepository.findByCartId(50L)).thenReturn(List.of(cartItem2, cartItem1));
+        when(addressRepository.findByIdAndUserId(100L, 1L)).thenReturn(Optional.of(address));
+        when(systemSettingRepository.findBySettingKey("FREE_SHIPPING_THRESHOLD"))
+                .thenReturn(Optional.of(SystemSetting.builder().settingValue("200000").build()));
+        when(productRepository.findByIdWithLock(101L)).thenReturn(Optional.of(product1));
+        when(productRepository.findByIdWithLock(102L)).thenReturn(Optional.of(product2));
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> {
+            Order o = inv.getArgument(0);
+            o.setId(22L);
+            return o;
+        });
+        when(orderItemRepository.save(any(OrderItem.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        PlaceOrderRequest req = PlaceOrderRequest.builder()
+                .addressId(100L)
+                .paymentMethod("COD")
+                .build();
+
+        orderService.placeOrder(1L, req);
+
+        org.mockito.InOrder lockOrder = inOrder(productRepository);
+        lockOrder.verify(productRepository).findByIdWithLock(101L);
+        lockOrder.verify(productRepository).findByIdWithLock(102L);
+    }
+
     // =========================================================================
     // 3. ORDER HISTORY & TRACKING TESTS
     // =========================================================================

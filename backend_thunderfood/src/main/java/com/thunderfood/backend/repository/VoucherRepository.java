@@ -19,6 +19,12 @@ public interface VoucherRepository extends JpaRepository<Voucher, Long> {
 
     Optional<Voucher> findByCodeIgnoreCase(String code);
 
+    @Query(value = "SELECT * FROM vouchers WHERE id = :id FOR UPDATE", nativeQuery = true)
+    Optional<Voucher> findByIdWithLock(@Param("id") Long id);
+
+    @Query(value = "SELECT * FROM vouchers WHERE LOWER(code) = LOWER(:code) FOR UPDATE", nativeQuery = true)
+    Optional<Voucher> findByCodeIgnoreCaseWithLock(@Param("code") String code);
+
     boolean existsByCodeIgnoreCase(String code);
 
     boolean existsByCodeIgnoreCaseAndIdNot(String code, Long id);

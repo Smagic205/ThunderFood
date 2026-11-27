@@ -11,7 +11,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "orders") // tên bảng "orders" vì "order" là từ khoá dành riêng trong SQL
+@Table(
+        name = "orders", // tên bảng "orders" vì "order" là từ khoá dành riêng trong SQL
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_orders_user_idempotency", columnNames = {"user_id", "idempotency_key"})
+        }
+)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -25,6 +30,9 @@ public class Order {
 
     @Column(name = "order_code", nullable = false, unique = true, length = 30)
     private String orderCode;
+
+    @Column(name = "idempotency_key", length = 100)
+    private String idempotencyKey;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)

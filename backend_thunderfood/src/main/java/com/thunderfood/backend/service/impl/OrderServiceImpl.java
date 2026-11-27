@@ -175,6 +175,20 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public OrderResponse placeOrder(Long userId, PlaceOrderRequest request) {
+        String cleanIdempotencyKey = (request.getIdempotencyKey() != null && !request.getIdempotencyKey().isBlank())
+                ? request.getIdempotencyKey().trim()
+                : null;
+
+        // 1. Kiểm tra Idempotency-Key trước khi tạo đơn (tránh đặt trùng đơn khi retry / double-submit)
+        if (cleanIdempotencyKey != null) {
+            Optional<Order> existingOrder = orderRepository.findByUserIdAndIdempotencyKey(userId, cleanIdempotencyKey);
+            if (existingOrder.isPresent()) {
+                log.info("Phát hiện request đặt hàng trùng Idempotency-Key={}, trả về đơn hàng hiện có orderCode={}",
+                        cleanIdempotencyKey, existingOrder.get().getOrderCode());
+                return mapToOrderResponse(existingOrder.get());
+            }
+        }
+
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thông tin tài khoản người dùng"));
 
@@ -182,11 +196,28 @@ public class OrderServiceImpl implements OrderService {
             throw new AccessDeniedException("Tài khoản của bạn đã bị khóa bởi quản trị viên. Không thể đặt hàng.");
         }
 
-        Cart cart = getCartOrThrow(userId);
-        List<CartItem> cartItems = cartItemRepository.findByCartId(cart.getId());
+        // 2. Khóa Cart của user (FOR UPDATE) để tuần tự hóa các request checkout đồng thời của cùng 1 người dùng
+        Cart cart = getCartForCheckoutOrThrow(userId);
+
+        // Kiểm tra lại Idempotency-Key sau khi đã giữ lock Cart (phòng 2 request đến cùng lúc)
+        if (cleanIdempotencyKey != null) {
+            Optional<Order> existingOrder = orderRepository.findByUserIdAndIdempotencyKey(userId, cleanIdempotencyKey);
+            if (existingOrder.isPresent()) {
+                log.info("Phát hiện request đặt hàng trùng Idempotency-Key={} sau khi lock Cart, trả về orderCode={}",
+                        cleanIdempotencyKey, existingOrder.get().getOrderCode());
+                return mapToOrderResponse(existingOrder.get());
+            }
+        }
+
+        List<CartItem> cartItems = new ArrayList<>(cartItemRepository.findByCartId(cart.getId()));
         if (cartItems.isEmpty()) {
             throw new IllegalArgumentException("Giỏ hàng của bạn đang trống, vui lòng thêm món trước khi đặt hàng");
         }
+
+        // Sắp xếp item theo productId tăng dần để các transaction luôn khóa sản phẩm theo cùng 1 thứ tự (chống Deadlock)
+        cartItems.sort(Comparator.comparing(
+                ci -> ci.getProduct() != null && ci.getProduct().getId() != null ? ci.getProduct().getId() : Long.MAX_VALUE
+        ));
 
         Address address = getAddressOrThrow(request.getAddressId(), userId);
         if (address.getPhone() != null && !address.getPhone().isBlank()) {
@@ -227,6 +258,7 @@ public class OrderServiceImpl implements OrderService {
         VoucherClientResponse shippingVoucherResp = null;
 
         if (request.getShippingVoucherCode() != null && !request.getShippingVoucherCode().isBlank()) {
+            shippingVoucher = findVoucherByCodeWithLockOrFallback(request.getShippingVoucherCode().trim());
             VoucherCheckResponse checkShip = voucherService.checkVoucherEligibility(
                     request.getShippingVoucherCode(),
                     userId,
@@ -240,7 +272,9 @@ public class OrderServiceImpl implements OrderService {
                 throw new IllegalArgumentException("Mã '" + request.getShippingVoucherCode() + "' không phải là mã giảm phí giao hàng");
             }
 
-            shippingVoucher = voucherRepository.findByCodeIgnoreCase(request.getShippingVoucherCode().trim()).orElse(null);
+            if (shippingVoucher == null) {
+                shippingVoucher = voucherRepository.findByCodeIgnoreCase(request.getShippingVoucherCode().trim()).orElse(null);
+            }
             voucherShippingDiscount = checkShip.getDiscountAmount();
             shippingVoucherResp = checkShip.getVoucher();
         }
@@ -253,6 +287,7 @@ public class OrderServiceImpl implements OrderService {
         VoucherClientResponse productVoucherResp = null;
 
         if (request.getProductVoucherCode() != null && !request.getProductVoucherCode().isBlank()) {
+            productVoucher = findVoucherByCodeWithLockOrFallback(request.getProductVoucherCode().trim());
             VoucherCheckResponse checkProduct = voucherService.checkVoucherEligibility(
                     request.getProductVoucherCode(),
                     userId,
@@ -266,7 +301,9 @@ public class OrderServiceImpl implements OrderService {
                 throw new IllegalArgumentException("Mã '" + request.getProductVoucherCode() + "' không phải là mã giảm giá đơn hàng");
             }
 
-            productVoucher = voucherRepository.findByCodeIgnoreCase(request.getProductVoucherCode().trim()).orElse(null);
+            if (productVoucher == null) {
+                productVoucher = voucherRepository.findByCodeIgnoreCase(request.getProductVoucherCode().trim()).orElse(null);
+            }
             productDiscount = checkProduct.getDiscountAmount();
             productVoucherResp = checkProduct.getVoucher();
         }
@@ -283,6 +320,7 @@ public class OrderServiceImpl implements OrderService {
         // Khởi tạo Entity Order
         Order order = Order.builder()
                 .orderCode(orderCode)
+                .idempotencyKey(cleanIdempotencyKey)
                 .user(user)
                 .address(address)
                 .productVoucher(productVoucher)
@@ -439,6 +477,10 @@ public class OrderServiceImpl implements OrderService {
                 ? orderRepository.findById(orderId).orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với ID: " + orderId))
                 : orderRepository.findByIdAndUserId(orderId, userId).orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với ID: " + orderId));
 
+        return mapToOrderResponse(order);
+    }
+
+    private OrderResponse mapToOrderResponse(Order order) {
         List<OrderItemResponse> itemResponses = new ArrayList<>();
         if (order.getItems() != null && !order.getItems().isEmpty()) {
             List<Long> pIds = order.getItems().stream().map(i -> i.getProduct().getId()).toList();
@@ -501,9 +543,16 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public OrderResponse cancelOrder(Long userId, Long orderId, CancelOrderRequest request) {
-        Order order = (SecurityUtils.isAdmin())
-                ? orderRepository.findById(orderId).orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với ID: " + orderId))
-                : orderRepository.findByIdAndUserId(orderId, userId).orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với ID: " + orderId));
+        // Khóa bi quan dòng Order (FOR UPDATE) tránh race condition khi khách hủy cùng lúc nhân viên xác nhận
+        Order order = orderRepository.findByIdWithLock(orderId)
+                .orElseGet(() -> (SecurityUtils.isAdmin()
+                        ? orderRepository.findById(orderId)
+                        : orderRepository.findByIdAndUserId(orderId, userId))
+                        .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với ID: " + orderId)));
+
+        if (!SecurityUtils.isAdmin() && (order.getUser() == null || !userId.equals(order.getUser().getId()))) {
+            throw new ResourceNotFoundException("Không tìm thấy đơn hàng với ID: " + orderId);
+        }
 
         if (!"PENDING".equalsIgnoreCase(order.getStatus()) && !SecurityUtils.isAdmin()) {
             throw new IllegalArgumentException("Đơn hàng đang ở trạng thái '" + order.getStatus() + 
@@ -530,11 +579,18 @@ public class OrderServiceImpl implements OrderService {
                 .build();
         orderStatusHistoryRepository.save(cancelHistory);
 
-        // 3. Hoàn tồn kho sản phẩm
-        if (order.getItems() != null) {
-            for (OrderItem item : order.getItems()) {
-                Product product = item.getProduct();
-                if (product != null) {
+        // 3. Hoàn tồn kho sản phẩm (khóa Product theo thứ tự ID tăng dần để chống lost update & deadlock)
+        if (order.getItems() != null && !order.getItems().isEmpty()) {
+            List<OrderItem> sortedItems = new ArrayList<>(order.getItems());
+            sortedItems.sort(Comparator.comparing(
+                    oi -> oi.getProduct() != null && oi.getProduct().getId() != null ? oi.getProduct().getId() : Long.MAX_VALUE
+            ));
+            for (OrderItem item : sortedItems) {
+                Product rawProduct = item.getProduct();
+                if (rawProduct != null) {
+                    Product product = (rawProduct.getId() != null)
+                            ? productRepository.findByIdWithLock(rawProduct.getId()).orElse(rawProduct)
+                            : rawProduct;
                     int qty = item.getQuantity() != null ? item.getQuantity() : 0;
                     product.setStockQuantity(product.getStockQuantity() + qty);
                     int currentSold = product.getSoldCount() != null ? product.getSoldCount() : 0;
@@ -550,7 +606,7 @@ public class OrderServiceImpl implements OrderService {
         log.info("Khách hàng hủy đơn hàng thành công: orderId={}, orderCode={}, lý do='{}'", 
                 orderId, order.getOrderCode(), request.getReason().trim());
 
-        return getOrderDetail(userId, orderId);
+        return mapToOrderResponse(savedOrder);
     }
 
     // =========================================================================
@@ -560,6 +616,19 @@ public class OrderServiceImpl implements OrderService {
     private Cart getCartOrThrow(Long userId) {
         return cartRepository.findByUserId(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Người dùng chưa có giỏ hàng"));
+    }
+
+    private Cart getCartForCheckoutOrThrow(Long userId) {
+        return cartRepository.findByUserIdWithLock(userId)
+                .orElseGet(() -> getCartOrThrow(userId));
+    }
+
+    private Voucher findVoucherByCodeWithLockOrFallback(String code) {
+        if (code == null || code.isBlank()) {
+            return null;
+        }
+        return voucherRepository.findByCodeIgnoreCaseWithLock(code.trim())
+                .orElse(null);
     }
 
     private Address getAddressOrThrow(Long addressId, Long userId) {

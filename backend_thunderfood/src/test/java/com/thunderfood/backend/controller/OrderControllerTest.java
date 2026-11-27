@@ -136,6 +136,33 @@ class OrderControllerTest {
     }
 
     @Test
+    @DisplayName("POST /api/v1/orders/checkout truyền header Idempotency-Key vào PlaceOrderRequest")
+    void testPlaceOrder_WithIdempotencyHeader() throws Exception {
+        PlaceOrderRequest req = PlaceOrderRequest.builder()
+                .addressId(10L)
+                .paymentMethod("COD")
+                .build();
+
+        OrderResponse resp = OrderResponse.builder()
+                .id(101L)
+                .orderCode("TF261101894216")
+                .status("PENDING")
+                .build();
+
+        when(orderService.placeOrder(eq(1L), org.mockito.ArgumentMatchers.argThat(
+                r -> "idem-key-123".equals(r.getIdempotencyKey())
+        ))).thenReturn(resp);
+
+        mockMvc.perform(post("/api/v1/orders/checkout")
+                        .header("Idempotency-Key", "idem-key-123")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.success", is(true)))
+                .andExpect(jsonPath("$.data.id", is(101)));
+    }
+
+    @Test
     @DisplayName("POST /api/v1/orders/checkout trả về 400 Bad Request khi thiếu phương thức thanh toán")
     void testPlaceOrder_MissingPaymentMethod() throws Exception {
         PlaceOrderRequest req = PlaceOrderRequest.builder()

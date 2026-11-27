@@ -61,6 +61,14 @@ export const RegisterPage = () => {
       setIsLoading(true);
       setApiError('');
       const response = await authApi.googleLogin(idToken);
+
+      // Ngăn chặn STAFF và ADMIN đăng nhập ở cổng Khách hàng
+      if (response.user.role === 'ADMIN' || response.user.role === 'STAFF') {
+        setApiError(`Tài khoản ${response.user.role} không được đăng nhập tại đây.`);
+        setIsLoading(false);
+        return;
+      }
+
       login(
         {
           id: response.user.id,
@@ -118,8 +126,12 @@ export const RegisterPage = () => {
         return;
       }
 
-      // Trường hợp có token (dành cho Google hoặc môi trường test)
-      const isAdmin = response.user.role === 'ADMIN';
+      // Trường hợp có token (môi trường test)
+      if (response.user.role === 'ADMIN' || response.user.role === 'STAFF') {
+        setApiError(`Tài khoản ${response.user.role} không được đăng nhập tại đây.`);
+        return;
+      }
+
       login(
         {
           id: response.user.id,
@@ -133,7 +145,7 @@ export const RegisterPage = () => {
         response.refreshToken
       );
       
-      navigate(isAdmin ? '/admin' : '/');
+      navigate('/');
     } catch (error: any) {
       setApiError(error.response?.data?.message || 'Đã có lỗi xảy ra khi đăng ký');
     } finally {
