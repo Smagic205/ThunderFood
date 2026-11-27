@@ -420,8 +420,6 @@ class OrderServiceTest {
         when(cartRepository.findByUserId(1L)).thenReturn(Optional.of(cart));
         when(cartItemRepository.findByCartId(50L)).thenReturn(List.of(cartItem1)); // Cần 2 phần
         when(addressRepository.findByIdAndUserId(100L, 1L)).thenReturn(Optional.of(address));
-        when(systemSettingRepository.findBySettingKey("FREE_SHIPPING_THRESHOLD"))
-                .thenReturn(Optional.of(SystemSetting.builder().settingValue("200000").build()));
 
         // Khi acquire lock, phát hiện người khác vừa mua xong và chỉ còn 1 phần
         Product lockedProduct = Product.builder()
